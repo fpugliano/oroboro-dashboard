@@ -16,7 +16,6 @@ html, body {
   font-size: 13px;
 }
 
-/* ── Grid ── */
 .dashboard {
   display: grid;
   grid-template-columns: 1fr 1.4fr 1fr;
@@ -27,7 +26,6 @@ html, body {
   width: 100vw;
 }
 
-/* ── Cards ── */
 .card {
   background: #111820;
   border: 0.5px solid #1e2a38;
@@ -46,7 +44,6 @@ html, body {
 #card-battery  { grid-column: 3; grid-row: 1; }
 #card-solar    { grid-column: 3; grid-row: 2; }
 
-/* ── Typography ── */
 .lbl {
   font-size: 10px;
   font-weight: 600;
@@ -61,12 +58,12 @@ html, body {
 .val-md  { font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
 .val-sm  { font-size: 20px; font-weight: 700; line-height: 1; }
 .val-xs  { font-size: 16px; font-weight: 700; line-height: 1; }
+.wind-spd { font-size: 46px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
 
 .unit   { font-size: 12px; color: #4a6a8a; margin-left: 3px; font-weight: 500; }
 .sub    { font-size: 11px; color: #4a6a8a; margin-top: 4px; }
 .mono   { font-family: 'Courier New', Courier, monospace; }
 
-/* ── Colors ── */
 .green  { color: #5db832; }
 .cyan   { color: #22d3ee; }
 .amber  { color: #f59e0b; }
@@ -75,14 +72,11 @@ html, body {
 .muted  { color: #4a6a8a; }
 .white  { color: #e2e8f0; }
 
-/* ── Divider ── */
 .divider { height: 0.5px; background: #1e2a38; margin: 10px 0; flex-shrink: 0; }
 
-/* ── Progress bar ── */
 .bar-track { width: 100%; height: 4px; background: #1e2a38; border-radius: 2px; overflow: hidden; flex-shrink: 0; }
 .bar-fill  { height: 100%; border-radius: 2px; transition: width 0.6s ease, background 0.4s ease; }
 
-/* ── Badge ── */
 .badge {
   display: inline-block;
   font-size: 9px;
@@ -94,20 +88,13 @@ html, body {
   white-space: nowrap;
 }
 
-/* ── Row helpers ── */
 .row        { display: flex; align-items: center; }
 .row-sb     { display: flex; align-items: center; justify-content: space-between; }
 .row-base   { display: flex; align-items: baseline; gap: 4px; }
 .col-center { display: flex; flex-direction: column; align-items: center; }
 
-/* ════════════════════════════════════════
-   LEFT TOP — Navigation
-   ════════════════════════════════════════ */
 #card-nav { gap: 0; }
 
-/* ════════════════════════════════════════
-   LEFT BOTTOM — Position & Tanks
-   ════════════════════════════════════════ */
 .pos-coords { line-height: 1.9; }
 .pos-line   { font-size: 15px; letter-spacing: 0.02em; }
 
@@ -121,15 +108,14 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
-.tank-pct  { font-size: 22px; font-weight: 700; color: #22d3ee; line-height: 1; }
-.tank-lit  { font-size: 10px; color: #4a6a8a; }
+.tank-pct  { font-size: 28px; font-weight: 700; color: #22d3ee; line-height: 1; }
+.tank-lit  { font-size: 16px; font-weight: 700; color: #e2e8f0; line-height: 1; }
+.tank-of   { font-size: 10px; color: #4a6a8a; }
+.tank-bar  { height: 10px !important; border-radius: 5px !important; }
 .tank-name { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; color: #4a6a8a; text-transform: uppercase; margin-top: 2px; }
 
-/* ════════════════════════════════════════
-   CENTER — Wind Compass
-   ════════════════════════════════════════ */
 .wind-stats { display: flex; gap: 32px; justify-content: center; width: 100%; }
 .wind-col   { text-align: center; }
 .wind-sub   { font-size: 11px; color: #4a6a8a; margin-top: 3px; }
@@ -157,15 +143,12 @@ html, body {
 .spark-hdr span:last-child { color: #f59e0b; font-size: 11px; letter-spacing: 0; text-transform: none; font-weight: 700; }
 #sparkline-svg {
   width: 100%;
-  height: 40px;
+  height: 34px;
   background: #0d1520;
   border-radius: 4px;
   display: block;
 }
 
-/* ════════════════════════════════════════
-   RIGHT TOP — Battery
-   ════════════════════════════════════════ */
 .batt-hdr     { margin-bottom: 6px; }
 .soc-bar      { height: 5px; margin: 6px 0 10px; }
 .stats-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
@@ -173,15 +156,7 @@ html, body {
 .stat-v       { font-size: 18px; font-weight: 700; line-height: 1; }
 .stat-l       { font-size: 9px; color: #4a6a8a; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; }
 
-.shore-row    { display: flex; justify-content: space-between; align-items: center; }
-.shore-right  { text-align: right; }
-.ac-val-wrap  { display: flex; align-items: baseline; gap: 3px; justify-content: flex-end; margin-top: 3px; }
-
-/* ════════════════════════════════════════
-   RIGHT BOTTOM — Solar & Inverter
-   ════════════════════════════════════════ */
 .solar-total-val { font-size: 18px; font-weight: 700; color: #f59e0b; }
-
 .solar-row    { margin-bottom: 9px; }
 .solar-rh     { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 12px; }
 .solar-name   { color: #4a6a8a; }
@@ -189,13 +164,9 @@ html, body {
 .solar-bar    { height: 3px; background: #1e2a38; border-radius: 1.5px; overflow: hidden; }
 .solar-fill   { height: 100%; background: #f59e0b; border-radius: 1.5px; transition: width 0.6s ease; }
 
-.solar-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
 .batt-temp    { font-size: 11px; color: #4a6a8a; }
 .batt-temp span { color: #e2e8f0; font-weight: 600; }
 
-/* ════════════════════════════════════════
-   Connection Status
-   ════════════════════════════════════════ */
 #conn-status {
   position: fixed;
   bottom: 10px;
@@ -249,70 +220,22 @@ html, body {
     <div class="sub">Water &nbsp;<span class="white" id="water-temp">--</span></div>
   </div>
 
-  <!-- ══ CENTER: Wind Compass ══ -->
+  <!-- ══ CENTER: Wind Rose ══ -->
   <div class="card" id="card-wind">
 
     <div class="wind-stats">
       <div class="wind-col">
-        <div class="val-md amber" id="aws">--</div>
-        <div class="wind-sub">AWS kts &nbsp;·&nbsp; AWA <span class="amber" id="awa">--°</span></div>
+        <div class="wind-spd" id="aws" style="color:#F5F52A">--</div>
+        <div class="wind-sub">AWS kts &nbsp;·&nbsp; AWA <span style="color:#F5F52A" id="awa">--°</span></div>
       </div>
       <div class="wind-col">
-        <div class="val-md green" id="tws">--</div>
+        <div class="wind-spd" id="tws" style="color:#5db832">--</div>
         <div class="wind-sub">TWS kts &nbsp;·&nbsp; TWA <span class="green" id="twa">--°</span></div>
       </div>
     </div>
 
     <div class="compass-wrap">
-      <svg id="compass-svg" viewBox="0 0 200 200" width="200" height="200">
-        <!-- Dark background -->
-        <circle cx="100" cy="100" r="97" fill="#0d1520" stroke="#1e2a38" stroke-width="1"/>
-        <!-- Dashed grid rings -->
-        <circle cx="100" cy="100" r="25" fill="none" stroke="#1e2a38" stroke-dasharray="3 3" stroke-width="0.8"/>
-        <circle cx="100" cy="100" r="50" fill="none" stroke="#1e2a38" stroke-dasharray="3 3" stroke-width="0.8"/>
-        <circle cx="100" cy="100" r="75" fill="none" stroke="#1e2a38" stroke-dasharray="3 3" stroke-width="0.8"/>
-        <!-- Cross lines N/S E/W -->
-        <line x1="100" y1="3" x2="100" y2="197" stroke="#1e2a38" stroke-width="0.8"/>
-        <line x1="3" y1="100" x2="197" y2="100" stroke="#1e2a38" stroke-width="0.8"/>
-        <!-- Diagonal lines at 45° -->
-        <line x1="31" y1="31" x2="169" y2="169" stroke="#1e2a38" stroke-width="0.5" opacity="0.5"/>
-        <line x1="169" y1="31" x2="31" y2="169" stroke="#1e2a38" stroke-width="0.5" opacity="0.5"/>
-        <!-- Cardinal labels -->
-        <text x="100" y="14" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700" font-family="system-ui,sans-serif">N</text>
-        <text x="188" y="104" text-anchor="middle" fill="#4a6a8a" font-size="10" font-family="system-ui,sans-serif">E</text>
-        <text x="100" y="195" text-anchor="middle" fill="#4a6a8a" font-size="10" font-family="system-ui,sans-serif">S</text>
-        <text x="12" y="104" text-anchor="middle" fill="#4a6a8a" font-size="10" font-family="system-ui,sans-serif">W</text>
-        <!-- Degree labels: 60°, 120°, 240°, 300° (0=N, 180=S covered by cardinals) -->
-        <!-- 60°: x=100+72*sin60=162, y=100-72*cos60=64 -->
-        <text x="163" y="66" text-anchor="middle" fill="#4a6a8a" font-size="8" font-family="system-ui,sans-serif">60</text>
-        <!-- 120°: x=162, y=136 -->
-        <text x="163" y="138" text-anchor="middle" fill="#4a6a8a" font-size="8" font-family="system-ui,sans-serif">120</text>
-        <!-- 240°: x=38, y=136 -->
-        <text x="37" y="138" text-anchor="middle" fill="#4a6a8a" font-size="8" font-family="system-ui,sans-serif">240</text>
-        <!-- 300°: x=38, y=64 -->
-        <text x="37" y="66" text-anchor="middle" fill="#4a6a8a" font-size="8" font-family="system-ui,sans-serif">300</text>
-
-        <!-- AWA needle (amber) — thick, with arrowhead + dashed return -->
-        <g id="awa-needle" transform="rotate(0,100,100)">
-          <line x1="100" y1="100" x2="100" y2="10" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>
-          <polygon points="100,5 95,17 105,17" fill="#f59e0b"/>
-          <line x1="100" y1="100" x2="100" y2="190" stroke="#f59e0b" stroke-width="1" stroke-dasharray="5 3" opacity="0.35"/>
-        </g>
-
-        <!-- TWA needle (green) — slightly thinner -->
-        <g id="twa-needle" transform="rotate(0,100,100)">
-          <line x1="100" y1="100" x2="100" y2="12" stroke="#5db832" stroke-width="1.5" stroke-linecap="round"/>
-          <polygon points="100,7 96,18 104,18" fill="#5db832"/>
-        </g>
-
-        <!-- Boat indicator: blue triangle at center pointing up -->
-        <polygon points="100,90 95.5,105 104.5,105" fill="#60a5fa" opacity="0.9"/>
-        <!-- Center dot -->
-        <circle cx="100" cy="100" r="3" fill="#e2e8f0"/>
-        <!-- Heading text below center -->
-        <text id="compass-hdg" x="100" y="120" text-anchor="middle" fill="#e2e8f0"
-              font-size="10" font-family="'Courier New',Courier,monospace" font-weight="600">---°</text>
-      </svg>
+      <svg id="windrose" viewBox="-140 -140 280 280" width="260" height="260"></svg>
     </div>
 
     <div class="compass-btm">
@@ -331,7 +254,7 @@ html, body {
         <span>TWS 10 min</span>
         <span id="spark-cur">-- kts</span>
       </div>
-      <svg id="sparkline-svg" viewBox="0 0 200 40" preserveAspectRatio="none">
+      <svg id="sparkline-svg" viewBox="0 0 200 34" preserveAspectRatio="none">
         <polyline id="spark-line" points="" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linejoin="round"/>
       </svg>
     </div>
@@ -354,39 +277,20 @@ html, body {
 
     <div class="stats-grid">
       <div class="stat-cell">
-        <div class="stat-v green" id="voltage">--</div>
-        <div class="stat-l">Voltage V</div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-v amber" id="current">--</div>
-        <div class="stat-l">Current A</div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-v cyan" id="solar-stat">--</div>
-        <div class="stat-l">Solar W</div>
+        <div class="stat-v white" id="ac-load">--</div>
+        <div class="stat-l">AC Loads W</div>
       </div>
       <div class="stat-cell">
         <div class="stat-v white" id="dc-load">--</div>
-        <div class="stat-l">DC Load W</div>
+        <div class="stat-l">DC Loads W</div>
       </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="shore-row">
-      <div>
-        <div class="lbl" style="margin:0">Shore power</div>
-        <div class="row" style="gap:6px;margin-top:4px">
-          <span class="badge" id="shore-badge" style="background:#374151;color:#6b7280">No input</span>
-          <span id="shore-v" style="font-size:11px;color:#4a6a8a"></span>
-        </div>
+      <div class="stat-cell">
+        <div class="stat-v cyan" id="solar-stat">--</div>
+        <div class="stat-l">Solar In W</div>
       </div>
-      <div class="shore-right">
-        <div class="lbl" style="margin:0;text-align:right">AC loads</div>
-        <div class="ac-val-wrap">
-          <span class="val-sm white" id="ac-load">--</span>
-          <span class="unit">W</span>
-        </div>
+      <div class="stat-cell">
+        <div class="stat-v green" id="voltage">--</div>
+        <div class="stat-l">Voltage V</div>
       </div>
     </div>
   </div>
@@ -405,16 +309,18 @@ html, body {
     <div class="tanks-row">
       <div class="tank-card">
         <div class="tank-pct" id="tank-port-pct">--%</div>
-        <div class="tank-lit" id="tank-port-lit">-- / 380 L</div>
-        <div class="bar-track" style="width:100%">
+        <div class="tank-lit" id="tank-port-lit">--</div>
+        <div class="tank-of">of 380 L</div>
+        <div class="bar-track tank-bar" style="width:100%">
           <div class="bar-fill" id="tank-port-bar" style="width:0%;background:#22d3ee"></div>
         </div>
         <div class="tank-name">PORT</div>
       </div>
       <div class="tank-card">
         <div class="tank-pct" id="tank-stbd-pct">--%</div>
-        <div class="tank-lit" id="tank-stbd-lit">-- / 380 L</div>
-        <div class="bar-track" style="width:100%">
+        <div class="tank-lit" id="tank-stbd-lit">--</div>
+        <div class="tank-of">of 380 L</div>
+        <div class="bar-track tank-bar" style="width:100%">
           <div class="bar-fill" id="tank-stbd-bar" style="width:0%;background:#22d3ee"></div>
         </div>
         <div class="tank-name">STBD</div>
@@ -422,7 +328,7 @@ html, body {
     </div>
   </div>
 
-  <!-- ══ RIGHT BOTTOM: Solar & Inverter ══ -->
+  <!-- ══ RIGHT BOTTOM: Solar ══ -->
   <div class="card" id="card-solar">
     <div class="row-sb" style="margin-bottom:10px">
       <span class="lbl" style="margin:0">Solar panels</span>
@@ -431,7 +337,7 @@ html, body {
 
     <div class="solar-row">
       <div class="solar-rh">
-        <span class="solar-name">MPPT 1</span>
+        <span class="solar-name">Rigid panels</span>
         <span class="solar-w" id="s278-w">-- W</span>
       </div>
       <div class="solar-bar"><div class="solar-fill" id="s278-bar" style="width:0%"></div></div>
@@ -439,7 +345,7 @@ html, body {
 
     <div class="solar-row">
       <div class="solar-rh">
-        <span class="solar-name">MPPT 2</span>
+        <span class="solar-name">Flex panels 1</span>
         <span class="solar-w" id="s279-w">-- W</span>
       </div>
       <div class="solar-bar"><div class="solar-fill" id="s279-bar" style="width:0%"></div></div>
@@ -447,7 +353,7 @@ html, body {
 
     <div class="solar-row">
       <div class="solar-rh">
-        <span class="solar-name">MPPT 3</span>
+        <span class="solar-name">Flex panels 2</span>
         <span class="solar-w" id="s289-w">-- W</span>
       </div>
       <div class="solar-bar"><div class="solar-fill" id="s289-bar" style="width:0%"></div></div>
@@ -455,20 +361,32 @@ html, body {
 
     <div class="divider"></div>
 
-    <div class="solar-footer">
+    <div class="row-sb" style="margin-bottom:0">
+      <span class="batt-temp">Batt temp: <span id="batt-temp">--</span></span>
+      <div style="font-size:11px;font-weight:600;text-align:right">
+        <span style="color:#5db832" id="batt-v">--</span><span style="color:#4a6a8a;font-size:10px">V</span>
+        &nbsp;
+        <span style="color:#4a6a8a" id="batt-a">--A</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row-sb">
+      <div class="row" style="gap:6px">
+        <span class="badge" id="shore-badge" style="background:#374151;color:#6b7280">No input</span>
+        <span id="shore-v" style="font-size:11px;color:#4a6a8a"></span>
+      </div>
       <span class="badge" id="inv-badge" style="background:#374151;color:#9ca3af">--</span>
-      <div class="batt-temp">Batt temp: <span id="batt-temp">--</span></div>
     </div>
   </div>
 
 </div>
 
-<!-- Reconnecting notice (top right, shown during disconnect) -->
 <div id="reconnect-notice">
   <span class="dot" style="background:#f59e0b"></span> Reconnecting...
 </div>
 
-<!-- Connection status (bottom right, always visible) -->
 <div id="conn-status">
   <span class="dot" id="status-dot" style="background:#f59e0b"></span>
   <span id="status-txt" style="color:#f59e0b">Connecting...</span>
@@ -477,7 +395,6 @@ html, body {
 <script>
 'use strict';
 
-// ── Constants ──────────────────────────────────────────────────
 const WS_URL = 'ws://localhost:3000/signalk/v1/stream?subscribe=none';
 const R2D    = 180 / Math.PI;
 
@@ -514,11 +431,13 @@ const SUBSCRIBE = {
   ]
 };
 
-// ── TWS Sparkline buffer (600 readings) ───────────────────────
-const SPARK_BUF = new Array(600).fill(null);
-let sparkHead = 0;
+// Circular buffer for TWS sparkline
+const twsHistory = new Array(600).fill(0);
+let twsIdx = 0;
 
-// ── WebSocket ──────────────────────────────────────────────────
+// Tracked wind angles for updateWindRose
+let _twa = 0, _awa = 0;
+
 let ws = null, reconnTimer = null;
 
 function connect() {
@@ -549,8 +468,8 @@ function scheduleReconn() {
 }
 
 function setStatus(s) {
-  const dot  = document.getElementById('status-dot');
-  const txt  = document.getElementById('status-txt');
+  const dot    = document.getElementById('status-dot');
+  const txt    = document.getElementById('status-txt');
   const notice = document.getElementById('reconnect-notice');
   const colors = { live:'#5db832', connecting:'#f59e0b', offline:'#f87171' };
   const labels = { live:'● Live', connecting:'Connecting...', offline:'Offline' };
@@ -560,7 +479,6 @@ function setStatus(s) {
   notice.style.display = (s === 'offline') ? 'flex' : 'none';
 }
 
-// ── Unit helpers ───────────────────────────────────────────────
 const toKts = ms  => ms  * 1.94384;
 const toC   = k   => k   - 273.15;
 const toDeg = rad => rad * R2D;
@@ -573,7 +491,6 @@ function norm180(d) {
   return d;
 }
 
-// ── Position formatting ────────────────────────────────────────
 function fmtLat(deg) {
   const a = Math.abs(deg), d = Math.floor(a);
   const m = ((a - d) * 60).toFixed(1).padStart(4, '0');
@@ -585,14 +502,12 @@ function fmtLon(deg) {
   return `${String(d).padStart(3,'0')}°${m}' ${deg >= 0 ? 'E' : 'W'}`;
 }
 
-// ── SOC color ──────────────────────────────────────────────────
 function socColor(p) {
   if (p > 80) return '#5db832';
   if (p > 50) return '#f59e0b';
   return '#f87171';
 }
 
-// ── Charging mode badge ────────────────────────────────────────
 const MODE = {
   float:        {bg:'#14532d', c:'#5db832'},
   absorption:   {bg:'#78350f', c:'#f59e0b'},
@@ -602,47 +517,38 @@ const MODE = {
 };
 
 function setBadge(el, text, bg, color) {
-  el.textContent    = text;
+  el.textContent      = text;
   el.style.background = bg;
   el.style.color      = color;
 }
 
-// ── Tank update ────────────────────────────────────────────────
 function updateTank(side, ratio) {
   const pct = Math.round(ratio * 100);
   const lit = Math.round(ratio * 380);
   document.getElementById(`tank-${side}-pct`).textContent = pct + '%';
-  document.getElementById(`tank-${side}-lit`).textContent = `${lit} / 380 L`;
-  document.getElementById(`tank-${side}-bar`).style.width  = pct + '%';
+  document.getElementById(`tank-${side}-lit`).textContent = lit + ' L';
+  document.getElementById(`tank-${side}-bar`).style.width = pct + '%';
 }
 
-// ── Solar row update ───────────────────────────────────────────
 function updateSolar(id, w) {
   document.getElementById(`s${id}-w`).textContent   = Math.round(w) + ' W';
   document.getElementById(`s${id}-bar`).style.width = Math.min(100, w / 500 * 100).toFixed(1) + '%';
 }
 
-// ── Sparkline ──────────────────────────────────────────────────
 function addSpark(tws) {
-  SPARK_BUF[sparkHead] = tws;
-  sparkHead = (sparkHead + 1) % 600;
-  const vals = [];
+  twsHistory[twsIdx] = tws;
+  twsIdx = (twsIdx + 1) % 600;
+  const W = 200, H = 34, maxKts = 40;
+  const pts = [];
   for (let i = 0; i < 600; i++) {
-    const v = SPARK_BUF[(sparkHead + i) % 600];
-    if (v !== null) vals.push(v);
+    const v = twsHistory[(twsIdx + i) % 600];
+    const x = (i / 599) * W;
+    const y = H - 2 - (v / maxKts) * (H - 6);
+    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
   }
-  if (vals.length < 2) return;
-  const W = 200, H = 40;
-  const mx = Math.max(...vals, 0.1);
-  const pts = vals.map((v, i) => {
-    const x = (i / (vals.length - 1)) * W;
-    const y = H - 2 - (v / mx) * (H - 6);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
-  document.getElementById('spark-line').setAttribute('points', pts);
+  document.getElementById('spark-line').setAttribute('points', pts.join(' '));
 }
 
-// ── Shore power ────────────────────────────────────────────────
 function updateShore(v) {
   const badge = document.getElementById('shore-badge');
   const vEl   = document.getElementById('shore-v');
@@ -655,7 +561,128 @@ function updateShore(v) {
   }
 }
 
-// ── Main value dispatcher ──────────────────────────────────────
+// Build JS-generated wind rose SVG
+function buildWindRose() {
+  const svg = document.getElementById('windrose');
+  const NS  = 'http://www.w3.org/2000/svg';
+
+  function el(tag, attrs, parent) {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  function pt(deg, r) {
+    const rad = deg * Math.PI / 180;
+    return [r * Math.sin(rad), -r * Math.cos(rad)];
+  }
+
+  function arcPath(s, e, rO, rI) {
+    const [x1,y1] = pt(s, rO);
+    const [x2,y2] = pt(e, rO);
+    const [x3,y3] = pt(e, rI);
+    const [x4,y4] = pt(s, rI);
+    const laf = (e - s) > 180 ? 1 : 0;
+    return `M${x1.toFixed(2)},${y1.toFixed(2)} A${rO},${rO} 0 ${laf} 1 ${x2.toFixed(2)},${y2.toFixed(2)} ` +
+           `L${x3.toFixed(2)},${y3.toFixed(2)} A${rI},${rI} 0 ${laf} 0 ${x4.toFixed(2)},${y4.toFixed(2)} Z`;
+  }
+
+  // Radial gradient background
+  const defs = el('defs', {}, svg);
+  const grad = el('radialGradient', {id:'wr-bg', cx:'50%', cy:'50%', r:'50%'}, defs);
+  el('stop', {offset:'0%', 'stop-color':'#1a2540'}, grad);
+  el('stop', {offset:'100%', 'stop-color':'#0a0e14'}, grad);
+
+  el('circle', {cx:'0', cy:'0', r:'128', fill:'url(#wr-bg)', stroke:'#1e2a38', 'stroke-width':'0.5'}, svg);
+
+  // Performance band arcs (4 bands, mirrored port/starboard, 7° notch at ends)
+  const bands = [
+    {s:30,  e:52,  color:'#22d3ee', op:'0.30'},
+    {s:70,  e:110, color:'#5db832', op:'0.30'},
+    {s:115, e:155, color:'#f59e0b', op:'0.30'},
+    {s:158, e:178, color:'#f87171', op:'0.30'},
+  ];
+  for (const b of bands) {
+    const s2 = b.s + 3.5, e2 = b.e - 3.5;
+    el('path', {d: arcPath(s2, e2, 118, 94),   fill: b.color, opacity: b.op}, svg);
+    el('path', {d: arcPath(-e2, -s2, 118, 94), fill: b.color, opacity: b.op}, svg);
+  }
+
+  // Ring guides
+  el('circle', {cx:'0', cy:'0', r:'94',  fill:'none', stroke:'#1e2a38', 'stroke-dasharray':'3 4', 'stroke-width':'0.5'}, svg);
+  el('circle', {cx:'0', cy:'0', r:'118', fill:'none', stroke:'#1e2a38', 'stroke-dasharray':'3 4', 'stroke-width':'0.5'}, svg);
+
+  // Tick marks at 10° intervals (both sides, 0–180)
+  for (let d = 0; d <= 180; d += 10) {
+    const major  = d % 30 === 0;
+    const r2     = major ? 118 : 122;
+    const stroke = major ? '#e2e8f0' : '#4a6a8a';
+    const sw     = major ? 1.5 : 0.8;
+    const sides  = d === 0 ? [0] : [d, -d];
+    for (const ang of sides) {
+      const [x1,y1] = pt(ang, 128);
+      const [x2,y2] = pt(ang, r2);
+      el('line', {x1:x1.toFixed(2), y1:y1.toFixed(2), x2:x2.toFixed(2), y2:y2.toFixed(2),
+        stroke, 'stroke-width':sw}, svg);
+    }
+  }
+
+  // Angle labels at 0/30/60/90/120/150/180
+  for (const d of [0, 30, 60, 90, 120, 150, 180]) {
+    const r    = 108;
+    const fill = d === 0 ? '#e2e8f0' : '#4a6a8a';
+    const fw   = d === 0 ? '600' : '400';
+    const sides = d === 0 || d === 180 ? [d] : [d, -d];
+    for (const ang of sides) {
+      const [x, y] = pt(ang, r);
+      const t = el('text', {
+        x: x.toFixed(2), y: (y + 3.5).toFixed(2),
+        'text-anchor': 'middle', fill, 'font-weight': fw,
+        'font-size': '9', 'font-family': 'system-ui,sans-serif'
+      }, svg);
+      t.textContent = String(d);
+    }
+  }
+
+  // Sailboat hull (static, bow up)
+  const hull = el('g', {}, svg);
+  el('path', {d:'M0,-22 C6,-10 8,2 7,14 L0,18 L-7,14 C-8,2 -6,-10 0,-22 Z',
+    fill:'#60a5fa', opacity:'0.7'}, hull);
+  el('line', {x1:'-6', y1:'8',  x2:'6', y2:'8',  stroke:'#0d1520', 'stroke-width':'0.8', opacity:'0.5'}, hull);
+  el('line', {x1:'-5', y1:'13', x2:'5', y2:'13', stroke:'#0d1520', 'stroke-width':'0.8', opacity:'0.5'}, hull);
+
+  el('circle', {cx:'0', cy:'0', r:'3', fill:'#e2e8f0'}, svg);
+
+  const hdg = el('text', {id:'compass-hdg', x:'0', y:'32',
+    'text-anchor':'middle', fill:'#e2e8f0',
+    'font-size':'10', 'font-family':"'Courier New',Courier,monospace", 'font-weight':'600'}, svg);
+  hdg.textContent = '---°';
+
+  // TWA blade: yellow elongated diamond, points toward wind (up = 0°)
+  const twaG = el('g', {id:'wr-twa'}, svg);
+  el('polygon', {points:'0,-88 -14,-12 0,24 14,-12', fill:'#F5F52A', opacity:'0.85'}, twaG);
+  const tT = el('text', {x:'0', y:'-58', 'text-anchor':'middle',
+    fill:'#0a0e14', 'font-size':'9', 'font-weight':'700', 'font-family':'system-ui,sans-serif'}, twaG);
+  tT.textContent = 'T';
+
+  // AWA tag: orange rect, points toward apparent wind (up = 0°)
+  const awaG = el('g', {id:'wr-awa'}, svg);
+  el('rect', {x:'-13', y:'-84', width:'26', height:'22', rx:'3', fill:'#f97316', opacity:'0.9'}, awaG);
+  const aT = el('text', {x:'0', y:'-69', 'text-anchor':'middle',
+    fill:'#ffffff', 'font-size':'9', 'font-weight':'700', 'font-family':'system-ui,sans-serif'}, awaG);
+  aT.textContent = 'A';
+}
+
+// Update wind rose blade/tag rotation
+function updateWindRose(twa, awa) {
+  const twaEl = document.getElementById('wr-twa');
+  const awaEl = document.getElementById('wr-awa');
+  if (twaEl) twaEl.setAttribute('transform', `rotate(${twa})`);
+  if (awaEl) awaEl.setAttribute('transform', `rotate(${awa})`);
+}
+
+// Main Signal K value dispatcher
 function onValue(path, val) {
   if (val === null || val === undefined) return;
 
@@ -675,8 +702,9 @@ function onValue(path, val) {
 
     case 'navigation.headingTrue': {
       const h = Math.round(norm360(toDeg(val)));
-      document.getElementById('heading').textContent   = h + '°';
-      document.getElementById('compass-hdg').textContent = h + '°';
+      document.getElementById('heading').textContent = h + '°';
+      const hdg = document.getElementById('compass-hdg');
+      if (hdg) hdg.textContent = h + '°';
       break;
     }
 
@@ -710,14 +738,16 @@ function onValue(path, val) {
     case 'environment.wind.angleApparent': {
       const a = norm180(toDeg(val));
       document.getElementById('awa').textContent = Math.round(a) + '°';
-      document.getElementById('awa-needle').setAttribute('transform', `rotate(${a},100,100)`);
+      _awa = a;
+      updateWindRose(_twa, _awa);
       break;
     }
 
     case 'environment.wind.angleTrueWater': {
       const a = norm180(toDeg(val));
       document.getElementById('twa').textContent = Math.round(a) + '°';
-      document.getElementById('twa-needle').setAttribute('transform', `rotate(${a},100,100)`);
+      _twa = a;
+      updateWindRose(_twa, _awa);
       break;
     }
 
@@ -725,26 +755,32 @@ function onValue(path, val) {
       const pct = Math.round(val * 100);
       const col = socColor(pct);
       const el  = document.getElementById('soc');
-      el.textContent       = pct + '%';
-      el.style.color       = col;
+      el.textContent        = pct + '%';
+      el.style.color        = col;
       const fill = document.getElementById('soc-fill');
-      fill.style.width     = pct + '%';
+      fill.style.width      = pct + '%';
       fill.style.background = col;
       break;
     }
 
-    case 'electrical.batteries.288.voltage':
+    case 'electrical.batteries.288.voltage': {
       document.getElementById('voltage').textContent = val.toFixed(2);
+      const bv = document.getElementById('batt-v');
+      if (bv) bv.textContent = val.toFixed(1);
       break;
+    }
 
-    case 'electrical.batteries.288.current':
-      document.getElementById('current').textContent = (val >= 0 ? '+' : '') + val.toFixed(1);
+    case 'electrical.batteries.288.current': {
+      const cur = (val >= 0 ? '+' : '') + val.toFixed(1);
+      const ba = document.getElementById('batt-a');
+      if (ba) ba.textContent = cur + 'A';
       break;
+    }
 
     case 'electrical.chargers.276.chargingMode': {
-      const el = document.getElementById('charge-badge');
+      const el  = document.getElementById('charge-badge');
       const key = String(val).toLowerCase();
-      const m = MODE[key] || {bg:'#374151', c:'#9ca3af'};
+      const m   = MODE[key] || {bg:'#374151', c:'#9ca3af'};
       setBadge(el, val, m.bg, m.c);
       break;
     }
@@ -785,7 +821,6 @@ function onValue(path, val) {
   }
 }
 
-// ── Keyboard shortcuts ─────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
   if (e.key === 'f' || e.key === 'F') {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
@@ -798,9 +833,9 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ── Init ───────────────────────────────────────────────────────
 window.addEventListener('load', () => {
   document.documentElement.requestFullscreen().catch(() => {});
+  buildWindRose();
   connect();
 });
 </script>
