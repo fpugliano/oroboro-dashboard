@@ -30,7 +30,7 @@ html, body {
   background: #111820;
   border: 0.5px solid #1e2a38;
   border-radius: 8px;
-  padding: 14px 16px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -72,7 +72,7 @@ html, body {
 .muted  { color: #4a6a8a; }
 .white  { color: #e2e8f0; }
 
-.divider { height: 0.5px; background: #1e2a38; margin: 10px 0; flex-shrink: 0; }
+.divider { height: 0.5px; background: #1e2a38; margin: 8px 0; flex-shrink: 0; }
 
 .bar-track { width: 100%; height: 4px; background: #1e2a38; border-radius: 2px; overflow: hidden; flex-shrink: 0; }
 .bar-fill  { height: 100%; border-radius: 2px; transition: width 0.6s ease, background 0.4s ease; }
@@ -95,7 +95,7 @@ html, body {
 
 #card-nav { gap: 0; }
 
-.pos-coords { line-height: 1.9; }
+.pos-coords { line-height: 1.7; }
 .pos-line   { font-size: 15px; letter-spacing: 0.02em; }
 
 .tanks-row { display: flex; gap: 8px; flex: 1; margin-top: 6px; min-height: 0; }
@@ -149,15 +149,21 @@ html, body {
   display: block;
 }
 
-.batt-hdr     { margin-bottom: 6px; }
-.soc-bar      { height: 5px; margin: 6px 0 10px; }
+#windrose {
+  display: block;
+  width: min(220px, 38vh);
+  height: min(220px, 38vh);
+}
+
+.batt-hdr     { margin-bottom: 4px; }
+.soc-bar      { height: 5px; margin: 4px 0 8px; }
 .stats-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .stat-cell    { background: #0d1520; border-radius: 5px; padding: 7px 9px; }
 .stat-v       { font-size: 18px; font-weight: 700; line-height: 1; }
 .stat-l       { font-size: 9px; color: #4a6a8a; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; }
 
 .solar-total-val { font-size: 18px; font-weight: 700; color: #f59e0b; }
-.solar-row    { margin-bottom: 9px; }
+.solar-row    { margin-bottom: 7px; }
 .solar-rh     { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 12px; }
 .solar-name   { color: #4a6a8a; }
 .solar-w      { color: #e2e8f0; font-weight: 600; }
@@ -565,6 +571,7 @@ function updateShore(v) {
 function buildWindRose() {
   const svg = document.getElementById('windrose');
   const NS  = 'http://www.w3.org/2000/svg';
+  const R   = 128;
 
   function el(tag, attrs, parent) {
     const e = document.createElementNS(NS, tag);
@@ -578,14 +585,21 @@ function buildWindRose() {
     return [r * Math.sin(rad), -r * Math.cos(rad)];
   }
 
-  function arcPath(s, e, rO, rI) {
-    const [x1,y1] = pt(s, rO);
-    const [x2,y2] = pt(e, rO);
-    const [x3,y3] = pt(e, rI);
-    const [x4,y4] = pt(s, rI);
-    const laf = (e - s) > 180 ? 1 : 0;
-    return `M${x1.toFixed(2)},${y1.toFixed(2)} A${rO},${rO} 0 ${laf} 1 ${x2.toFixed(2)},${y2.toFixed(2)} ` +
-           `L${x3.toFixed(2)},${y3.toFixed(2)} A${rI},${rI} 0 ${laf} 0 ${x4.toFixed(2)},${y4.toFixed(2)} Z`;
+  // Stroke-based arc with one notch 7° from the end
+  function makeArc(startDeg, endDeg, color, opacity, forceSweep) {
+    const r       = R * 0.92;
+    const notchAt = endDeg - 7;
+    const sweep   = forceSweep !== undefined ? forceSweep : (endDeg > startDeg ? 1 : 0);
+    const f = n => n.toFixed(2);
+    const [x1,y1]   = pt(startDeg, r);
+    const [xn,yn]   = pt(notchAt,  r);
+    const [xn2,yn2] = pt(notchAt,  r - 6);
+    const [x2,y2]   = pt(endDeg,   r);
+    const d = `M${f(x1)},${f(y1)} A${f(r)},${f(r)} 0 0,${sweep} ${f(xn)},${f(yn)} ` +
+              `L${f(xn2)},${f(yn2)} L${f(xn)},${f(yn)} ` +
+              `A${f(r)},${f(r)} 0 0,${sweep} ${f(x2)},${f(y2)}`;
+    el('path', {d, fill:'none', stroke:color, 'stroke-width':'18',
+      'stroke-linecap':'round', opacity:String(opacity)}, svg);
   }
 
   // Radial gradient background
@@ -596,18 +610,11 @@ function buildWindRose() {
 
   el('circle', {cx:'0', cy:'0', r:'128', fill:'url(#wr-bg)', stroke:'#1e2a38', 'stroke-width':'0.5'}, svg);
 
-  // Performance band arcs (4 bands, mirrored port/starboard, 7° notch at ends)
-  const bands = [
-    {s:30,  e:52,  color:'#22d3ee', op:'0.30'},
-    {s:70,  e:110, color:'#5db832', op:'0.30'},
-    {s:115, e:155, color:'#f59e0b', op:'0.30'},
-    {s:158, e:178, color:'#f87171', op:'0.30'},
-  ];
-  for (const b of bands) {
-    const s2 = b.s + 3.5, e2 = b.e - 3.5;
-    el('path', {d: arcPath(s2, e2, 118, 94),   fill: b.color, opacity: b.op}, svg);
-    el('path', {d: arcPath(-e2, -s2, 118, 94), fill: b.color, opacity: b.op}, svg);
-  }
+  // 4 performance arcs: 2 fwd + 2 aft, green stbd / red port
+  makeArc(  24,   58, '#66FF66', 0.9);      // fwd starboard
+  makeArc( -58,  -24, '#FF6666', 0.9, 0);   // fwd port
+  makeArc( 123,  157, '#66FF66', 0.9);      // aft starboard
+  makeArc(-157, -123, '#FF6666', 0.9, 0);   // aft port
 
   // Ring guides
   el('circle', {cx:'0', cy:'0', r:'94',  fill:'none', stroke:'#1e2a38', 'stroke-dasharray':'3 4', 'stroke-width':'0.5'}, svg);
@@ -666,11 +673,11 @@ function buildWindRose() {
     fill:'#0a0e14', 'font-size':'9', 'font-weight':'700', 'font-family':'system-ui,sans-serif'}, twaG);
   tT.textContent = 'T';
 
-  // AWA tag: orange rect, points toward apparent wind (up = 0°)
+  // AWA balloon: teardrop — tip at bottom points toward boat, round top faces dial edge
   const awaG = el('g', {id:'wr-awa'}, svg);
-  el('rect', {x:'-13', y:'-84', width:'26', height:'22', rx:'3', fill:'#f97316', opacity:'0.9'}, awaG);
-  const aT = el('text', {x:'0', y:'-69', 'text-anchor':'middle',
-    fill:'#ffffff', 'font-size':'9', 'font-weight':'700', 'font-family':'system-ui,sans-serif'}, awaG);
+  el('path', {d:'M 0,-62 L -12,-70 A 12,12 0 1,0 12,-70 Z', fill:'#F7A531'}, awaG);
+  const aT = el('text', {x:'0', y:'-74', 'text-anchor':'middle',
+    fill:'#1a0800', 'font-size':'11', 'font-weight':'800', 'font-family':'system-ui,sans-serif'}, awaG);
   aT.textContent = 'A';
 }
 
