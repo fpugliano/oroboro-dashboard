@@ -410,8 +410,8 @@ html, body {
     <div class="row-sb" style="margin-bottom:0;flex-shrink:0">
       <span class="batt-temp">Batt temp: <span id="batt-temp">--</span></span>
       <div style="font-size:10px;font-weight:500;text-align:right">
-        <span style="color:#5db832" id="batt-v">--</span><span style="color:#7a9abf;font-size:9px">V</span>
-        &nbsp;
+        <span style="color:#60a5fa" id="acout-freq">--Hz</span>
+        &nbsp;·&nbsp;
         <span style="color:#7a9abf" id="batt-a">--A</span>
       </div>
     </div>
@@ -468,6 +468,7 @@ const SUBSCRIBE = {
     {path:'electrical.solar.289.panelPower'},
     {path:'electrical.venus.totalPanelPower'},
     {path:'electrical.inverters.276.acout.power'},
+    {path:'electrical.inverters.276.acout.frequency'},
     {path:'electrical.inverters.276.acin.voltage'},
     {path:'electrical.inverters.276.inverterMode'},
     {path:'electrical.venus.dcPower'},
@@ -844,12 +845,9 @@ function onValue(path, val) {
       break;
     }
 
-    case 'electrical.batteries.288.voltage': {
+    case 'electrical.batteries.288.voltage':
       document.getElementById('voltage').textContent = val.toFixed(2);
-      const bv = document.getElementById('batt-v');
-      if (bv) bv.textContent = val.toFixed(1);
       break;
-    }
 
     case 'electrical.batteries.288.current': {
       const cur = (val >= 0 ? '+' : '') + val.toFixed(1);
@@ -882,6 +880,12 @@ function onValue(path, val) {
     case 'electrical.inverters.276.acout.power':
       document.getElementById('ac-load').textContent = Math.round(val);
       break;
+
+    case 'electrical.inverters.276.acout.frequency': {
+      const el = document.getElementById('acout-freq');
+      if (el) el.textContent = val.toFixed(1) + 'Hz';
+      break;
+    }
 
     case 'electrical.inverters.276.acin.voltage':
       updateShore(val);
