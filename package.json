@@ -18,7 +18,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/fpugliano/oroboro-dashboard.git"
+    "url": "git+https://github.com/fpugliano/oroboro-dashboard.git"
   },
   "homepage": "https://github.com/fpugliano/oroboro-dashboard",
   "bugs": {
