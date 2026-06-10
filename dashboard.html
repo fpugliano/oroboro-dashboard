@@ -540,9 +540,16 @@ function updateTank(side, ratio) {
   document.getElementById(`tank-${side}-bar`).style.width = pct + '%';
 }
 
+const SOLAR_MAX = {
+  '278': 960,
+  '279': 200,
+  '289': 200
+};
+
 function updateSolar(id, w) {
+  const max = SOLAR_MAX[id] || 500;
   document.getElementById(`s${id}-w`).textContent   = Math.round(w) + ' W';
-  document.getElementById(`s${id}-bar`).style.width = Math.min(100, w / 500 * 100).toFixed(1) + '%';
+  document.getElementById(`s${id}-bar`).style.width = Math.min(100, (w / max) * 100).toFixed(1) + '%';
 }
 
 function addSpark(tws) {
