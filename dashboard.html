@@ -480,7 +480,7 @@ function calcTrueWind(aws, awa, stw) {
 }
 
 function updateTrueWind() {
-  if (_aws === 0) return;
+  console.log('updateTrueWind called, aws:', _aws, 'awa:', _awa, 'stw:', _stw);
   const { tws, twa } = calcTrueWind(_aws, _awa, _stw);
   const twsKts = tws * 1.94384;
   const twaDeg = norm180(twa * R2D);
