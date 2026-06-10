@@ -456,8 +456,7 @@ const SUBSCRIBE = {
   ]
 };
 
-const twsHistory = new Array(600).fill(null);
-let twsIdx = 0;
+const twsHistory = [];
 
 let _twa = 0, _awa = 0;
 let ws = null, reconnTimer = null;
@@ -547,27 +546,19 @@ function updateSolar(id, w) {
 }
 
 function addSpark(tws) {
-  twsHistory[twsIdx] = tws;
-  twsIdx = (twsIdx + 1) % 600;
+  twsHistory.push(tws);
+  if (twsHistory.length > 600) twsHistory.shift();
+  if (twsHistory.length < 2) return;
 
-  const values = [];
-  for (let i = 0; i < 600; i++) {
-    const v = twsHistory[(twsIdx + i) % 600];
-    if (v !== null) values.push(v);
-  }
-
-  if (values.length < 2) return;
-
-  const W = 200, H = 30, maxKts = 40, minKts = 0;
-  const pts = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * W;
-    const y = H - 2 - ((v - minKts) / (maxKts - minKts)) * (H - 6);
-    return `${x.toFixed(1)},${Math.max(2, Math.min(H - 2, y)).toFixed(1)}`;
+  const W = 200, H = 30, maxKts = 40;
+  const pts = twsHistory.map((v, i) => {
+    const x = (i / (twsHistory.length - 1)) * W;
+    const y = H - 2 - (Math.min(v, maxKts) / maxKts) * (H - 4);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
 
   const line = document.getElementById('spark-line');
   if (line) line.setAttribute('points', pts.join(' '));
-
   const cur = document.getElementById('spark-cur');
   if (cur) cur.textContent = tws.toFixed(1) + ' kts';
 }
