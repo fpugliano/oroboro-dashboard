@@ -445,9 +445,7 @@ const SUBSCRIBE = {
     {path:'environment.depth.belowKeel'},
     {path:'environment.water.temperature'},
     {path:'environment.wind.speedApparent'},
-    {path:'environment.wind.speedTrue'},
     {path:'environment.wind.angleApparent'},
-    {path:'environment.wind.angleTrueWater'},
     {path:'electrical.batteries.288.capacity.stateOfCharge'},
     {path:'electrical.batteries.288.voltage'},
     {path:'electrical.batteries.288.current'},
@@ -470,7 +468,33 @@ const SUBSCRIBE = {
 const twsHistory = [];
 
 let _twa = 0, _awa = 0;
+let _aws = 0, _stw = 0;
 let ws = null, reconnTimer = null;
+
+function calcTrueWind(aws, awa, stw) {
+  const twx = aws * Math.cos(awa) - stw;
+  const twy = aws * Math.sin(awa);
+  const tws = Math.sqrt(twx * twx + twy * twy);
+  const twa = Math.atan2(twy, twx);
+  return { tws, twa };
+}
+
+function updateTrueWind() {
+  if (_aws === 0) return;
+  const { tws, twa } = calcTrueWind(_aws, _awa, _stw);
+  const twsKts = tws * 1.94384;
+  const twaDeg = norm180(twa * R2D);
+
+  const twsEl = document.getElementById('tws');
+  if (twsEl) twsEl.textContent = twsKts.toFixed(1);
+
+  const twaEl = document.getElementById('twa');
+  if (twaEl) twaEl.textContent = Math.round(twaDeg) + '°';
+
+  _twa = twaDeg;
+  updateWindRose(_twa, norm180(_awa * R2D));
+  addSpark(twsKts);
+}
 
 function connect() {
   clearTimeout(reconnTimer);
@@ -763,7 +787,9 @@ function onValue(path, val) {
       break;
 
     case 'navigation.speedThroughWater':
+      _stw = val;
       document.getElementById('stw').textContent = toKts(val).toFixed(1);
+      updateTrueWind();
       break;
 
     case 'navigation.headingTrue': {
@@ -783,30 +809,16 @@ function onValue(path, val) {
       break;
 
     case 'environment.wind.speedApparent':
+      _aws = val;
       document.getElementById('aws').textContent = toKts(val).toFixed(1);
+      updateTrueWind();
       break;
-
-    case 'environment.wind.speedTrue': {
-      const tws = toKts(val);
-      console.log('TWS:', tws);
-      document.getElementById('tws').textContent = tws.toFixed(1);
-      addSpark(tws);
-      break;
-    }
 
     case 'environment.wind.angleApparent': {
+      _awa = val;
       const a = norm180(toDeg(val));
       document.getElementById('awa').textContent = Math.round(a) + '°';
-      _awa = a;
-      updateWindRose(_twa, _awa);
-      break;
-    }
-
-    case 'environment.wind.angleTrueWater': {
-      const a = norm180(toDeg(val));
-      document.getElementById('twa').textContent = Math.round(a) + '°';
-      _twa = a;
-      updateWindRose(_twa, _awa);
+      updateTrueWind();
       break;
     }
 
