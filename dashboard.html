@@ -268,6 +268,7 @@ html, body {
 #alarm-popup.active { animation: alarmBorder 1s ease-in-out infinite; }
 #alarm-dot.active   { animation: alarmFlash  1s ease-in-out infinite; }
 </style>
+<script src="config.js"></script>
 </head>
 <body>
 
@@ -391,20 +392,20 @@ html, body {
       <div class="tank-card">
         <div class="tank-pct" id="tank-port-pct">--%</div>
         <div class="tank-lit" id="tank-port-lit">--</div>
-        <div class="tank-of">of 380 L</div>
+        <div class="tank-of" id="tank-port-of">of 380 L</div>
         <div class="bar-track tank-bar" style="width:100%">
           <div class="bar-fill" id="tank-port-bar" style="width:0%;background:#22d3ee"></div>
         </div>
-        <div class="tank-name">PORT</div>
+        <div class="tank-name" id="tank-port-name">PORT</div>
       </div>
       <div class="tank-card">
         <div class="tank-pct" id="tank-stbd-pct">--%</div>
         <div class="tank-lit" id="tank-stbd-lit">--</div>
-        <div class="tank-of">of 380 L</div>
+        <div class="tank-of" id="tank-stbd-of">of 380 L</div>
         <div class="bar-track tank-bar" style="width:100%">
           <div class="bar-fill" id="tank-stbd-bar" style="width:0%;background:#22d3ee"></div>
         </div>
-        <div class="tank-name">STBD</div>
+        <div class="tank-name" id="tank-stbd-name">STBD</div>
       </div>
     </div>
     <div style="margin-top:16px;padding-top:12px;border-top:0.5px solid #1e2a38;display:flex;align-items:center;justify-content:center;">
@@ -419,29 +420,7 @@ html, body {
       <span class="solar-total-val" id="solar-total">-- W</span>
     </div>
 
-    <div class="solar-row">
-      <div class="solar-rh">
-        <span class="solar-name">Rigid panels</span>
-        <span class="solar-w" id="s278-w">-- W</span>
-      </div>
-      <div class="solar-bar"><div class="solar-fill" id="s278-bar" style="width:0%"></div></div>
-    </div>
-
-    <div class="solar-row">
-      <div class="solar-rh">
-        <span class="solar-name">Flex panels 1</span>
-        <span class="solar-w" id="s279-w">-- W</span>
-      </div>
-      <div class="solar-bar"><div class="solar-fill" id="s279-bar" style="width:0%"></div></div>
-    </div>
-
-    <div class="solar-row">
-      <div class="solar-rh">
-        <span class="solar-name">Flex panels 2</span>
-        <span class="solar-w" id="s289-w">-- W</span>
-      </div>
-      <div class="solar-bar"><div class="solar-fill" id="s289-bar" style="width:0%"></div></div>
-    </div>
+    <div id="solar-panels"></div>
 
     <div class="divider"></div>
 
@@ -494,7 +473,8 @@ html, body {
 <script>
 'use strict';
 
-const WS_URL = 'ws://localhost:3000/signalk/v1/stream?subscribe=none';
+const CFG = DASHBOARD_CONFIG;
+const WS_URL = `ws://${CFG.signalk.host}:${CFG.signalk.port}/signalk/v1/stream?subscribe=none`;
 const R2D    = 180 / Math.PI;
 
 const SUBSCRIBE = {
@@ -508,23 +488,20 @@ const SUBSCRIBE = {
     {path:'environment.water.temperature'},
     {path:'environment.wind.speedApparent'},
     {path:'environment.wind.angleApparent'},
-    {path:'electrical.batteries.288.capacity.stateOfCharge'},
-    {path:'electrical.batteries.288.voltage'},
-    {path:'electrical.batteries.288.current'},
-    {path:'electrical.batteries.288.power'},
-    {path:'electrical.chargers.276.chargingMode'},
-    {path:'electrical.chargers.276.temperature'},
-    {path:'electrical.solar.278.panelPower'},
-    {path:'electrical.solar.279.panelPower'},
-    {path:'electrical.solar.289.panelPower'},
+    {path:`electrical.batteries.${CFG.battery.instance}.capacity.stateOfCharge`},
+    {path:`electrical.batteries.${CFG.battery.instance}.voltage`},
+    {path:`electrical.batteries.${CFG.battery.instance}.current`},
+    {path:`electrical.batteries.${CFG.battery.instance}.power`},
+    {path:`electrical.chargers.${CFG.inverter.instance}.chargingMode`},
+    {path:`electrical.chargers.${CFG.inverter.instance}.temperature`},
+    ...CFG.solar.map(s => ({path:`electrical.solar.${s.id}.panelPower`})),
     {path:'electrical.venus.totalPanelPower'},
-    {path:'electrical.inverters.276.acout.power'},
-    {path:'electrical.inverters.276.acout.frequency'},
-    {path:'electrical.inverters.276.acin.voltage'},
-    {path:'electrical.inverters.276.inverterMode'},
+    {path:`electrical.inverters.${CFG.inverter.instance}.acout.power`},
+    {path:`electrical.inverters.${CFG.inverter.instance}.acout.frequency`},
+    {path:`electrical.inverters.${CFG.inverter.instance}.acin.voltage`},
+    {path:`electrical.inverters.${CFG.inverter.instance}.inverterMode`},
     {path:'electrical.venus.dcPower'},
-    {path:'tanks.freshWater.20.currentLevel'},
-    {path:'tanks.freshWater.22.currentLevel'},
+    ...Object.values(CFG.tanks).map(t => ({path: t.path})),
     {path:'notifications.*'}
   ]
 };
@@ -633,17 +610,14 @@ function setBadge(el, text, bg, color) {
 
 function updateTank(side, ratio) {
   const pct = Math.round(ratio * 100);
-  const lit = Math.round(ratio * 380);
+  const cap = (CFG.tanks[side] || {}).capacity || 380;
+  const lit = Math.round(ratio * cap);
   document.getElementById(`tank-${side}-pct`).textContent = pct + '%';
   document.getElementById(`tank-${side}-lit`).textContent = lit + ' L';
   document.getElementById(`tank-${side}-bar`).style.width = pct + '%';
 }
 
-const SOLAR_MAX = {
-  '278': 960,
-  '279': 200,
-  '289': 200
-};
+const SOLAR_MAX = Object.fromEntries(CFG.solar.map(s => [s.id, s.maxWatts]));
 
 function updateSolar(id, w) {
   const max = SOLAR_MAX[id] || 500;
@@ -874,7 +848,7 @@ function updateAlarmPopup() {
 }
 
 function silenceAlarm(path) {
-  fetch(`http://localhost:3000/signalk/v1/api/vessels/self/${path.replace(/\./g, '/')}`, {
+  fetch(`http://${CFG.signalk.host}:${CFG.signalk.port}/signalk/v1/api/vessels/self/${path.replace(/\./g, '/')}`, {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ value: { state: 'normal', method: [] } })
@@ -887,8 +861,97 @@ function silenceAllAlarms() {
   Object.keys(activeAlarms).forEach(path => silenceAlarm(path));
 }
 
+
+const PATH_HANDLERS = {};
+
+function buildHandlers() {
+  const b   = CFG.battery.instance;
+  const inv = CFG.inverter.instance;
+
+  PATH_HANDLERS[`electrical.batteries.${b}.capacity.stateOfCharge`] = (val) => {
+    const pct = Math.round(val * 100);
+    const col = socColor(pct);
+    const el  = document.getElementById('soc');
+    el.textContent        = pct + '%';
+    el.style.color        = col;
+    const fill = document.getElementById('soc-fill');
+    fill.style.width      = pct + '%';
+    fill.style.background = col;
+  };
+
+  PATH_HANDLERS[`electrical.batteries.${b}.voltage`] = (val) => {
+    document.getElementById('voltage').textContent = val.toFixed(2);
+  };
+
+  PATH_HANDLERS[`electrical.batteries.${b}.current`] = (val) => {
+    const cur = (val >= 0 ? '+' : '') + val.toFixed(1);
+    const ba  = document.getElementById('batt-a');
+    if (ba) ba.textContent = cur + 'A';
+  };
+
+  PATH_HANDLERS[`electrical.chargers.${inv}.chargingMode`] = (val) => {
+    const el  = document.getElementById('charge-badge');
+    const key = String(val).toLowerCase();
+    const m   = MODE[key] || {bg:'#374151', c:'#9ca3af'};
+    setBadge(el, val, m.bg, m.c);
+  };
+
+  PATH_HANDLERS[`electrical.chargers.${inv}.temperature`] = (val) => {
+    document.getElementById('batt-temp').textContent = toC(val).toFixed(1) + '°C';
+  };
+
+  CFG.solar.forEach(s => {
+    PATH_HANDLERS[`electrical.solar.${s.id}.panelPower`] = (val) => updateSolar(s.id, val);
+  });
+
+  PATH_HANDLERS[`electrical.inverters.${inv}.acout.power`] = (val) => {
+    document.getElementById('ac-load').textContent = Math.round(val);
+  };
+
+  PATH_HANDLERS[`electrical.inverters.${inv}.acout.frequency`] = (val) => {
+    const el = document.getElementById('acout-freq');
+    if (el) el.textContent = val.toFixed(1) + 'Hz';
+  };
+
+  PATH_HANDLERS[`electrical.inverters.${inv}.acin.voltage`] = (val) => updateShore(val);
+
+  PATH_HANDLERS[`electrical.inverters.${inv}.inverterMode`] = (val) => {
+    const el = document.getElementById('inv-badge');
+    setBadge(el, val, '#374151', '#9ca3af');
+  };
+
+  Object.entries(CFG.tanks).forEach(([side, tank]) => {
+    PATH_HANDLERS[tank.path] = (val) => updateTank(side, val);
+  });
+}
+
+function applyConfig() {
+  document.title = `${CFG.vessel.name} — Marine Dashboard`;
+
+  Object.entries(CFG.tanks).forEach(([side, tank]) => {
+    const ofEl   = document.getElementById(`tank-${side}-of`);
+    const nameEl = document.getElementById(`tank-${side}-name`);
+    if (ofEl)   ofEl.textContent   = `of ${tank.capacity} L`;
+    if (nameEl) nameEl.textContent = tank.label;
+  });
+
+  const container = document.getElementById('solar-panels');
+  if (container) {
+    container.innerHTML = CFG.solar.map(s => `
+      <div class="solar-row">
+        <div class="solar-rh">
+          <span class="solar-name">${s.label}</span>
+          <span class="solar-w" id="s${s.id}-w">-- W</span>
+        </div>
+        <div class="solar-bar"><div class="solar-fill" id="s${s.id}-bar" style="width:0%"></div></div>
+      </div>`).join('');
+  }
+}
+
 function onValue(path, val) {
   if (val === null || val === undefined) return;
+
+  if (PATH_HANDLERS[path]) { PATH_HANDLERS[path](val); return; }
 
   if (path.startsWith('notifications.')) {
     if (val && val.state && val.state !== 'normal' && val.state !== 'nominal') {
@@ -948,76 +1011,16 @@ function onValue(path, val) {
       break;
     }
 
-    case 'electrical.batteries.288.capacity.stateOfCharge': {
-      const pct = Math.round(val * 100);
-      const col = socColor(pct);
-      const el  = document.getElementById('soc');
-      el.textContent        = pct + '%';
-      el.style.color        = col;
-      const fill = document.getElementById('soc-fill');
-      fill.style.width      = pct + '%';
-      fill.style.background = col;
-      break;
-    }
-
-    case 'electrical.batteries.288.voltage':
-      document.getElementById('voltage').textContent = val.toFixed(2);
-      break;
-
-    case 'electrical.batteries.288.current': {
-      const cur = (val >= 0 ? '+' : '') + val.toFixed(1);
-      const ba  = document.getElementById('batt-a');
-      if (ba) ba.textContent = cur + 'A';
-      break;
-    }
-
-    case 'electrical.chargers.276.chargingMode': {
-      const el  = document.getElementById('charge-badge');
-      const key = String(val).toLowerCase();
-      const m   = MODE[key] || {bg:'#374151', c:'#9ca3af'};
-      setBadge(el, val, m.bg, m.c);
-      break;
-    }
-
-    case 'electrical.chargers.276.temperature':
-      document.getElementById('batt-temp').textContent = toC(val).toFixed(1) + '°C';
-      break;
-
-    case 'electrical.solar.278.panelPower':  updateSolar('278', val); break;
-    case 'electrical.solar.279.panelPower':  updateSolar('279', val); break;
-    case 'electrical.solar.289.panelPower':  updateSolar('289', val); break;
-
     case 'electrical.venus.totalPanelPower':
       document.getElementById('solar-total').textContent = Math.round(val) + ' W';
       document.getElementById('solar-stat').textContent  = Math.round(val);
       break;
 
-    case 'electrical.inverters.276.acout.power':
-      document.getElementById('ac-load').textContent = Math.round(val);
-      break;
-
-    case 'electrical.inverters.276.acout.frequency': {
-      const el = document.getElementById('acout-freq');
-      if (el) el.textContent = val.toFixed(1) + 'Hz';
-      break;
-    }
-
-    case 'electrical.inverters.276.acin.voltage':
-      updateShore(val);
-      break;
-
-    case 'electrical.inverters.276.inverterMode': {
-      const el = document.getElementById('inv-badge');
-      setBadge(el, val, '#374151', '#9ca3af');
-      break;
-    }
-
     case 'electrical.venus.dcPower':
       document.getElementById('dc-load').textContent = Math.round(Math.abs(val));
       break;
 
-    case 'tanks.freshWater.20.currentLevel': updateTank('port', val); break;
-    case 'tanks.freshWater.22.currentLevel': updateTank('stbd', val); break;
+
   }
 }
 
@@ -1043,6 +1046,8 @@ document.addEventListener('keydown', (e) => {
 
 window.addEventListener('load', () => {
   document.documentElement.requestFullscreen().catch(() => {});
+  applyConfig();
+  buildHandlers();
   buildWindRose();
   connect();
   setInterval(() => {

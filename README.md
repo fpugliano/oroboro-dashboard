@@ -1,83 +1,94 @@
-# S/V Oroboro — Marine Dashboard
+# Oroboro Dashboard
 
-A single-file marine instrument dashboard for S/V Oroboro. Connects to Signal K via WebSocket and displays navigation, wind, depth, battery, solar, and tank data in a dark nautical interface designed for a fixed cockpit display.
+A full-screen marine instrument dashboard for Signal K. Built for liveaboard
+sailors who want all critical data — wind, depth, speed, battery, solar, tanks
+— on one screen, readable from across the galley.
 
-## What it shows
+![Dashboard Screenshot](screenshot.png)
 
-| Panel | Instruments |
-|---|---|
-| Top left | SOG, COG, Depth, Water temperature |
-| Center | Wind compass (AWA/TWA needles), AWS, TWS, STW, Heading, TWS sparkline |
-| Top right | House bank SOC, Voltage, Current, Solar W, DC load, Shore power, AC loads |
-| Bottom left | GPS position (deg/decimal min), Water tanks (PORT & STBD) |
-| Bottom right | Individual MPPT solar panels, Inverter mode, Battery temperature |
+## Features
+- Wind rose with apparent and true wind angle/speed
+- True wind calculated client-side from AWS + AWA + STW
+- 10-minute true wind speed history graph
+- Battery state of charge with charging mode badge
+- AC loads, DC loads, solar production per panel array
+- Shore power detection and inverter status
+- Water tank levels in % and liters
+- Victron Cerbo GX support via signalk-venus-plugin
+- Single HTML file — no frameworks, no dependencies, no internet required
+- Fully configurable via config.js
 
 ## Requirements
+- Signal K server (tested with 1.46.x and 2.x)
+- For Victron data: signalk-venus-plugin connected to a Cerbo GX
+- Any modern browser (Chrome, Chromium, Firefox, Safari)
+- Raspberry Pi with Chromium in kiosk/fullscreen mode (recommended)
 
-- Signal K server running on the same network (default: `ws://localhost:3000`)
-- Chromium or any modern browser
+## Installation
 
-## Deploy to Raspberry Pi
+### Quick start
+1. Download `dashboard.html` and `config.js`
+2. Edit `config.js` to match your boat
+3. Open `dashboard.html` in your browser
 
-### Option 1 — Open as local file
-
+### On a Raspberry Pi (recommended)
 ```bash
-# Copy to the Pi
-scp dashboard.html pi@oroboro.local:/home/pi/
-
-# Set Chromium to open it on boot (add to ~/.config/lxsession/LXDE-pi/autostart)
-@chromium-browser --noerrdialogs --disable-infobars --start-fullscreen file:///home/pi/dashboard.html
+cd ~ && wget https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/dashboard.html
+wget https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/config.js
+```
+Edit config.js with your settings, then open in Chromium:
+```bash
+chromium-browser --start-fullscreen file:///home/pi/dashboard.html
 ```
 
-### Option 2 — Serve with Python
-
+### Auto-start on boot
 ```bash
-# On the Pi, in the folder containing dashboard.html
-python3 -m http.server 8080
-
-# Then open
-chromium-browser http://localhost:8080/dashboard.html
+mkdir -p ~/.config/autostart
+cat > ~/.config/autostart/dashboard.desktop << 'EOF'
+[Desktop Entry]
+Type=Application
+Name=Marine Dashboard
+Exec=chromium-browser --start-fullscreen --noerrdialogs file:///home/pi/dashboard.html
+EOF
 ```
 
-### Fullscreen autostart (recommended for a fixed display)
+## Configuration
+Edit `config.js` to set your Signal K server address, tank capacities,
+solar panel maximums, and battery/inverter instance IDs.
 
-```bash
-# /home/pi/start-dashboard.sh
-#!/bin/bash
-xset s off
-xset -dpms
-xset s noblank
-chromium-browser \
-  --noerrdialogs \
-  --disable-infobars \
-  --start-fullscreen \
-  --app=file:///home/pi/dashboard.html
-```
+Find your instance IDs in the Signal K Data Browser under
+`electrical.batteries.*`, `electrical.inverters.*`, and `electrical.solar.*`.
 
 ## Signal K paths used
 
-The dashboard subscribes to these paths on `vessels.self`:
-
-- `navigation.speedOverGround` / `courseOverGroundTrue` / `speedThroughWater` / `headingTrue` / `position`
-- `environment.depth.belowKeel` / `environment.water.temperature`
-- `environment.wind.speedApparent` / `speedTrue` / `angleApparent` / `angleTrueWater`
-- `electrical.batteries.288.*` — SOC, voltage, current
-- `electrical.chargers.276.*` — charging mode, temperature
-- `electrical.solar.278/279/289.panelPower` / `electrical.venus.totalPanelPower`
-- `electrical.inverters.276.*` — AC in/out, mode
-- `electrical.venus.dcPower`
-- `tanks.freshWater.20/22.currentLevel`
+| Path | Description |
+|------|-------------|
+| `navigation.speedOverGround` | SOG in m/s |
+| `navigation.speedThroughWater` | STW in m/s (used for true wind) |
+| `navigation.headingTrue` | Heading in radians |
+| `environment.depth.belowKeel` | Depth in meters |
+| `environment.water.temperature` | Water temp in Kelvin |
+| `environment.wind.speedApparent` | AWS in m/s |
+| `environment.wind.angleApparent` | AWA in radians |
+| `electrical.batteries.{id}.*` | SOC, voltage, current |
+| `electrical.chargers.{id}.*` | Charging mode, temperature |
+| `electrical.inverters.{id}.*` | AC loads, frequency, shore power, mode |
+| `electrical.solar.{id}.panelPower` | Per-array solar power in W |
+| `electrical.venus.totalPanelPower` | Total solar in W |
+| `electrical.venus.dcPower` | DC loads in W |
+| `tanks.freshWater.{id}.currentLevel` | Tank level as 0–1 ratio |
+| `notifications.*` | Victron alarm notifications |
 
 ## Keyboard shortcuts
 
 | Key | Action |
-|---|---|
+|-----|--------|
 | `F` | Toggle fullscreen |
 | `R` | Force reconnect |
 
-## Customisation
+## License
+MIT — free to use, modify and distribute.
 
-- **Signal K host**: change `WS_URL` at the top of the `<script>` block
-- **Tank capacity**: change `380` (litres) in the `updateTank()` function
-- **Solar max scale**: change `500` W in the `updateSolar()` function
-- **Battery IDs**: paths use `288` (battery), `276` (charger/inverter), `278/279/289` (MPPTs) — update to match your Victron device instance IDs
+## Built by
+Francesco Pugliano, S/V Oroboro — Leopard 38 catamaran, 30,000nm,
+3 ocean crossings. https://sailingoroboro.com
