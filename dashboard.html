@@ -240,6 +240,11 @@ html, body {
   pointer-events: none;
 }
 .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+@keyframes alarmFlash { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+@keyframes alarmBorder { 0%,100% { border-color:#f87171; } 50% { border-color:#7f1d1d; } }
+#alarm-popup.active { animation: alarmBorder 1s ease-in-out infinite; }
+#alarm-dot.active   { animation: alarmFlash  1s ease-in-out infinite; }
 </style>
 </head>
 <body>
@@ -438,6 +443,19 @@ html, body {
     </div>
   </div>
 
+  <div id="alarm-popup" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:9999; background:#111820; border:1.5px solid #f87171; border-radius:10px; padding:12px 14px; min-width:280px; max-width:340px; font-family:inherit;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div id="alarm-dot" style="width:8px; height:8px; border-radius:50%; background:#f87171;"></div>
+        <span style="font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:0.08em; color:#f87171;">Venus alarms</span>
+      </div>
+      <span id="alarm-count" style="font-size:10px; background:#7f1d1d; color:#fca5a5; padding:2px 7px; border-radius:10px;"></span>
+    </div>
+    <div id="alarm-list"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+      <button id="silence-all-btn" onclick="silenceAllAlarms()" style="font-size:9px; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; background:#7f1d1d; color:#fca5a5; border:none; border-radius:6px; padding:5px 12px; cursor:pointer; font-family:inherit;">Silence all</button>
+    </div>
+  </div>
 </div>
 
 <button id="fs-btn" title="Toggle fullscreen">⛶</button>
@@ -484,12 +502,14 @@ const SUBSCRIBE = {
     {path:'electrical.inverters.276.inverterMode'},
     {path:'electrical.venus.dcPower'},
     {path:'tanks.freshWater.20.currentLevel'},
-    {path:'tanks.freshWater.22.currentLevel'}
+    {path:'tanks.freshWater.22.currentLevel'},
+    {path:'notifications.*'}
   ]
 };
 
 const twsSamples = [];
 const twsTrend   = [];
+const activeAlarms = {};
 
 let _twa = 0, _awa = 0;
 let _aws = 0, _stw = 0;
@@ -801,8 +821,66 @@ function updateWindRose(twa, awa) {
   if (awaEl) awaEl.setAttribute('transform', `rotate(${awa})`);
 }
 
+function updateAlarmPopup() {
+  const keys = Object.keys(activeAlarms);
+  const popup = document.getElementById('alarm-popup');
+  const list  = document.getElementById('alarm-list');
+  const count = document.getElementById('alarm-count');
+  const dot   = document.getElementById('alarm-dot');
+
+  if (keys.length === 0) {
+    popup.style.display = 'none';
+    popup.classList.remove('active');
+    dot.classList.remove('active');
+    return;
+  }
+
+  popup.style.display = 'block';
+  popup.classList.add('active');
+  dot.classList.add('active');
+  count.textContent = keys.length + ' active';
+
+  list.innerHTML = keys.map(path => {
+    const a = activeAlarms[path];
+    return `<div style="background:#0d1520;border-radius:6px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div style="flex:1;">
+        <div style="font-size:11px;color:#e2e8f0;font-weight:500;margin-bottom:2px;">${a.message}</div>
+        <div style="font-size:10px;color:#7a9abf;">${path} · ${a.value}</div>
+      </div>
+      <button onclick="silenceAlarm('${path}')" style="font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;background:#1e2a38;color:#9ca3af;border:0.5px solid #374151;border-radius:6px;padding:4px 8px;cursor:pointer;font-family:inherit;white-space:nowrap;">Silence</button>
+    </div>`;
+  }).join('');
+}
+
+function silenceAlarm(path) {
+  fetch(`http://localhost:3000/signalk/v1/api/vessels/self/${path.replace(/\./g, '/')}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ value: { state: 'normal', method: [] } })
+  }).catch(() => {});
+  delete activeAlarms[path];
+  updateAlarmPopup();
+}
+
+function silenceAllAlarms() {
+  Object.keys(activeAlarms).forEach(path => silenceAlarm(path));
+}
+
 function onValue(path, val) {
   if (val === null || val === undefined) return;
+
+  if (path.startsWith('notifications.')) {
+    if (val && val.state && val.state !== 'normal' && val.state !== 'nominal') {
+      activeAlarms[path] = {
+        message: val.message || path.split('.').pop(),
+        value: val.state
+      };
+    } else {
+      delete activeAlarms[path];
+    }
+    updateAlarmPopup();
+    return;
+  }
 
   switch (path) {
 
