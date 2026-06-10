@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Background -->
+  <rect width="128" height="128" rx="22" fill="#0a0e14"/>
+
+  <!-- Outer ring -->
+  <circle cx="64" cy="64" r="50" fill="none" stroke="#1e2a38" stroke-width="2"/>
+
+  <!-- Cardinal tick marks -->
+  <line x1="64" y1="14" x2="64" y2="22" stroke="#7a9abf" stroke-width="2" stroke-linecap="round"/>
+  <line x1="64" y1="106" x2="64" y2="114" stroke="#7a9abf" stroke-width="2" stroke-linecap="round"/>
+  <line x1="14" y1="64" x2="22" y2="64" stroke="#7a9abf" stroke-width="2" stroke-linecap="round"/>
+  <line x1="106" y1="64" x2="114" y2="64" stroke="#7a9abf" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Intercardinal ticks -->
+  <line x1="28.9" y1="28.9" x2="34.6" y2="34.6" stroke="#1e2a38" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="99.1" y1="28.9" x2="93.4" y2="34.6" stroke="#1e2a38" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="28.9" y1="99.1" x2="34.6" y2="93.4" stroke="#1e2a38" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="99.1" y1="99.1" x2="93.4" y2="93.4" stroke="#1e2a38" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Compass rose — north/south points (tall) -->
+  <polygon points="64,18 69,60 64,68 59,60" fill="#e2e8f0"/>
+  <polygon points="64,110 69,68 64,60 59,68" fill="#7a9abf"/>
+
+  <!-- Compass rose — east/west points -->
+  <polygon points="18,64 60,59 68,64 60,69" fill="#7a9abf"/>
+  <polygon points="110,64 68,59 60,64 68,69" fill="#7a9abf"/>
+
+  <!-- Center dot -->
+  <circle cx="64" cy="64" r="5" fill="#0a0e14" stroke="#7a9abf" stroke-width="1.5"/>
+
+  <!-- N label -->
+  <text x="64" y="13" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" fill="#5db832" letter-spacing="0.5">N</text>
+</svg>
