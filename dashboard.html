@@ -305,7 +305,7 @@ html, body {
 
     <div class="sparkline-wrap">
       <div class="spark-hdr">
-        <span>TWS 10 min</span>
+        <span>TWS Trend</span>
         <span id="spark-cur">-- kts</span>
       </div>
       <svg id="sparkline-svg" viewBox="0 0 200 30" preserveAspectRatio="none">
@@ -477,7 +477,8 @@ const SUBSCRIBE = {
   ]
 };
 
-const twsHistory = [];
+const twsSamples = [];
+const twsTrend   = [];
 
 let _twa = 0, _awa = 0;
 let _aws = 0, _stw = 0;
@@ -598,24 +599,16 @@ function updateSolar(id, w) {
   document.getElementById(`s${id}-bar`).style.width = Math.min(100, (w / max) * 100).toFixed(1) + '%';
 }
 
-function addSpark(tws) {
-  twsHistory.push(parseFloat(tws));
-  if (twsHistory.length > 600) twsHistory.shift();
-
+function drawTrend() {
   const line = document.getElementById('spark-line');
-  if (!line || twsHistory.length < 2) return;
-
+  if (!line || twsTrend.length < 2) return;
   const W = 200, H = 30, maxKts = 40;
-  const pts = twsHistory.map((v, i) => {
-    const x = ((i / (twsHistory.length - 1)) * W).toFixed(1);
+  const pts = twsTrend.map((v, i) => {
+    const x = ((i / (twsTrend.length - 1)) * W).toFixed(1);
     const y = (H - 2 - (Math.min(v, maxKts) / maxKts) * (H - 4)).toFixed(1);
     return `${x},${y}`;
   });
-
   line.setAttribute('points', pts.join(' '));
-
-  const cur = document.getElementById('spark-cur');
-  if (cur) cur.textContent = tws.toFixed(1) + ' kts';
 }
 
 function updateShore(v) {
@@ -932,8 +925,20 @@ window.addEventListener('load', () => {
   setInterval(() => {
     if (_aws === 0) return;
     const { tws } = calcTrueWind(_aws, _awa, _stw);
-    addSpark(tws * 1.94384);
+    const twsKts = tws * 1.94384;
+    twsSamples.push(twsKts);
+    const cur = document.getElementById('spark-cur');
+    if (cur) cur.textContent = twsKts.toFixed(1) + ' kts';
   }, 1000);
+
+  setInterval(() => {
+    if (twsSamples.length === 0) return;
+    const avg = twsSamples.reduce((a, b) => a + b, 0) / twsSamples.length;
+    twsSamples.length = 0;
+    twsTrend.push(avg);
+    if (twsTrend.length > 18) twsTrend.shift();
+    drawTrend();
+  }, 600000);
 });
 </script>
 </body>
