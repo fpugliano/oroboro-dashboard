@@ -167,7 +167,7 @@ html, body {
 .stat-cell    { background: #0d1520; border-radius: 5px; padding: 6px 8px; }
 /* FIX 1: ~10% smaller */
 .stat-v       { font-size: 16px; font-weight: 700; line-height: 1; }
-.stat-l       { font-size: 8px; color: #7a9abf; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; }
+.stat-l       { font-size: 8px; color: #7a9abf; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .solar-total-val { font-size: 16px; font-weight: 700; color: #f59e0b; }
 .solar-row    { margin-bottom: 6px; flex-shrink: 0; }
@@ -310,19 +310,19 @@ html, body {
     <div class="stats-grid">
       <div class="stat-cell">
         <div class="stat-v white" id="ac-load">--</div>
-        <div class="stat-l">AC Loads W</div>
+        <div class="stat-l">AC Loads</div>
       </div>
       <div class="stat-cell">
         <div class="stat-v white" id="dc-load">--</div>
-        <div class="stat-l">DC Loads W</div>
+        <div class="stat-l">DC Loads</div>
       </div>
       <div class="stat-cell">
         <div class="stat-v cyan" id="solar-stat">--</div>
-        <div class="stat-l">Solar In W</div>
+        <div class="stat-l">Solar In</div>
       </div>
       <div class="stat-cell">
         <div class="stat-v green" id="voltage">--</div>
-        <div class="stat-l">Voltage V</div>
+        <div class="stat-l">Voltage</div>
       </div>
     </div>
   </div>
