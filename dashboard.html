@@ -22,8 +22,8 @@ html, body {
   display: grid;
   grid-template-columns: 1fr 1.4fr 1fr;
   grid-template-rows: 1fr 1fr;
-  gap: 8px;
-  padding: 8px;
+  gap: 6px;
+  padding: 6px;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
@@ -58,13 +58,12 @@ html, body {
   flex-shrink: 0;
 }
 
-/* FIX 1: all val-* ~10% smaller */
-.val-xl  { font-size: 43px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
-.val-lg  { font-size: 36px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.val-xl  { font-size: 38px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.val-lg  { font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
 .val-md  { font-size: 29px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
 .val-sm  { font-size: 18px; font-weight: 700; line-height: 1; }
 .val-xs  { font-size: 14px; font-weight: 700; line-height: 1; }
-.wind-spd { font-size: 41px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.wind-spd { font-size: 36px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
 
 .unit   { font-size: 11px; color: #4a6a8a; margin-left: 3px; font-weight: 500; }
 .sub    { font-size: 10px; color: #4a6a8a; margin-top: 3px; flex-shrink: 0; }
@@ -131,8 +130,8 @@ html, body {
 
 #windrose {
   display: block;
-  width: min(200px, 32vh);
-  height: min(200px, 32vh);
+  width: min(190px, 30vh);
+  height: min(190px, 30vh);
 }
 
 .compass-btm     { display: flex; justify-content: center; gap: 40px; width: 100%; flex-shrink: 0; }
@@ -552,53 +551,11 @@ function updateShore(v) {
   }
 }
 
-// FIX 3: Correct polarToXY — 0° = top, clockwise positive
-function polarToXY(angleDeg, r) {
-  const rad = (angleDeg - 90) * Math.PI / 180;
-  return { x: r * Math.cos(rad), y: r * Math.sin(rad) };
-}
-
-// FIX 3: Exact makeArc implementation — notch near end (stbd) or near start (port)
-function makeArc(startDeg, endDeg, r, color, sweepFlag) {
-  const notchAngle = sweepFlag === 1 ? endDeg - 7 : startDeg + 7;
-  const p1  = polarToXY(startDeg,   r);
-  const p2  = polarToXY(endDeg,     r);
-  const pn  = polarToXY(notchAngle, r);
-  const pn2 = polarToXY(notchAngle, r - 6);
-  const el  = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  el.setAttribute('d',
-    `M ${p1.x.toFixed(2)},${p1.y.toFixed(2)} ` +
-    `A ${r},${r} 0 0,${sweepFlag} ${pn.x.toFixed(2)},${pn.y.toFixed(2)} ` +
-    `L ${pn2.x.toFixed(2)},${pn2.y.toFixed(2)} ` +
-    `L ${pn.x.toFixed(2)},${pn.y.toFixed(2)} ` +
-    `A ${r},${r} 0 0,${sweepFlag} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`
-  );
-  el.setAttribute('fill', 'none');
-  el.setAttribute('stroke', color);
-  el.setAttribute('stroke-width', '18');
-  el.setAttribute('stroke-linecap', 'round');
-  el.setAttribute('opacity', '0.9');
-  return el;
-}
-
-// FIX 4: drawLabel using polarToXY
-function drawLabel(svg, angleDeg, text, r) {
-  const pos = polarToXY(angleDeg, r);
-  const el  = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  el.setAttribute('x', pos.x.toFixed(2));
-  el.setAttribute('y', (pos.y + 4).toFixed(2));
-  el.setAttribute('text-anchor', 'middle');
-  el.setAttribute('fill', 'white');
-  el.setAttribute('font-size', '10');
-  el.setAttribute('font-weight', '600');
-  el.textContent = text;
-  svg.appendChild(el);
-}
-
 function buildWindRose() {
   const svg = document.getElementById('windrose');
-  const NS  = 'http://www.w3.org/2000/svg';
-  const R   = 128;
+  svg.innerHTML = '';
+  const NS = 'http://www.w3.org/2000/svg';
+  const R = 128;
 
   function el(tag, attrs, parent) {
     const e = document.createElementNS(NS, tag);
@@ -607,80 +564,124 @@ function buildWindRose() {
     return e;
   }
 
-  // Radial gradient background
+  // Background gradient
   const defs = el('defs', {}, svg);
   const grad = el('radialGradient', {id:'wr-bg', cx:'50%', cy:'50%', r:'50%'}, defs);
-  el('stop', {offset:'0%', 'stop-color':'#1a2540'}, grad);
+  el('stop', {offset:'0%',   'stop-color':'#1a2540'}, grad);
   el('stop', {offset:'100%', 'stop-color':'#0a0e14'}, grad);
-
-  el('circle', {cx:'0', cy:'0', r:'128', fill:'url(#wr-bg)', stroke:'#1e2a38', 'stroke-width':'0.5'}, svg);
-
-  // FIX 3: exactly 4 arcs with correct polarToXY + sweep logic
-  const bandR = R * 0.92;
-  svg.appendChild(makeArc(  24,   58, bandR, '#66FF66', 1));  // fwd starboard
-  svg.appendChild(makeArc( -58,  -24, bandR, '#FF6666', 0));  // fwd port
-  svg.appendChild(makeArc( 123,  157, bandR, '#66FF66', 1));  // aft starboard
-  svg.appendChild(makeArc(-157, -123, bandR, '#FF6666', 0));  // aft port
+  el('circle', {r:'128', fill:'url(#wr-bg)', stroke:'#1e2a38', 'stroke-width':'0.5'}, svg);
 
   // Ring guides
-  el('circle', {cx:'0', cy:'0', r:'94',  fill:'none', stroke:'#1e2a38', 'stroke-dasharray':'3 4', 'stroke-width':'0.5'}, svg);
-  el('circle', {cx:'0', cy:'0', r:'118', fill:'none', stroke:'#1e2a38', 'stroke-dasharray':'3 4', 'stroke-width':'0.5'}, svg);
+  el('circle', {r:'94',  fill:'none', stroke:'#1e2a38', 'stroke-dasharray':'3 4', 'stroke-width':'0.5'}, svg);
+  el('circle', {r:'118', fill:'none', stroke:'#1e2a38', 'stroke-dasharray':'3 4', 'stroke-width':'0.5'}, svg);
 
-  // Tick marks at 10° intervals (both sides, 0–180) using polarToXY
+  // Performance arcs — exactly 4, stroke-width 9
+  function polarToXY(angleDeg, r) {
+    const rad = (angleDeg - 90) * Math.PI / 180;
+    return { x: r * Math.cos(rad), y: r * Math.sin(rad) };
+  }
+
+  function makeArc(startDeg, endDeg, r, color, sweepFlag) {
+    const p1 = polarToXY(startDeg, r);
+    const p2 = polarToXY(endDeg, r);
+    const e = document.createElementNS(NS, 'path');
+    e.setAttribute('d', `M ${p1.x.toFixed(2)},${p1.y.toFixed(2)} A ${r},${r} 0 0,${sweepFlag} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`);
+    e.setAttribute('fill', 'none');
+    e.setAttribute('stroke', color);
+    e.setAttribute('stroke-width', '9');
+    e.setAttribute('stroke-linecap', 'round');
+    e.setAttribute('opacity', '0.9');
+    return e;
+  }
+
+  const bandR = R * 0.92;
+  svg.appendChild(makeArc(  30,   60, bandR, '#66FF66', 1));
+  svg.appendChild(makeArc( -60,  -30, bandR, '#FF6666', 0));
+  svg.appendChild(makeArc( 120,  150, bandR, '#66FF66', 1));
+  svg.appendChild(makeArc(-150, -120, bandR, '#FF6666', 0));
+
+  // Tick marks every 10°, major at 30°
   for (let d = 0; d <= 180; d += 10) {
-    const major  = d % 30 === 0;
-    const r2     = major ? 118 : 122;
+    const major = d % 30 === 0;
+    const outerR = 128;
+    const innerR = major ? 108 : 118;
     const stroke = major ? '#e2e8f0' : '#4a6a8a';
-    const sw     = major ? 1.5 : 0.8;
-    const sides  = d === 0 ? [0] : [d, -d];
+    const sw = major ? 1.5 : 0.8;
+    const sides = d === 0 ? [0] : d === 180 ? [180] : [d, -d];
     for (const ang of sides) {
-      const p1 = polarToXY(ang, 128);
-      const p2 = polarToXY(ang, r2);
-      el('line', {x1:p1.x.toFixed(2), y1:p1.y.toFixed(2), x2:p2.x.toFixed(2), y2:p2.y.toFixed(2),
-        stroke, 'stroke-width':sw}, svg);
+      const p1 = polarToXY(ang, outerR);
+      const p2 = polarToXY(ang, innerR);
+      el('line', {
+        x1: p1.x.toFixed(2), y1: p1.y.toFixed(2),
+        x2: p2.x.toFixed(2), y2: p2.y.toFixed(2),
+        stroke, 'stroke-width': sw
+      }, svg);
     }
   }
 
-  // FIX 4: angle labels at R * 0.72 using drawLabel
-  const labelR = R * 0.72;
-  drawLabel(svg, 0,   '0',   labelR);
-  drawLabel(svg, 180, '180', labelR);
+  // Angle labels — 0/30/60/90/120/150/180
+  const labelR = R * 0.75;
+  function drawLabel(angleDeg, text, upsideDown) {
+    const pos = polarToXY(angleDeg, labelR);
+    const g = el('g', {transform: `translate(${pos.x.toFixed(2)},${pos.y.toFixed(2)}) ${upsideDown ? 'rotate(180)' : ''}`}, svg);
+    const t = el('text', {
+      x: '0', y: '4',
+      'text-anchor': 'middle',
+      fill: 'white',
+      'font-size': '10',
+      'font-weight': '600'
+    }, g);
+    t.textContent = text;
+  }
+
+  drawLabel(0, '0', false);
+  drawLabel(180, '180', true);
   [30, 60, 90, 120, 150].forEach(a => {
-    drawLabel(svg,  a, String(a), labelR);
-    drawLabel(svg, -a, String(a), labelR);
+    drawLabel( a, String(a), false);
+    drawLabel(-a, String(a), false);
   });
 
-  // Sailboat hull (static, bow up)
-  const hull = el('g', {}, svg);
-  const hullPt = polarToXY(0, 0); // center
-  el('path', {d:'M0,-22 C6,-10 8,2 7,14 L0,18 L-7,14 C-8,2 -6,-10 0,-22 Z',
-    fill:'#60a5fa', opacity:'0.7'}, hull);
-  const wl1a = polarToXY(0, 0); // just use fixed coords for waterlines
-  el('line', {x1:'-6', y1:'8',  x2:'6', y2:'8',  stroke:'#0d1520', 'stroke-width':'0.8', opacity:'0.5'}, hull);
-  el('line', {x1:'-5', y1:'13', x2:'5', y2:'13', stroke:'#0d1520', 'stroke-width':'0.8', opacity:'0.5'}, hull);
+  // Vesica boat hull at centre
+  el('ellipse', {
+    cx: '0', cy: '0',
+    rx: '7', ry: '22',
+    fill: '#2a3a4a',
+    stroke: '#4a7a9a',
+    'stroke-width': '1.2'
+  }, svg);
+  el('line', {x1:'-5', y1:'6',  x2:'5', y2:'6',  stroke:'#6a9abf', 'stroke-width':'0.7', opacity:'0.5'}, svg);
+  el('line', {x1:'-5', y1:'12', x2:'5', y2:'12', stroke:'#6a9abf', 'stroke-width':'0.7', opacity:'0.4'}, svg);
+  el('circle', {r:'2', fill:'#6a9abf', opacity:'0.7'}, svg);
 
-  el('circle', {cx:'0', cy:'0', r:'3', fill:'#e2e8f0'}, svg);
-
-  const hdg = el('text', {id:'compass-hdg', x:'0', y:'32',
-    'text-anchor':'middle', fill:'#e2e8f0',
-    'font-size':'10', 'font-family':"'Courier New',Courier,monospace", 'font-weight':'600'}, svg);
-  hdg.textContent = '---°';
-
-  // TWA blade: yellow elongated diamond, tip at center, points toward wind at 0°
+  // TWA pointer — wide flat kite/chevron, yellow
   const twaG = el('g', {id:'wr-twa'}, svg);
-  el('polygon', {points:'0,-88 -14,-12 0,24 14,-12', fill:'#F5F52A', opacity:'0.85'}, twaG);
-  const tT = el('text', {x:'0', y:'-58', 'text-anchor':'middle',
-    fill:'#0a0e14', 'font-size':'9', 'font-weight':'700', 'font-family':'system-ui,sans-serif'}, twaG);
+  el('polygon', {
+    points: '0,-12 -34,-65 -14,-82 0,-76 14,-82 34,-65',
+    fill: '#F5F52A',
+    opacity: '0.92'
+  }, twaG);
+  const tT = el('text', {
+    x:'0', y:'-52',
+    'text-anchor':'middle',
+    fill:'#1a1a00',
+    'font-size':'10',
+    'font-weight':'800'
+  }, twaG);
   tT.textContent = 'T';
 
-  // FIX 5: AWA balloon — cubic bezier teardrop, round top at outer edge, tip toward center
+  // AWA pointer — orange map-pin teardrop
   const awaG = el('g', {id:'wr-awa'}, svg);
   el('path', {
-    d: 'M 0,-62 C -8,-68 -13,-74 -13,-82 A 13,13 0 1,0 13,-82 C 13,-74 8,-68 0,-62 Z',
+    d: 'M 0,-16 L -12,-57 A 15,15 0 1,1 12,-57 Z',
     fill: '#F7A531'
   }, awaG);
-  const aT = el('text', {x:'0', y:'-78', 'text-anchor':'middle',
-    fill:'#1a0800', 'font-size':'11', 'font-weight':'800', 'font-family':'system-ui,sans-serif'}, awaG);
+  const aT = el('text', {
+    x:'0', y:'-62',
+    'text-anchor':'middle',
+    fill:'#1a0800',
+    'font-size':'10',
+    'font-weight':'800'
+  }, awaG);
   aT.textContent = 'A';
 }
 
