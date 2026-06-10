@@ -688,7 +688,7 @@ function buildWindRose() {
   }
 
   drawLabel(0, '0', false);
-  drawLabel(180, '180', true);
+  drawLabel(180, '180', false);
   [30, 60, 90, 120, 150].forEach(a => {
     drawLabel( a, String(a), false);
     drawLabel(-a, String(a), false);
@@ -709,7 +709,7 @@ function buildWindRose() {
   // TWA pointer — wide flat kite/chevron, yellow
   const twaG = el('g', {id:'wr-twa'}, svg);
   el('polygon', {
-    points: '0,-88 -18,-45 0,-20 18,-45',
+    points: '0,-20 -18,-65 0,-88 18,-65',
     fill: '#F5F52A',
     opacity: '0.92'
   }, twaG);
