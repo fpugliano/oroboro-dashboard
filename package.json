@@ -1,0 +1,45 @@
+{
+  "name": "@fpugliano/oroboro-dashboard",
+  "version": "1.0.0",
+  "description": "A full-screen marine instrument dashboard for Signal K — wind, depth, speed, battery, solar and tanks on one screen.",
+  "keywords": [
+    "signalk",
+    "signalk-webapp",
+    "dashboard",
+    "marine",
+    "instruments",
+    "victron",
+    "wind",
+    "nmea2000",
+    "raspberry-pi",
+    "openplotter"
+  ],
+  "author": "Francesco Pugliano <fpugliano@gmail.com> (https://sailingoroboro.com)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fpugliano/oroboro-dashboard.git"
+  },
+  "homepage": "https://github.com/fpugliano/oroboro-dashboard",
+  "bugs": {
+    "url": "https://github.com/fpugliano/oroboro-dashboard/issues"
+  },
+  "signalk-plugin": false,
+  "signalk-webapp": {
+    "name": "Oroboro Dashboard",
+    "description": "Full-screen marine instrument dashboard",
+    "location": "/public"
+  },
+  "main": "package.json",
+  "files": [
+    "dashboard.html",
+    "config.js",
+    "public/",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

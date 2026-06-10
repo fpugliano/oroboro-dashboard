@@ -1,0 +1,7 @@
+*.png
+*.jpg
+*.woff2
+rajdhani-*.woff2
+.git
+.gitignore
+screenshot.png

@@ -41,6 +41,14 @@ Edit config.js with your settings, then open in Chromium:
 chromium-browser --start-fullscreen file:///home/pi/dashboard.html
 ```
 
+### Via Signal K App Store
+Once published, install directly from the Signal K admin panel:
+1. Go to http://localhost:3000
+2. Click Appstore
+3. Search for "oroboro-dashboard"
+4. Click Install
+5. Access at http://localhost:3000/@fpugliano/oroboro-dashboard
+
 ### Auto-start on boot
 ```bash
 mkdir -p ~/.config/autostart
