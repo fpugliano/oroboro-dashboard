@@ -177,7 +177,7 @@ html, body {
 .stats-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .stat-cell    { background: #0d1520; border-radius: 5px; padding: 6px 8px; }
 /* FIX 1: ~10% smaller */
-.stat-v       { font-size: 16px; font-weight: 700; line-height: 1; }
+.stat-v       { font-size: 22px; font-weight: 700; line-height: 1; }
 .stat-l       { font-size: 8px; color: #7a9abf; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .solar-total-val { font-size: 16px; font-weight: 700; color: #f59e0b; }
@@ -247,20 +247,29 @@ html, body {
 <div class="dashboard">
 
   <!-- ══ LEFT TOP: Navigation ══ -->
-  <div class="card" id="card-nav">
+  <div class="card" id="card-nav" style="padding:8px 10px;">
     <div class="lbl">Speed over ground</div>
-    <div class="row-base">
-      <span class="val-xl green" id="sog">--</span><span class="unit">kts</span>
+    <div style="display:flex;align-items:baseline;gap:4px;">
+      <span id="sog" style="font-size:56px;font-weight:500;line-height:1;letter-spacing:-2px;color:#5db832;">--</span>
+      <span style="font-size:14px;color:#7a9abf;">kts</span>
     </div>
-    <div class="sub">COG &nbsp;<span class="white" id="cog">--°</span></div>
 
     <div class="divider"></div>
 
-    <div class="lbl">Depth</div>
-    <div class="row-base">
-      <span class="val-lg cyan" id="depth">--</span><span class="unit">m</span>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:2px;">
+      <div class="lbl">Depth</div>
+      <div class="lbl">Water temp</div>
     </div>
-    <div class="sub">Water &nbsp;<span class="white" id="water-temp">--</span></div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;">
+      <div style="display:flex;align-items:baseline;gap:4px;">
+        <span id="depth" style="font-size:52px;font-weight:500;line-height:1;letter-spacing:-2px;color:#22d3ee;">--</span>
+        <span style="font-size:14px;color:#7a9abf;">m</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:2px;">
+        <span id="water-temp" style="font-size:36px;font-weight:500;line-height:1;letter-spacing:-1px;color:#60a5fa;">--</span>
+        <span style="font-size:12px;color:#7a9abf;">°C</span>
+      </div>
+    </div>
   </div>
 
   <!-- ══ CENTER: Wind Rose ══ -->
@@ -268,12 +277,14 @@ html, body {
 
     <div class="wind-stats">
       <div class="wind-col">
-        <div class="wind-spd" id="aws" style="color:#F5F52A">--</div>
-        <div class="wind-sub">AWS kts &nbsp;·&nbsp; AWA <span style="color:#F5F52A" id="awa">--°</span></div>
+        <div class="lbl">TWS</div>
+        <div id="tws" style="font-size:46px;font-weight:700;color:#5db832;line-height:1;letter-spacing:-1px;">--</div>
+        <div style="font-size:11px;color:#7a9abf;">kts · TWA <span id="twa">--°</span></div>
       </div>
       <div class="wind-col">
-        <div class="wind-spd" id="tws" style="color:#5db832">--</div>
-        <div class="wind-sub">TWS kts &nbsp;·&nbsp; TWA <span class="green" id="twa">--°</span></div>
+        <div class="lbl">AWS</div>
+        <div id="aws" style="font-size:46px;font-weight:700;color:#F5F52A;line-height:1;letter-spacing:-1px;">--</div>
+        <div style="font-size:11px;color:#7a9abf;">kts · AWA <span id="awa">--°</span></div>
       </div>
     </div>
 
@@ -305,14 +316,14 @@ html, body {
   </div>
 
   <!-- ══ RIGHT TOP: Battery ══ -->
-  <div class="card" id="card-battery">
-    <div class="row-sb batt-hdr">
+  <div class="card" id="card-battery" style="padding:8px 10px;gap:6px;">
+    <div class="row-sb batt-hdr" style="margin-bottom:0;">
       <span class="lbl" style="margin:0">House bank</span>
       <span class="badge" id="charge-badge" style="background:#1e3a5f;color:#60a5fa">--</span>
     </div>
 
     <div class="row-base">
-      <span class="val-xl" id="soc" style="color:#5db832">--%</span>
+      <span id="soc" style="font-size:56px;font-weight:500;line-height:1;letter-spacing:-2px;color:#5db832;">--%</span>
     </div>
     <div class="bar-track soc-bar">
       <div class="bar-fill" id="soc-fill" style="width:0%;background:#5db832"></div>
@@ -783,7 +794,6 @@ function onValue(path, val) {
       break;
 
     case 'navigation.courseOverGroundTrue':
-      document.getElementById('cog').textContent = Math.round(norm360(toDeg(val))) + '°';
       break;
 
     case 'navigation.speedThroughWater':
@@ -805,7 +815,7 @@ function onValue(path, val) {
       break;
 
     case 'environment.water.temperature':
-      document.getElementById('water-temp').textContent = toC(val).toFixed(1) + '°C';
+      document.getElementById('water-temp').textContent = toC(val).toFixed(1);
       break;
 
     case 'environment.wind.speedApparent':
