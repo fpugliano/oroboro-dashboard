@@ -182,27 +182,21 @@ html, body {
 
 #fs-btn {
   position: fixed;
-  bottom: 8px;
-  left: 8px;
-  width: 32px;
-  height: 32px;
+  bottom: 12px;
+  left: 12px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
-  background: rgba(17, 24, 32, 0.6);
-  border: 0.5px solid #1e2a38;
-  color: #4a6a8a;
-  font-size: 16px;
+  background: rgba(30, 42, 56, 0.85);
+  border: 0.5px solid #4a6a8a;
+  color: #e2e8f0;
+  font-size: 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 300;
-  transition: background 0.2s, color 0.2s;
-  user-select: none;
-  -webkit-user-select: none;
-}
-#fs-btn:active {
-  background: rgba(30, 42, 56, 0.9);
-  color: #e2e8f0;
+  z-index: 9999;
+  pointer-events: auto;
 }
 
 #conn-status {
@@ -621,11 +615,24 @@ function buildWindRose() {
     return e;
   }
 
+  function makePortArc(startDeg, endDeg, r, color) {
+    const p1 = polarToXY(startDeg, r);
+    const p2 = polarToXY(endDeg, r);
+    const e = document.createElementNS(NS, 'path');
+    e.setAttribute('d', `M ${(-p1.x).toFixed(2)},${p1.y.toFixed(2)} A ${r},${r} 0 0,0 ${(-p2.x).toFixed(2)},${p2.y.toFixed(2)}`);
+    e.setAttribute('fill', 'none');
+    e.setAttribute('stroke', color);
+    e.setAttribute('stroke-width', '9');
+    e.setAttribute('stroke-linecap', 'round');
+    e.setAttribute('opacity', '0.9');
+    return e;
+  }
+
   const bandR = R * 0.92;
-  svg.appendChild(makeArc(  30,   60, bandR, '#66FF66', 1));
-  svg.appendChild(makeArc( -60,  -30, bandR, '#FF6666', 0));
-  svg.appendChild(makeArc( 120,  150, bandR, '#66FF66', 1));
-  svg.appendChild(makeArc(-150, -120, bandR, '#FF6666', 0));
+  svg.appendChild(makeArc(     30,  60, bandR, '#66FF66', 1));
+  svg.appendChild(makePortArc( 30,  60, bandR, '#FF6666'));
+  svg.appendChild(makeArc(    120, 150, bandR, '#66FF66', 1));
+  svg.appendChild(makePortArc(120, 150, bandR, '#FF6666'));
 
   // Tick marks every 10°, major at 30°
   for (let d = 0; d <= 180; d += 10) {
