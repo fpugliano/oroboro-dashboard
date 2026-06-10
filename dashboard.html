@@ -553,19 +553,21 @@ function updateSolar(id, w) {
 }
 
 function addSpark(tws) {
-  twsHistory.push(tws);
+  twsHistory.push(parseFloat(tws));
   if (twsHistory.length > 600) twsHistory.shift();
-  if (twsHistory.length < 2) return;
+
+  const line = document.getElementById('spark-line');
+  if (!line || twsHistory.length < 2) return;
 
   const W = 200, H = 30, maxKts = 40;
   const pts = twsHistory.map((v, i) => {
-    const x = (i / (twsHistory.length - 1)) * W;
-    const y = H - 2 - (Math.min(v, maxKts) / maxKts) * (H - 4);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
+    const x = ((i / (twsHistory.length - 1)) * W).toFixed(1);
+    const y = (H - 2 - (Math.min(v, maxKts) / maxKts) * (H - 4)).toFixed(1);
+    return `${x},${y}`;
   });
 
-  const line = document.getElementById('spark-line');
-  if (line) line.setAttribute('points', pts.join(' '));
+  line.setAttribute('points', pts.join(' '));
+
   const cur = document.getElementById('spark-cur');
   if (cur) cur.textContent = tws.toFixed(1) + ' kts';
 }
@@ -775,6 +777,7 @@ function onValue(path, val) {
 
     case 'environment.wind.speedTrue': {
       const tws = toKts(val);
+      console.log('TWS:', tws);
       document.getElementById('tws').textContent = tws.toFixed(1);
       addSpark(tws);
       break;
