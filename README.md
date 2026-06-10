@@ -26,7 +26,7 @@ A single-file marine instrument dashboard for S/V Oroboro. Connects to Signal K 
 scp dashboard.html pi@oroboro.local:/home/pi/
 
 # Set Chromium to open it on boot (add to ~/.config/lxsession/LXDE-pi/autostart)
-@chromium-browser --noerrdialogs --disable-infobars --kiosk file:///home/pi/dashboard.html
+@chromium-browser --noerrdialogs --disable-infobars --start-fullscreen file:///home/pi/dashboard.html
 ```
 
 ### Option 2 — Serve with Python
@@ -39,7 +39,7 @@ python3 -m http.server 8080
 chromium-browser http://localhost:8080/dashboard.html
 ```
 
-### Kiosk mode (recommended for a fixed display)
+### Fullscreen autostart (recommended for a fixed display)
 
 ```bash
 # /home/pi/start-dashboard.sh
@@ -50,7 +50,7 @@ xset s noblank
 chromium-browser \
   --noerrdialogs \
   --disable-infobars \
-  --kiosk \
+  --start-fullscreen \
   --app=file:///home/pi/dashboard.html
 ```
 

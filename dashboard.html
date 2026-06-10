@@ -180,6 +180,31 @@ html, body {
 .batt-temp    { font-size: 10px; color: #4a6a8a; }
 .batt-temp span { color: #e2e8f0; font-weight: 600; }
 
+#fs-btn {
+  position: fixed;
+  bottom: 8px;
+  left: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(17, 24, 32, 0.6);
+  border: 0.5px solid #1e2a38;
+  color: #4a6a8a;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  transition: background 0.2s, color 0.2s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#fs-btn:active {
+  background: rgba(30, 42, 56, 0.9);
+  color: #e2e8f0;
+}
+
 #conn-status {
   position: fixed;
   bottom: 8px;
@@ -387,6 +412,8 @@ html, body {
   </div>
 
 </div>
+
+<button id="fs-btn" title="Toggle fullscreen">⛶</button>
 
 <div id="reconnect-notice">
   <span class="dot" style="background:#f59e0b"></span> Reconnecting...
@@ -822,6 +849,14 @@ function onValue(path, val) {
     case 'tanks.freshWater.22.currentLevel': updateTank('stbd', val); break;
   }
 }
+
+document.getElementById('fs-btn').addEventListener('click', () => {
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(() => {});
+  } else {
+    document.documentElement.requestFullscreen().catch(() => {});
+  }
+});
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'f' || e.key === 'F') {
