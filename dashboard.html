@@ -308,9 +308,17 @@ html, body {
         <span>TWS Trend</span>
         <span id="spark-cur">-- kts</span>
       </div>
-      <svg id="sparkline-svg" viewBox="0 0 200 30" preserveAspectRatio="none">
-        <polyline id="spark-line" points="" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linejoin="round"/>
-      </svg>
+      <div style="position:relative;">
+        <svg id="sparkline-svg" viewBox="0 0 200 30" preserveAspectRatio="none">
+          <polyline id="spark-line" points="" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+        <span id="spark-ymax" style="position:absolute;top:1px;right:2px;font-size:8px;color:#7a9abf;"></span>
+        <span id="spark-ymin" style="position:absolute;bottom:1px;right:2px;font-size:8px;color:#7a9abf;"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:2px;">
+        <span style="font-size:8px;color:#7a9abf;">3h ago</span>
+        <span style="font-size:8px;color:#7a9abf;">now</span>
+      </div>
     </div>
 
   </div>
@@ -602,13 +610,26 @@ function updateSolar(id, w) {
 function drawTrend() {
   const line = document.getElementById('spark-line');
   if (!line || twsTrend.length < 2) return;
-  const W = 200, H = 30, maxKts = 40;
+
+  const W = 200, H = 30, pad = 3;
+  const minV = Math.min(...twsTrend);
+  const maxV = Math.max(...twsTrend);
+  const range = maxV - minV || 1;
+  const pMin = minV - range * 0.15;
+  const pMax = maxV + range * 0.15;
+  const pRange = pMax - pMin;
+
   const pts = twsTrend.map((v, i) => {
-    const x = ((i / (twsTrend.length - 1)) * W).toFixed(1);
-    const y = (H - 2 - (Math.min(v, maxKts) / maxKts) * (H - 4)).toFixed(1);
+    const x = ((i / (twsTrend.length - 1)) * (W - pad * 2) + pad).toFixed(1);
+    const y = (H - pad - ((v - pMin) / pRange) * (H - pad * 2)).toFixed(1);
     return `${x},${y}`;
   });
   line.setAttribute('points', pts.join(' '));
+
+  const yMax = document.getElementById('spark-ymax');
+  const yMin = document.getElementById('spark-ymin');
+  if (yMax) yMax.textContent = maxV.toFixed(1) + ' kt';
+  if (yMin) yMin.textContent = minV.toFixed(1) + ' kt';
 }
 
 function updateShore(v) {
@@ -923,7 +944,7 @@ window.addEventListener('load', () => {
   buildWindRose();
   connect();
   setInterval(() => {
-    if (_aws === 0) return;
+    if (_aws === 0 && _stw === 0) return;
     const { tws } = calcTrueWind(_aws, _awa, _stw);
     const twsKts = tws * 1.94384;
     twsSamples.push(twsKts);
