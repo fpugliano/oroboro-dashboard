@@ -50,20 +50,20 @@ html, body {
 
 .lbl {
   font-size: 9px;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.08em;
   color: #7a9abf;
   margin-bottom: 3px;
   flex-shrink: 0;
 }
 
-.val-xl  { font-size: 38px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
-.val-lg  { font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
-.val-md  { font-size: 29px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
-.val-sm  { font-size: 18px; font-weight: 700; line-height: 1; }
-.val-xs  { font-size: 14px; font-weight: 700; line-height: 1; }
-.wind-spd { font-size: 36px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.val-xl  { font-size: 38px; font-weight: 500; line-height: 1; letter-spacing: -2px; }
+.val-lg  { font-size: 32px; font-weight: 500; line-height: 1; letter-spacing: -1px; }
+.val-md  { font-size: 29px; font-weight: 500; line-height: 1; letter-spacing: -1px; }
+.val-sm  { font-size: 18px; font-weight: 500; line-height: 1; letter-spacing: -0.5px; }
+.val-xs  { font-size: 14px; font-weight: 500; line-height: 1; letter-spacing: -0.5px; }
+.wind-spd { font-size: 36px; font-weight: 500; line-height: 1; letter-spacing: -2px; }
 
 .unit   { font-size: 11px; color: #7a9abf; margin-left: 3px; font-weight: 500; }
 .sub    { font-size: 10px; color: #7a9abf; margin-top: 3px; flex-shrink: 0; }
@@ -85,7 +85,7 @@ html, body {
 .badge {
   display: inline-block;
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   padding: 2px 7px;
@@ -115,16 +115,16 @@ html, body {
   gap: 4px;
 }
 /* FIX 1: tank font sizes ~10% smaller */
-.tank-pct  { font-size: 25px; font-weight: 700; color: #22d3ee; line-height: 1; }
-.tank-lit  { font-size: 14px; font-weight: 700; color: #e2e8f0; line-height: 1; }
+.tank-pct  { font-size: 25px; font-weight: 500; color: #22d3ee; line-height: 1; letter-spacing: -1px; }
+.tank-lit  { font-size: 14px; font-weight: 500; color: #e2e8f0; line-height: 1; letter-spacing: -0.5px; }
 .tank-of   { font-size: 9px;  color: #7a9abf; }
 .tank-bar  { height: 10px !important; border-radius: 5px !important; }
-.tank-name { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; color: #7a9abf; text-transform: uppercase; margin-top: 2px; }
+.tank-name { font-size: 9px; font-weight: 500; letter-spacing: 0.08em; color: #7a9abf; text-transform: uppercase; margin-top: 2px; }
 
 .wind-stats { display: flex; gap: 28px; justify-content: center; width: 100%; flex-shrink: 0; }
 .wind-col   { text-align: center; }
 .wind-sub   { font-size: 10px; color: #7a9abf; margin-top: 3px; }
-.wind-sub span { font-weight: 600; }
+.wind-sub span { font-weight: 500; }
 
 .compass-wrap {
   flex: 1 1 0;
@@ -148,7 +148,7 @@ html, body {
 .compass-btm     { display: flex; justify-content: center; gap: 40px; width: 100%; flex-shrink: 0; }
 .compass-stat    { text-align: center; }
 /* FIX 1: ~10% smaller */
-.compass-stat-v  { font-size: 18px; font-weight: 700; }
+.compass-stat-v  { font-size: 18px; font-weight: 500; letter-spacing: -0.5px; }
 .compass-stat-l  { font-size: 8px; color: #7a9abf; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 3px; }
 
 .sparkline-wrap { width: 100%; padding: 0 2px; flex-shrink: 0; }
@@ -158,12 +158,12 @@ html, body {
   align-items: center;
   margin-bottom: 4px;
   font-size: 8px;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #7a9abf;
 }
-.spark-hdr span:last-child { color: #f59e0b; font-size: 10px; letter-spacing: 0; text-transform: none; font-weight: 700; }
+.spark-hdr span:last-child { color: #f59e0b; font-size: 10px; letter-spacing: -0.5px; text-transform: none; font-weight: 500; }
 #sparkline-svg {
   width: 100%;
   height: 30px;
@@ -177,19 +177,19 @@ html, body {
 .stats-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .stat-cell    { background: #0d1520; border-radius: 5px; padding: 6px 8px; }
 /* FIX 1: ~10% smaller */
-.stat-v       { font-size: 22px; font-weight: 700; line-height: 1; }
+.stat-v       { font-size: 22px; font-weight: 500; line-height: 1; letter-spacing: -1px; }
 .stat-l       { font-size: 8px; color: #7a9abf; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.solar-total-val { font-size: 16px; font-weight: 700; color: #f59e0b; }
+.solar-total-val { font-size: 16px; font-weight: 500; color: #f59e0b; letter-spacing: -1px; }
 .solar-row    { margin-bottom: 6px; flex-shrink: 0; }
 .solar-rh     { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
 .solar-name   { color: #7a9abf; }
-.solar-w      { color: #e2e8f0; font-weight: 600; }
+.solar-w      { color: #e2e8f0; font-weight: 500; letter-spacing: -0.5px; }
 .solar-bar    { height: 3px; background: #1e2a38; border-radius: 1.5px; overflow: hidden; }
 .solar-fill   { height: 100%; background: #f59e0b; border-radius: 1.5px; transition: width 0.6s ease; }
 
 .batt-temp    { font-size: 10px; color: #7a9abf; }
-.batt-temp span { color: #e2e8f0; font-weight: 600; }
+.batt-temp span { color: #e2e8f0; font-weight: 500; }
 
 #fs-btn {
   position: fixed;
@@ -218,7 +218,7 @@ html, body {
   align-items: center;
   gap: 5px;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   z-index: 200;
   pointer-events: none;
 }
@@ -230,7 +230,7 @@ html, body {
   align-items: center;
   gap: 5px;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   color: #f59e0b;
   z-index: 200;
   background: rgba(17,24,32,0.85);
@@ -278,12 +278,12 @@ html, body {
     <div class="wind-stats">
       <div class="wind-col">
         <div class="lbl">TWS</div>
-        <div id="tws" style="font-size:46px;font-weight:700;color:#5db832;line-height:1;letter-spacing:-1px;">--</div>
+        <div id="tws" style="font-size:46px;font-weight:500;color:#5db832;line-height:1;letter-spacing:-2px;">--</div>
         <div style="font-size:11px;color:#7a9abf;">kts · TWA <span id="twa">--°</span></div>
       </div>
       <div class="wind-col">
         <div class="lbl">AWS</div>
-        <div id="aws" style="font-size:46px;font-weight:700;color:#F5F52A;line-height:1;letter-spacing:-1px;">--</div>
+        <div id="aws" style="font-size:46px;font-weight:500;color:#F5F52A;line-height:1;letter-spacing:-2px;">--</div>
         <div style="font-size:11px;color:#7a9abf;">kts · AWA <span id="awa">--°</span></div>
       </div>
     </div>
@@ -409,7 +409,7 @@ html, body {
 
     <div class="row-sb" style="margin-bottom:0;flex-shrink:0">
       <span class="batt-temp">Batt temp: <span id="batt-temp">--</span></span>
-      <div style="font-size:10px;font-weight:600;text-align:right">
+      <div style="font-size:10px;font-weight:500;text-align:right">
         <span style="color:#5db832" id="batt-v">--</span><span style="color:#7a9abf;font-size:9px">V</span>
         &nbsp;
         <span style="color:#7a9abf" id="batt-a">--A</span>
