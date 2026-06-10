@@ -505,7 +505,6 @@ function updateTrueWind() {
 
   _twa = twaDeg;
   updateWindRose(_twa, norm180(_awa * R2D));
-  addSpark(twsKts);
 }
 
 function connect() {
@@ -930,6 +929,11 @@ window.addEventListener('load', () => {
   document.documentElement.requestFullscreen().catch(() => {});
   buildWindRose();
   connect();
+  setInterval(() => {
+    if (_aws === 0) return;
+    const { tws } = calcTrueWind(_aws, _awa, _stw);
+    addSpark(tws * 1.94384);
+  }, 1000);
 });
 </script>
 </body>
