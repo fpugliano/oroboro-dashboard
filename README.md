@@ -4,7 +4,7 @@ A full-screen marine instrument dashboard for Signal K. Built for liveaboard
 sailors who want all critical data — wind, depth, speed, battery, solar, tanks
 — on one screen, readable from across the galley.
 
-![Dashboard Screenshot](screenshot.png)
+![Dashboard Screenshot](screenshot.jpg)
 
 ## Features
 - Wind rose with apparent and true wind angle/speed
