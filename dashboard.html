@@ -31,7 +31,7 @@
 
 /* FIX 1: explicit 100vh + overflow hidden on root */
 html, body {
-  height: 100vh;
+  height: var(--vh, 100vh);
   overflow: hidden;
   margin: 0;
   background: #0a0e14;
@@ -46,7 +46,7 @@ html, body {
   grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px;
   padding: 6px;
-  height: 100vh;
+  height: var(--vh, 100vh);
   width: 100vw;
   overflow: hidden;
 }
@@ -1074,7 +1074,13 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+function setVh() {
+  document.documentElement.style.setProperty('--vh', window.innerHeight + 'px');
+}
+window.addEventListener('resize', setVh);
+
 window.addEventListener('load', () => {
+  setVh();
   document.documentElement.requestFullscreen().catch(() => {});
   applyConfig();
   buildHandlers();
