@@ -536,7 +536,7 @@ function updateTrueWind() {
   if (twaEl) twaEl.textContent = Math.round(twaDeg) + '°';
 
   if (twsTrend.length === 0 && twsKts > 0) {
-    twsTrend.push(twsKts);
+    twsTrend.push(twsKts, twsKts);
     drawTrend();
   }
 
