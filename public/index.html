@@ -484,6 +484,7 @@ const SUBSCRIBE = {
     {path:'navigation.courseOverGroundTrue'},
     {path:'navigation.speedThroughWater'},
     {path:'navigation.headingTrue'},
+    {path:'navigation.headingMagnetic'},
     {path:'environment.depth.belowKeel'},
     {path:'environment.water.temperature'},
     {path:'environment.wind.speedApparent'},
@@ -1002,7 +1003,8 @@ function onValue(path, val) {
       updateTrueWind();
       break;
 
-    case 'navigation.headingTrue': {
+    case 'navigation.headingTrue':
+    case 'navigation.headingMagnetic': {
       const h = Math.round(norm360(toDeg(val)));
       _hdg = norm360(toDeg(val));
       document.getElementById('heading').textContent = h + '°';
