@@ -512,6 +512,7 @@ const activeAlarms = {};
 
 let _twa = 0, _awa = 0;
 let _aws = 0, _stw = 0;
+let _hdg = 0, _cog = 0;
 let ws = null, reconnTimer = null;
 
 function calcTrueWind(aws, awa, stw) {
@@ -765,6 +766,20 @@ function buildWindRose() {
     drawLabel(-a, String(a), false);
   });
 
+  // Heading vector — fixed at 0° (bow), white
+  const hdgG = el('g', {id:'wr-hdg'}, svg);
+  el('line', {x1:'0', y1:'0', x2:'0', y2:'-103', stroke:'#e2e8f0', 'stroke-width':'1.5', opacity:'0.7'}, hdgG);
+  el('polygon', {points:'0,-109 -4,-100 4,-100', fill:'#e2e8f0', opacity:'0.7'}, hdgG);
+  const hT = el('text', {x:'0', y:'-113', 'text-anchor':'middle', fill:'#e2e8f0', 'font-size':'8', 'font-weight':'700', opacity:'0.7'}, hdgG);
+  hT.textContent = 'H';
+
+  // COG vector — rotates by (COG − heading), cyan
+  const cogG = el('g', {id:'wr-cog'}, svg);
+  el('line', {x1:'0', y1:'0', x2:'0', y2:'-103', stroke:'#22d3ee', 'stroke-width':'1.5', opacity:'0.85'}, cogG);
+  el('polygon', {points:'0,-109 -4,-100 4,-100', fill:'#22d3ee', opacity:'0.85'}, cogG);
+  const cT = el('text', {x:'0', y:'-113', 'text-anchor':'middle', fill:'#22d3ee', 'font-size':'8', 'font-weight':'700'}, cogG);
+  cT.textContent = 'C';
+
   // Vesica boat hull at centre
   el('ellipse', {
     cx: '0', cy: '0',
@@ -814,6 +829,11 @@ function updateWindRose(twa, awa) {
   const awaEl = document.getElementById('wr-awa');
   if (twaEl) twaEl.setAttribute('transform', `rotate(${twa})`);
   if (awaEl) awaEl.setAttribute('transform', `rotate(${awa})`);
+}
+
+function updateNavVectors() {
+  const cogEl = document.getElementById('wr-cog');
+  if (cogEl) cogEl.setAttribute('transform', `rotate(${norm180(_cog - _hdg)})`);
 }
 
 function updateAlarmPopup() {
@@ -970,6 +990,8 @@ function onValue(path, val) {
       break;
 
     case 'navigation.courseOverGroundTrue':
+      _cog = norm360(toDeg(val));
+      updateNavVectors();
       break;
 
     case 'navigation.speedThroughWater':
@@ -980,9 +1002,11 @@ function onValue(path, val) {
 
     case 'navigation.headingTrue': {
       const h = Math.round(norm360(toDeg(val)));
+      _hdg = norm360(toDeg(val));
       document.getElementById('heading').textContent = h + '°';
       const hdg = document.getElementById('compass-hdg');
       if (hdg) hdg.textContent = h + '°';
+      updateNavVectors();
       break;
     }
 
