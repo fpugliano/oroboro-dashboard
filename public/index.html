@@ -359,10 +359,10 @@ html, body {
     </div>
 
     <div class="row-base">
-      <span id="soc" style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-0.5px;color:#5db832;">--%</span>
+      <span id="soc" style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-0.5px;color:#f59e0b;">--%</span>
     </div>
     <div class="bar-track soc-bar">
-      <div class="bar-fill" id="soc-fill" style="width:0%;background:#5db832"></div>
+      <div class="bar-fill" id="soc-fill" style="width:0%;background:#f59e0b"></div>
     </div>
 
     <div class="stats-grid">
@@ -870,13 +870,10 @@ function buildHandlers() {
 
   PATH_HANDLERS[`electrical.batteries.${b}.capacity.stateOfCharge`] = (val) => {
     const pct = Math.round(val * 100);
-    const col = socColor(pct);
     const el  = document.getElementById('soc');
     el.textContent        = pct + '%';
-    el.style.color        = col;
     const fill = document.getElementById('soc-fill');
     fill.style.width      = pct + '%';
-    fill.style.background = col;
   };
 
   PATH_HANDLERS[`electrical.batteries.${b}.voltage`] = (val) => {
