@@ -29,25 +29,27 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* FIX 1: explicit 100vh + overflow hidden on root */
 html, body {
-  height: var(--vh, 100vh);
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   margin: 0;
   background: #0a0e14;
   color: #e2e8f0;
   font-family: 'Rajdhani', system-ui, sans-serif;
-  font-size: 12px; /* ~10% smaller than 13px */
+  font-size: 12px;
 }
 
 .dashboard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
   display: grid;
   grid-template-columns: 1fr 1.4fr 1fr;
   grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px;
   padding: 6px;
-  height: var(--vh, 100vh);
-  width: 100vw;
   overflow: hidden;
 }
 
@@ -1081,13 +1083,19 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-function setVh() {
-  document.documentElement.style.setProperty('--vh', window.innerHeight + 'px');
+function scaleToFit() {
+  const d  = document.querySelector('.dashboard');
+  const sw = window.screen.width;
+  const sh = window.screen.height;
+  const scale = Math.min(window.innerWidth / sw, window.innerHeight / sh);
+  d.style.width     = sw + 'px';
+  d.style.height    = sh + 'px';
+  d.style.transform = `scale(${scale})`;
 }
-window.addEventListener('resize', setVh);
+window.addEventListener('resize', scaleToFit);
 
 window.addEventListener('load', () => {
-  setVh();
+  scaleToFit();
   document.documentElement.requestFullscreen().catch(() => {});
   applyConfig();
   buildHandlers();
