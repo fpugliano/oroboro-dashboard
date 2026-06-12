@@ -659,12 +659,15 @@ function drawTrend() {
 
 function updateShore(v) {
   const badge = document.getElementById('shore-badge');
+  const top   = document.getElementById('charge-badge');
   const vEl   = document.getElementById('shore-v');
   if (v < 50) {
-    setBadge(badge, 'No input', '#374151', '#6b7280');
+    setBadge(badge, 'No input',    '#374151', '#6b7280');
+    setBadge(top,   'No Shore',    '#7f1d1d', '#f87171');
     vEl.textContent = '';
   } else {
-    setBadge(badge, 'Connected', '#14532d', '#5db832');
+    setBadge(badge, 'Connected',   '#14532d', '#5db832');
+    setBadge(top,   'Shore Power', '#14532d', '#5db832');
     vEl.textContent = v.toFixed(0) + 'V';
   }
 }
@@ -914,11 +917,8 @@ function buildHandlers() {
     if (ba) ba.textContent = cur + 'A';
   };
 
-  PATH_HANDLERS[`electrical.chargers.${inv}.chargingMode`] = (val) => {
-    const el  = document.getElementById('charge-badge');
-    const key = String(val).toLowerCase();
-    const m   = MODE[key] || {bg:'#374151', c:'#9ca3af'};
-    setBadge(el, val, m.bg, m.c);
+  PATH_HANDLERS[`electrical.chargers.${inv}.chargingMode`] = (_val) => {
+    // chargingMode no longer drives charge-badge; shore power status does
   };
 
   PATH_HANDLERS[`electrical.chargers.${inv}.temperature`] = (val) => {
