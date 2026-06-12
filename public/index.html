@@ -535,6 +535,11 @@ function updateTrueWind() {
   const twaEl = document.getElementById('twa');
   if (twaEl) twaEl.textContent = Math.round(twaDeg) + '°';
 
+  if (twsTrend.length === 0 && twsKts > 0) {
+    twsTrend.push(twsKts);
+    drawTrend();
+  }
+
   _twa = twaDeg;
   updateWindRose(_twa, norm180(_awa * R2D));
 }
