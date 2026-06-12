@@ -768,16 +768,16 @@ function buildWindRose() {
 
   // Heading vector — fixed at 0° (bow), white
   const hdgG = el('g', {id:'wr-hdg'}, svg);
-  el('line', {x1:'0', y1:'0', x2:'0', y2:'-103', stroke:'#e2e8f0', 'stroke-width':'1.5', opacity:'0.7'}, hdgG);
-  el('polygon', {points:'0,-109 -4,-100 4,-100', fill:'#e2e8f0', opacity:'0.7'}, hdgG);
-  const hT = el('text', {x:'0', y:'-113', 'text-anchor':'middle', fill:'#e2e8f0', 'font-size':'8', 'font-weight':'700', opacity:'0.7'}, hdgG);
+  el('line', {x1:'0', y1:'0', x2:'0', y2:'-103', stroke:'#000000', 'stroke-width':'1.5'}, hdgG);
+  el('polygon', {points:'0,-109 -4,-100 4,-100', fill:'#000000'}, hdgG);
+  const hT = el('text', {x:'0', y:'-113', 'text-anchor':'middle', fill:'#000000', 'font-size':'8', 'font-weight':'700'}, hdgG);
   hT.textContent = 'H';
 
   // COG vector — rotates by (COG − heading), cyan
   const cogG = el('g', {id:'wr-cog'}, svg);
-  el('line', {x1:'0', y1:'0', x2:'0', y2:'-103', stroke:'#22d3ee', 'stroke-width':'1.5', opacity:'0.85'}, cogG);
-  el('polygon', {points:'0,-109 -4,-100 4,-100', fill:'#22d3ee', opacity:'0.85'}, cogG);
-  const cT = el('text', {x:'0', y:'-113', 'text-anchor':'middle', fill:'#22d3ee', 'font-size':'8', 'font-weight':'700'}, cogG);
+  el('line', {x1:'0', y1:'0', x2:'0', y2:'-103', stroke:'#3b82f6', 'stroke-width':'1.5'}, cogG);
+  el('polygon', {points:'0,-109 -4,-100 4,-100', fill:'#3b82f6'}, cogG);
+  const cT = el('text', {x:'0', y:'-113', 'text-anchor':'middle', fill:'#3b82f6', 'font-size':'8', 'font-weight':'700'}, cogG);
   cT.textContent = 'C';
 
   // Vesica boat hull at centre
