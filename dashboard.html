@@ -486,7 +486,7 @@ const DASHBOARD_CONFIG = {
 
 <div id="conn-status">
   <span class="dot" id="status-dot" style="background:#f87171"></span>
-  <span id="status-txt" style="color:#f59e0b">Connecting [v5]</span>
+  <span id="status-txt" style="color:#f59e0b">Connecting [v6]</span>
 </div>
 
 <script>
@@ -1051,16 +1051,16 @@ function onValue(path, val) {
 
 document.getElementById('fs-btn').addEventListener('click', () => {
   if (document.fullscreenElement) {
-    document.exitFullscreen().catch(() => {});
+    document.exitFullscreen?.()?.catch(() => {});
   } else {
-    document.documentElement.requestFullscreen().catch(() => {});
+    document.documentElement.requestFullscreen?.()?.catch(() => {});
   }
 });
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'f' || e.key === 'F') {
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    else document.documentElement.requestFullscreen().catch(() => {});
+    if (document.fullscreenElement) document.exitFullscreen?.()?.catch(() => {});
+    else document.documentElement.requestFullscreen?.()?.catch(() => {});
   }
   if (e.key === 'r' || e.key === 'R') poll();
 });
@@ -1078,7 +1078,7 @@ window.addEventListener('resize', scaleToFit);
 
 window.addEventListener('load', () => {
   scaleToFit();
-  document.documentElement.requestFullscreen().catch(() => {});
+  document.documentElement.requestFullscreen?.()?.catch(() => {});
   applyConfig();
   buildHandlers();
   buildWindRose();
