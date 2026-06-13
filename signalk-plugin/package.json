@@ -1,0 +1,8 @@
+{
+  "name": "signalk-pna-header",
+  "version": "1.0.0",
+  "description": "Adds Access-Control-Allow-Private-Network header for Chrome mobile support",
+  "main": "index.js",
+  "signalk-node-server-plugin": true,
+  "keywords": ["signalk-node-server-plugin"]
+}
