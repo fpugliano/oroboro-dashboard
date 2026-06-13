@@ -504,7 +504,6 @@ const DASHBOARD_CONFIG = {
   <span class="dot" id="status-dot" style="background:#f59e0b"></span>
   <span id="status-txt" style="color:#f59e0b">Connecting...</span>
 </div>
-<div id="ws-debug" style="position:fixed;top:0;left:0;right:0;background:#000;color:#ff0;font-size:14px;padding:8px;z-index:9999;word-break:break-all;"></div>
 
 <script>
 'use strict';
@@ -599,26 +598,24 @@ function connect() {
     } catch(_) {}
   };
 
-  ws.onerror = (e) => { setStatus('offline', 'error'); };
-  ws.onclose  = (e) => { setStatus('offline', 'code ' + e.code); scheduleReconn(); };
+  ws.onerror = () => {};
+  ws.onclose  = () => { setStatus('offline'); scheduleReconn(); };
 }
 
 function scheduleReconn() {
   reconnTimer = setTimeout(connect, 3000);
 }
 
-function setStatus(s, detail) {
+function setStatus(s) {
   const dot    = document.getElementById('status-dot');
   const txt    = document.getElementById('status-txt');
   const notice = document.getElementById('reconnect-notice');
   const colors = { live:'#5db832', connecting:'#f59e0b', offline:'#f87171' };
   const labels = { live:'● Live', connecting:'Connecting...', offline:'Offline' };
   dot.style.background = colors[s];
-  txt.textContent = labels[s] + (detail ? ' — ' + detail : '');
+  txt.textContent = labels[s];
   txt.style.color  = colors[s];
   notice.style.display = (s === 'offline') ? 'flex' : 'none';
-  const dbg = document.getElementById('ws-debug');
-  if (dbg) dbg.textContent = 'WS: ' + WS_URL + ' | ' + s + (detail ? ' | ' + detail : '');
 }
 
 const toKts = ms  => ms  * 1.94384;
