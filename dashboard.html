@@ -486,7 +486,7 @@ const DASHBOARD_CONFIG = {
 
 <div id="conn-status">
   <span class="dot" id="status-dot" style="background:#f87171"></span>
-  <span id="status-txt" style="color:#f87171">Offline</span>
+  <span id="status-txt" style="color:#f87171">Offline [v4]</span>
 </div>
 
 <script>
@@ -516,7 +516,7 @@ function flattenSK(obj, prefix) {
 async function poll() {
   try {
     const r = await fetch(POLL_URL, { mode: 'cors', credentials: 'omit' });
-    if (!r.ok) { setStatus('offline'); return; }
+    if (!r.ok) { setStatus('offline', 'HTTP ' + r.status); return; }
     const data = await r.json();
     setStatus('live');
     flattenSK(data, '');
