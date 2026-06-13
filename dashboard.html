@@ -522,7 +522,7 @@ async function poll() {
     flattenSK(data, '');
   } catch(e) {
     console.error('Poll error:', e);
-    setStatus('offline');
+    setStatus('offline', e && e.message ? e.message : String(e));
   }
 }
 
@@ -554,14 +554,17 @@ function updateTrueWind() {
   updateWindRose(_twa, norm180(_awa * R2D));
 }
 
-function setStatus(s) {
+function setStatus(s, detail) {
   const dot  = document.getElementById('status-dot');
   const txt  = document.getElementById('status-txt');
   const colors = { live:'#5db832', offline:'#f87171' };
-  const labels = { live:'● Live', offline:'Offline' };
   dot.style.background = colors[s] || '#f87171';
-  txt.textContent = labels[s] || 'Offline';
   txt.style.color = colors[s] || '#f87171';
+  if (s === 'live') {
+    txt.textContent = '● Live';
+  } else {
+    txt.textContent = detail ? 'Offline: ' + detail.slice(0, 40) : 'Offline';
+  }
 }
 
 const toKts = ms  => ms  * 1.94384;
