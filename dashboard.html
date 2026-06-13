@@ -273,7 +273,7 @@ html, body {
 <script>
 const DASHBOARD_CONFIG = {
   signalk: {
-    host: '192.168.1.238',
+    host: window.location.hostname || '192.168.1.238',
     port: 3000,
   },
   vessel: {
