@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>S/V Oroboro — Marine Dashboard</title>
 <style>
 @font-face {
@@ -246,23 +249,7 @@ html, body {
   z-index: 200;
   pointer-events: none;
 }
-#reconnect-notice {
-  position: fixed;
-  top: 8px;
-  right: 10px;
-  display: none;
-  align-items: center;
-  gap: 5px;
-  font-size: 10px;
-  font-weight: 500;
-  color: #f59e0b;
-  z-index: 200;
-  background: rgba(17,24,32,0.85);
-  padding: 3px 8px;
-  border-radius: 10px;
-  border: 0.5px solid #1e2a38;
-  pointer-events: none;
-}
+
 .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 
 @keyframes alarmFlash { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
@@ -496,13 +483,10 @@ const DASHBOARD_CONFIG = {
 
 <button id="fs-btn" title="Toggle fullscreen">⛶</button>
 
-<div id="reconnect-notice">
-  <span class="dot" style="background:#f59e0b"></span> Reconnecting...
-</div>
 
 <div id="conn-status">
-  <span class="dot" id="status-dot" style="background:#f59e0b"></span>
-  <span id="status-txt" style="color:#f59e0b">Connecting...</span>
+  <span class="dot" id="status-dot" style="background:#f87171"></span>
+  <span id="status-txt" style="color:#f87171">Offline</span>
 </div>
 
 <script>
@@ -570,15 +554,13 @@ function updateTrueWind() {
 }
 
 function setStatus(s) {
-  const dot    = document.getElementById('status-dot');
-  const txt    = document.getElementById('status-txt');
-  const notice = document.getElementById('reconnect-notice');
-  const colors = { live:'#5db832', connecting:'#f59e0b', offline:'#f87171' };
-  const labels = { live:'● Live', connecting:'Connecting...', offline:'Offline' };
-  dot.style.background = colors[s];
-  txt.textContent = labels[s];
-  txt.style.color  = colors[s];
-  notice.style.display = (s === 'offline') ? 'flex' : 'none';
+  const dot  = document.getElementById('status-dot');
+  const txt  = document.getElementById('status-txt');
+  const colors = { live:'#5db832', offline:'#f87171' };
+  const labels = { live:'● Live', offline:'Offline' };
+  dot.style.background = colors[s] || '#f87171';
+  txt.textContent = labels[s] || 'Offline';
+  txt.style.color = colors[s] || '#f87171';
 }
 
 const toKts = ms  => ms  * 1.94384;
