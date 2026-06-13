@@ -486,7 +486,7 @@ const DASHBOARD_CONFIG = {
 
 <div id="conn-status">
   <span class="dot" id="status-dot" style="background:#f87171"></span>
-  <span id="status-txt" style="color:#f87171">Offline [v4]</span>
+  <span id="status-txt" style="color:#f59e0b">Connecting [v5]</span>
 </div>
 
 <script>
@@ -514,13 +514,17 @@ function flattenSK(obj, prefix) {
 }
 
 async function poll() {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const r = await fetch(POLL_URL, { mode: 'cors', credentials: 'omit' });
+    const r = await fetch(POLL_URL, { signal: ctrl.signal });
+    clearTimeout(tid);
     if (!r.ok) { setStatus('offline', 'HTTP ' + r.status); return; }
     const data = await r.json();
     setStatus('live');
     flattenSK(data, '');
   } catch(e) {
+    clearTimeout(tid);
     console.error('Poll error:', e);
     setStatus('offline', e && e.message ? e.message : String(e));
   }
