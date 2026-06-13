@@ -493,8 +493,8 @@ const DASHBOARD_CONFIG = {
 'use strict';
 
 const CFG = DASHBOARD_CONFIG;
-const SK_HOST = `${CFG.signalk.host}:${CFG.signalk.port}`;
-const POLL_URL = `http://${SK_HOST}/signalk/v1/api/vessels/self`;
+const SK_HOST = CFG.signalk.host;
+const POLL_URL = `http://${SK_HOST}:${CFG.signalk.port}/signalk/v1/api/vessels/self`;
 const R2D = 180 / Math.PI;
 
 const twsSamples = [];
