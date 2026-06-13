@@ -269,27 +269,6 @@ html, body {
 @keyframes alarmBorder { 0%,100% { border-color:#f87171; } 50% { border-color:#7f1d1d; } }
 #alarm-popup.active { animation: alarmBorder 1s ease-in-out infinite; }
 #alarm-dot.active   { animation: alarmFlash  1s ease-in-out infinite; }
-#login-overlay {
-  position: fixed; inset: 0; background: #0a0e14;
-  display: flex; align-items: center; justify-content: center; z-index: 9999;
-}
-#login-box {
-  background: #111827; border: 1px solid #1e2a38; border-radius: 12px;
-  padding: 32px 28px; width: 280px; text-align: center;
-}
-#login-box h2 { margin: 0 0 6px; font-size: 20px; color: #e2e8f0; }
-#login-box p  { margin: 0 0 20px; font-size: 12px; color: #6b7280; }
-#login-box input {
-  width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px;
-  border: 1px solid #1e2a38; background: #0a0e14; color: #e2e8f0;
-  font-size: 16px; margin-bottom: 12px; outline: none;
-}
-#login-box button {
-  width: 100%; padding: 10px; border-radius: 8px; border: none;
-  background: #1d4ed8; color: #fff; font-size: 15px; font-weight: 600;
-  cursor: pointer;
-}
-#login-error { color: #f87171; font-size: 12px; margin-top: 10px; min-height: 16px; }
 </style>
 <script>
 const DASHBOARD_CONFIG = {
@@ -515,16 +494,6 @@ const DASHBOARD_CONFIG = {
   </div>
 </div>
 
-<div id="login-overlay">
-  <div id="login-box">
-    <h2>Oroboro Dashboard</h2>
-    <p>Enter your Signal K password</p>
-    <input type="password" id="login-pwd" placeholder="Password" autocomplete="current-password"/>
-    <button onclick="doLogin()">Connect</button>
-    <div id="login-error"></div>
-  </div>
-</div>
-
 <button id="fs-btn" title="Toggle fullscreen">⛶</button>
 
 <div id="reconnect-notice">
@@ -541,69 +510,8 @@ const DASHBOARD_CONFIG = {
 
 const CFG = DASHBOARD_CONFIG;
 const SK_HOST = `${CFG.signalk.host}:${CFG.signalk.port}`;
-const LOGIN_URL = `http://${SK_HOST}/signalk/v1/auth/login`;
-
-async function doLogin() {
-  const pwd = document.getElementById('login-pwd').value;
-  const err = document.getElementById('login-error');
-  err.textContent = 'Connecting...';
-  try {
-    const r = await fetch(LOGIN_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({username:'fpugliano', password: pwd})
-    });
-    if (!r.ok) { err.textContent = 'Wrong password. Try again.'; return; }
-    const data = await r.json();
-    sessionStorage.setItem('skToken', data.token);
-    document.getElementById('login-overlay').style.display = 'none';
-    connect();
-  } catch(e) {
-    err.textContent = 'Cannot reach Signal K. Check connection.';
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('login-pwd').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
-  });
-  const token = sessionStorage.getItem('skToken');
-  if (token) {
-    document.getElementById('login-overlay').style.display = 'none';
-    connect();
-  }
-});
-const R2D    = 180 / Math.PI;
-
-const SUBSCRIBE = {
-  context: 'vessels.self',
-  subscribe: [
-    {path:'navigation.speedOverGround'},
-    {path:'navigation.courseOverGroundTrue'},
-    {path:'navigation.speedThroughWater'},
-    {path:'navigation.headingTrue'},
-    {path:'navigation.headingMagnetic'},
-    {path:'environment.depth.belowKeel'},
-    {path:'environment.water.temperature'},
-    {path:'environment.wind.speedApparent'},
-    {path:'environment.wind.angleApparent'},
-    {path:`electrical.batteries.${CFG.battery.instance}.capacity.stateOfCharge`},
-    {path:`electrical.batteries.${CFG.battery.instance}.voltage`},
-    {path:`electrical.batteries.${CFG.battery.instance}.current`},
-    {path:`electrical.batteries.${CFG.battery.instance}.power`},
-    {path:`electrical.chargers.${CFG.inverter.instance}.chargingMode`},
-    {path:`electrical.chargers.${CFG.inverter.instance}.temperature`},
-    ...CFG.solar.map(s => ({path:`electrical.solar.${s.id}.panelPower`})),
-    {path:'electrical.venus.totalPanelPower'},
-    {path:`electrical.inverters.${CFG.inverter.instance}.acout.power`},
-    {path:`electrical.inverters.${CFG.inverter.instance}.acout.frequency`},
-    {path:`electrical.inverters.${CFG.inverter.instance}.acin.voltage`},
-    {path:`electrical.inverters.${CFG.inverter.instance}.inverterMode`},
-    {path:'electrical.venus.dcPower'},
-    ...Object.values(CFG.tanks).map(t => ({path: t.path})),
-    {path:'notifications.*'}
-  ]
-};
+const POLL_URL = `http://${SK_HOST}/signalk/v1/api/vessels/self`;
+const R2D = 180 / Math.PI;
 
 const twsSamples = [];
 const twsTrend   = [];
@@ -612,7 +520,26 @@ const activeAlarms = {};
 let _twa = 0, _awa = 0;
 let _aws = 0, _stw = 0;
 let _hdg = 0, _cog = 0;
-let ws = null, reconnTimer = null;
+
+function flattenSK(obj, prefix) {
+  if (!obj || typeof obj !== 'object') return;
+  if ('value' in obj) { onValue(prefix, obj.value); return; }
+  for (const key of Object.keys(obj)) {
+    flattenSK(obj[key], prefix ? prefix + '.' + key : key);
+  }
+}
+
+async function poll() {
+  try {
+    const r = await fetch(POLL_URL);
+    if (!r.ok) { setStatus('offline'); return; }
+    const data = await r.json();
+    setStatus('live');
+    flattenSK(data, '');
+  } catch(_) {
+    setStatus('offline');
+  }
+}
 
 function calcTrueWind(aws, awa, stw) {
   const twx = aws * Math.cos(awa) - stw;
@@ -640,44 +567,6 @@ function updateTrueWind() {
 
   _twa = twaDeg;
   updateWindRose(_twa, norm180(_awa * R2D));
-}
-
-function connect() {
-  clearTimeout(reconnTimer);
-  setStatus('connecting');
-  const token = sessionStorage.getItem('skToken');
-  const WS_URL = `ws://${SK_HOST}/signalk/v1/stream?subscribe=none${token ? '&token=' + token : ''}`;
-  try { ws = new WebSocket(WS_URL); } catch(_) { scheduleReconn(); return; }
-
-  ws.onopen = () => {
-    setStatus('live');
-    ws.send(JSON.stringify(SUBSCRIBE));
-  };
-
-  ws.onmessage = (e) => {
-    try {
-      const msg = JSON.parse(e.data);
-      if (msg.updates) msg.updates.forEach(u => {
-        if (u.values) u.values.forEach(v => onValue(v.path, v.value));
-      });
-    } catch(_) {}
-  };
-
-  ws.onerror = () => {};
-  ws.onclose  = (e) => {
-    setStatus('offline');
-    if (e.code === 1008 || e.code === 4401) {
-      sessionStorage.removeItem('skToken');
-      document.getElementById('login-overlay').style.display = 'flex';
-      document.getElementById('login-error').textContent = 'Session expired. Please log in again.';
-    } else {
-      scheduleReconn();
-    }
-  };
-}
-
-function scheduleReconn() {
-  reconnTimer = setTimeout(connect, 3000);
 }
 
 function setStatus(s) {
@@ -1183,11 +1072,7 @@ document.addEventListener('keydown', (e) => {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     else document.documentElement.requestFullscreen().catch(() => {});
   }
-  if (e.key === 'r' || e.key === 'R') {
-    clearTimeout(reconnTimer);
-    if (ws) { ws.onclose = null; ws.close(); }
-    connect();
-  }
+  if (e.key === 'r' || e.key === 'R') poll();
 });
 
 function scaleToFit() {
@@ -1207,6 +1092,8 @@ window.addEventListener('load', () => {
   applyConfig();
   buildHandlers();
   buildWindRose();
+  poll();
+  setInterval(poll, 2000);
   setInterval(() => {
     if (_aws === 0 && _stw === 0) return;
     const { tws } = calcTrueWind(_aws, _awa, _stw);
