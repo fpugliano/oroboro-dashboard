@@ -515,12 +515,13 @@ function flattenSK(obj, prefix) {
 
 async function poll() {
   try {
-    const r = await fetch(POLL_URL);
+    const r = await fetch(POLL_URL, { mode: 'cors', credentials: 'omit' });
     if (!r.ok) { setStatus('offline'); return; }
     const data = await r.json();
     setStatus('live');
     flattenSK(data, '');
-  } catch(_) {
+  } catch(e) {
+    console.error('Poll error:', e);
     setStatus('offline');
   }
 }
