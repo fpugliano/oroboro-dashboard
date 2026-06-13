@@ -5,7 +5,7 @@ const DASHBOARD_CONFIG = {
 
   // Signal K server
   signalk: {
-    host: 'localhost',
+    host: '192.168.1.238',
     port: 3000,
   },
 
