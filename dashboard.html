@@ -484,8 +484,8 @@ const DASHBOARD_CONFIG = {
 'use strict';
 
 const CFG = DASHBOARD_CONFIG;
-const SK_HOST = window.location.hostname || CFG.signalk.host;
-const WS_URL  = `ws://${SK_HOST}:${CFG.signalk.port}/signalk/v1/stream?subscribe=all`;
+const SK_HOST = CFG.signalk.host;
+const POLL_URL = `http://${SK_HOST}:${CFG.signalk.port}/signalk/v1/api/vessels/self`;
 const R2D = 180 / Math.PI;
 
 const twsSamples = [];
@@ -496,37 +496,30 @@ const activeAlarms = {};
 let _twa = 0, _awa = 0;
 let _aws = 0, _stw = 0;
 let _hdg = 0, _cog = 0;
-const _sm = { sog:[], aws:[], tws:[], hdg:[], awa:[], twa:[] };
 
-let _ws = null;
+function flattenSK(obj, prefix) {
+  if (!obj || typeof obj !== 'object') return;
+  if ('value' in obj) { onValue(prefix, obj.value); return; }
+  for (const key of Object.keys(obj)) {
+    flattenSK(obj[key], prefix ? prefix + '.' + key : key);
+  }
+}
 
-function connect() {
-  if (_ws) { _ws.onclose = null; _ws.close(); }
-  _ws = new WebSocket(WS_URL);
-
-  _ws.onopen = () => setStatus('live');
-
-  _ws.onmessage = (e) => {
-    try {
-      const msg = JSON.parse(e.data);
-      if (!msg.updates) return;
-      for (const update of msg.updates) {
-        if (!update.values) continue;
-        for (const v of update.values) {
-          onValue(v.path, v.value);
-        }
-      }
-    } catch (err) {
-      console.error('WS parse error:', err);
-    }
-  };
-
-  _ws.onclose = () => {
-    setStatus('offline');
-    setTimeout(connect, 3000);
-  };
-
-  _ws.onerror = () => setStatus('offline');
+async function poll() {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const r = await fetch(POLL_URL, { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (!r.ok) { setStatus('offline', 'HTTP ' + r.status); return; }
+    const data = await r.json();
+    setStatus('live');
+    flattenSK(data, '');
+  } catch(e) {
+    clearTimeout(tid);
+    console.error('Poll error:', e);
+    setStatus('offline', e && e.message ? e.message : String(e));
+  }
 }
 
 function calcTrueWind(aws, awa, stw) {
@@ -537,68 +530,24 @@ function calcTrueWind(aws, awa, stw) {
   return { tws, twa };
 }
 
-// Push a value into a capped rolling buffer (called at WebSocket rate)
-function pushSmooth(buf, val, n) {
-  buf.push(val);
-  if (buf.length > n) buf.shift();
-}
+function updateTrueWind() {
+  const { tws, twa } = calcTrueWind(_aws, _awa, _stw);
+  const twsKts = tws * 1.94384;
+  const twaDeg = norm180(twa * R2D);
 
-// Read linear average of a buffer without mutating it
-function bufAvg(buf) {
-  return buf.length ? buf.reduce((a, b) => a + b, 0) / buf.length : 0;
-}
+  const twsEl = document.getElementById('tws');
+  if (twsEl) twsEl.textContent = twsKts.toFixed(1);
 
-// Read circular mean of a heading buffer (handles 358°→2° wrap)
-function bufCircularAvg(buf) {
-  if (!buf.length) return 0;
-  let sx = 0, sy = 0;
-  buf.forEach(d => { sx += Math.cos(d * Math.PI / 180); sy += Math.sin(d * Math.PI / 180); });
-  return (Math.atan2(sy, sx) * 180 / Math.PI + 360) % 360;
-}
+  const twaEl = document.getElementById('twa');
+  if (twaEl) twaEl.textContent = Math.round(twaDeg) + '°';
 
-// Called at 500 ms — the only place nav DOM is touched
-function renderNavDisplay() {
-  // SOG
-  if (_sm.sog.length) document.getElementById('sog').textContent = bufAvg(_sm.sog).toFixed(1);
-
-  // STW
-  document.getElementById('stw').textContent = toKts(_stw).toFixed(1);
-
-  // Heading (circular average keeps 358/2 wrap correct)
-  if (_sm.hdg.length) {
-    _hdg = bufCircularAvg(_sm.hdg);
-    const hDisplay = Math.round(_hdg);
-    document.getElementById('heading').textContent = hDisplay + '°';
-    const hdgEl = document.getElementById('compass-hdg');
-    if (hdgEl) hdgEl.textContent = hDisplay + '°';
+  if (twsTrend.length === 0 && twsKts > 0) {
+    twsTrend.push(twsKts, twsKts);
+    drawTrend();
   }
 
-  // AWS + AWA
-  if (_sm.aws.length) document.getElementById('aws').textContent = bufAvg(_sm.aws).toFixed(1);
-  const awaSmooth = bufAvg(_sm.awa);
-  if (_sm.awa.length) document.getElementById('awa').textContent = Math.round(awaSmooth) + '°';
-
-  // TWS + TWA — computed from latest raws, pushed into their own smooth buffers
-  if (_aws > 0) {
-    const { tws, twa } = calcTrueWind(_aws, _awa, _stw);
-    pushSmooth(_sm.tws, tws * 1.94384, 5);
-    pushSmooth(_sm.twa, norm180(twa * R2D), 3);
-
-    const twsSmooth = bufAvg(_sm.tws);
-    const twaSmooth = bufAvg(_sm.twa);
-
-    _twsCur = twsSmooth;
-    _twa    = twaSmooth;
-
-    document.getElementById('tws').textContent = twsSmooth.toFixed(1);
-    document.getElementById('twa').textContent = Math.round(twaSmooth) + '°';
-
-    if (twsTrend.length === 0 && twsSmooth > 0) twsTrend.push(twsSmooth, twsSmooth);
-  }
-
-  // Wind rose and nav vectors — both throttled here
-  updateWindRose(_twa, awaSmooth);
-  updateNavVectors();
+  _twa = twaDeg;
+  updateWindRose(_twa, norm180(_awa * R2D));
 }
 
 function setStatus(s, detail) {
@@ -1140,21 +1089,30 @@ function onValue(path, val) {
   switch (path) {
 
     case 'navigation.speedOverGround':
-      pushSmooth(_sm.sog, toKts(val), 5);
+      document.getElementById('sog').textContent = toKts(val).toFixed(1);
       break;
 
     case 'navigation.courseOverGroundTrue':
       _cog = norm360(toDeg(val));
+      updateNavVectors();
       break;
 
     case 'navigation.speedThroughWater':
       _stw = val;
+      document.getElementById('stw').textContent = toKts(val).toFixed(1);
+      updateTrueWind();
       break;
 
     case 'navigation.headingTrue':
-    case 'navigation.headingMagnetic':
-      pushSmooth(_sm.hdg, norm360(toDeg(val)), 3);
+    case 'navigation.headingMagnetic': {
+      const h = Math.round(norm360(toDeg(val)));
+      _hdg = norm360(toDeg(val));
+      document.getElementById('heading').textContent = h + '°';
+      const hdg = document.getElementById('compass-hdg');
+      if (hdg) hdg.textContent = h + '°';
+      updateNavVectors();
       break;
+    }
 
     case 'environment.depth.belowKeel':
       document.getElementById('depth').textContent = val > 200 ? '--' : val.toFixed(1);
@@ -1166,21 +1124,23 @@ function onValue(path, val) {
 
     case 'environment.wind.speedApparent':
       _aws = val;
-      pushSmooth(_sm.aws, toKts(val), 5);
+      document.getElementById('aws').textContent = toKts(val).toFixed(1);
+      updateTrueWind();
       break;
 
-    case 'environment.wind.angleApparent':
+    case 'environment.wind.angleApparent': {
       _awa = val;
-      pushSmooth(_sm.awa, norm180(toDeg(val)), 3);
+      const a = norm180(toDeg(val));
+      document.getElementById('awa').textContent = Math.round(a) + '°';
+      updateTrueWind();
       break;
+    }
 
-    case 'electrical.venus.0.totalPanelPower':
     case 'electrical.venus.totalPanelPower':
       document.getElementById('solar-total').textContent = Math.round(val) + ' W';
       document.getElementById('solar-stat').textContent  = Math.round(val) + 'W';
       break;
 
-    case 'electrical.venus.0.dcPower':
     case 'electrical.venus.dcPower':
       document.getElementById('dc-load').textContent = Math.round(Math.abs(val)) + 'W';
       break;
@@ -1202,7 +1162,7 @@ document.addEventListener('keydown', (e) => {
     if (document.fullscreenElement) document.exitFullscreen?.()?.catch(() => {});
     else document.documentElement.requestFullscreen?.()?.catch(() => {});
   }
-  if (e.key === 'r' || e.key === 'R') connect();
+  if (e.key === 'r' || e.key === 'R') poll();
 });
 
 function scaleToFit() {
@@ -1219,13 +1179,14 @@ window.addEventListener('load', () => {
   applyConfig();
   buildHandlers();
   buildWindRose();
-  connect();
-  setInterval(renderNavDisplay, 500);
+  poll();
+  setInterval(poll, 1000);
   setInterval(() => {
     if (_aws === 0 && _stw === 0) return;
     const { tws } = calcTrueWind(_aws, _awa, _stw);
     const twsKts = tws * 1.94384;
     twsSamples.push(twsKts);
+    _twsCur = twsKts;
     drawTrend();
   }, 1000);
 
