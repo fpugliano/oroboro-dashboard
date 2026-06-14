@@ -69,11 +69,25 @@ html, body {
 }
 
 #card-nav    { grid-column: 1; grid-row: 1; }
-/* FIX 2: card-tanks replaces card-position, full left-bottom cell */
 #card-tanks  { grid-column: 1; grid-row: 2; }
 #card-wind   { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; padding: 4px 6px; gap: 3px; overflow: hidden; min-height: 0; }
 #card-battery{ grid-column: 3; grid-row: 1; }
 #card-solar  { grid-column: 3; grid-row: 2; }
+
+/* Portrait / narrow-screen reflow */
+@media (orientation: portrait) and (max-width: 767px) {
+  .dashboard {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+  #card-wind    { grid-column: 1 / 3; grid-row: 1; }
+  #card-nav     { grid-column: 1;     grid-row: 2; }
+  #card-battery { grid-column: 2;     grid-row: 2; }
+  #card-tanks   { grid-column: 1;     grid-row: 3; }
+  #card-solar   { grid-column: 2;     grid-row: 3; }
+  .compass-btm  { gap: 20px; }
+  .wind-stats   { gap: 14px; }
+}
 
 .lbl {
   font-size: 9px;
@@ -1066,13 +1080,10 @@ document.addEventListener('keydown', (e) => {
 });
 
 function scaleToFit() {
-  const d  = document.querySelector('.dashboard');
-  const sw = window.screen.width;
-  const sh = window.screen.height;
-  const scale = Math.min(window.innerWidth / sw, window.innerHeight / sh);
-  d.style.width     = sw + 'px';
-  d.style.height    = sh + 'px';
-  d.style.transform = `scale(${scale})`;
+  const d = document.querySelector('.dashboard');
+  d.style.width     = window.innerWidth  + 'px';
+  d.style.height    = window.innerHeight + 'px';
+  d.style.transform = 'scale(1)';
 }
 window.addEventListener('resize', scaleToFit);
 
