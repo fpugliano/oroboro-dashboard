@@ -530,7 +530,11 @@ let _hdg = 0, _cog = 0;
 
 function flattenSK(obj, prefix) {
   if (!obj || typeof obj !== 'object') return;
-  if ('value' in obj) { onValue(prefix, obj.value); return; }
+  if ('value' in obj) {
+    if (prefix.startsWith('tanks.freshWater')) console.log('[SK tank]', prefix, '=', obj.value);
+    onValue(prefix, obj.value);
+    return;
+  }
   for (const key of Object.keys(obj)) {
     flattenSK(obj[key], prefix ? prefix + '.' + key : key);
   }
@@ -627,6 +631,7 @@ function setBadge(el, text, bg, color) {
 }
 
 function updateTank(side, ratio) {
+  console.log('[updateTank]', side, ratio);
   const pct = Math.round(ratio * 100);
   const cap = (CFG.tanks[side] || {}).capacity || 380;
   const lit = Math.round(ratio * cap);
@@ -964,6 +969,7 @@ function buildHandlers() {
   };
 
   Object.entries(CFG.tanks).forEach(([side, tank]) => {
+    console.log('[tank handler]', side, '→', tank.path);
     PATH_HANDLERS[tank.path] = (val) => updateTank(side, val);
   });
 }
