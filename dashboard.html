@@ -298,6 +298,7 @@ const DASHBOARD_CONFIG = {
 </script>
 </head>
 <body>
+<div id="poll-counter" style="position:fixed;bottom:4px;left:4px;color:yellow;font-size:12px;z-index:9999">polls: 0</div>
 
 <div class="dashboard">
 
@@ -505,7 +506,11 @@ function flattenSK(obj, prefix) {
   }
 }
 
+let pollCount = 0;
+
 async function poll() {
+  pollCount++;
+  document.getElementById('poll-counter').textContent = 'polls: ' + pollCount;
   const ctrl = new AbortController();
   const tid = setTimeout(() => ctrl.abort(), 8000);
   try {
