@@ -919,7 +919,7 @@ function buildHandlers() {
   };
 
   PATH_HANDLERS[`electrical.batteries.${b}.voltage`] = (val) => {
-    document.getElementById('voltage').textContent = val.toFixed(2);
+    document.getElementById('voltage').textContent = val.toFixed(2) + 'V';
   };
 
   PATH_HANDLERS[`electrical.batteries.${b}.current`] = (val) => {
@@ -941,7 +941,7 @@ function buildHandlers() {
   });
 
   PATH_HANDLERS[`electrical.inverters.${inv}.acout.power`] = (val) => {
-    document.getElementById('ac-load').textContent = Math.round(val);
+    document.getElementById('ac-load').textContent = Math.round(val) + 'W';
   };
 
   PATH_HANDLERS[`electrical.inverters.${inv}.acout.frequency`] = (val) => {
@@ -1061,11 +1061,11 @@ function onValue(path, val) {
 
     case 'electrical.venus.totalPanelPower':
       document.getElementById('solar-total').textContent = Math.round(val) + ' W';
-      document.getElementById('solar-stat').textContent  = Math.round(val);
+      document.getElementById('solar-stat').textContent  = Math.round(val) + 'W';
       break;
 
     case 'electrical.venus.dcPower':
-      document.getElementById('dc-load').textContent = Math.round(Math.abs(val));
+      document.getElementById('dc-load').textContent = Math.round(Math.abs(val)) + 'W';
       break;
 
 
