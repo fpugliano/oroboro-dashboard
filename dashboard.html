@@ -508,6 +508,14 @@ function flattenSK(obj, prefix) {
 
 let pollCount = 0;
 
+function flattenToDict(obj, prefix, out) {
+  if (!obj || typeof obj !== 'object') return;
+  if ('value' in obj) { out[prefix] = obj.value; return; }
+  for (const key of Object.keys(obj)) {
+    flattenToDict(obj[key], prefix ? prefix + '.' + key : key, out);
+  }
+}
+
 async function poll() {
   pollCount++;
   document.getElementById('poll-counter').textContent = 'polls: ' + pollCount;
@@ -524,6 +532,9 @@ async function poll() {
     const data = await r.json();
     setStatus('live');
     flattenSK(data, '');
+    const flat = {};
+    flattenToDict(data, '', flat);
+    console.log('dcPower value:', flat['electrical.venus.dcPower']);
   } catch(e) {
     clearTimeout(tid);
     console.error('Poll error:', e);
@@ -1152,6 +1163,7 @@ function onValue(path, val) {
 
     case 'electrical.venus.dcPower':
       document.getElementById('dc-load').textContent = Math.round(Math.abs(val)) + 'W';
+      console.log('dc-load DOM:', document.getElementById('dc-load')?.textContent);
       break;
 
 
