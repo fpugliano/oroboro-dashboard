@@ -1,5 +1,5 @@
 {
-  "name": "@fpugliano/oroboro-dashboard",
+  "name": "signalk-oroboro-dashboard",
   "version": "1.0.1",
   "description": "A full-screen marine instrument dashboard for Signal K — wind, depth, speed, battery, solar and tanks on one screen.",
   "keywords": [
