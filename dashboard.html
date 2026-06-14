@@ -485,7 +485,7 @@ const DASHBOARD_CONFIG = {
 
 const CFG = DASHBOARD_CONFIG;
 const SK_HOST = window.location.hostname || CFG.signalk.host;
-const WS_URL  = `ws://${SK_HOST}:${CFG.signalk.port}/signalk/v1/stream?subscribe=none`;
+const WS_URL  = `ws://${SK_HOST}:${CFG.signalk.port}/signalk/v1/stream?subscribe=all`;
 const R2D = 180 / Math.PI;
 
 const twsSamples = [];
@@ -504,38 +504,7 @@ function connect() {
   if (_ws) { _ws.onclose = null; _ws.close(); }
   _ws = new WebSocket(WS_URL);
 
-  _ws.onopen = () => {
-    setStatus('live');
-    _ws.send(JSON.stringify({
-      context: 'vessels.self',
-      subscribe: [
-        { path: 'environment.wind.speedApparent' },
-        { path: 'environment.wind.angleApparent' },
-        { path: 'navigation.speedOverGround' },
-        { path: 'navigation.headingMagnetic' },
-        { path: 'navigation.speedThroughWater' },
-        { path: 'environment.depth.belowKeel' },
-        { path: 'environment.water.temperature' },
-        { path: 'electrical.batteries.288.capacity.stateOfCharge' },
-        { path: 'electrical.batteries.288.power' },
-        { path: 'electrical.batteries.288.voltage' },
-        { path: 'electrical.batteries.288.current' },
-        { path: 'electrical.batteries.288.temperature' },
-        { path: 'electrical.inverters.276.acout.power' },
-        { path: 'electrical.inverters.276.acout.voltage' },
-        { path: 'electrical.inverters.276.acout.frequency' },
-        { path: 'electrical.inverters.276.acin.power' },
-        { path: 'electrical.inverters.276.inverterMode' },
-        { path: 'electrical.solar.278.panelPower' },
-        { path: 'electrical.solar.279.panelPower' },
-        { path: 'electrical.solar.289.panelPower' },
-        { path: 'electrical.venus.0.totalPanelPower' },
-        { path: 'electrical.venus.0.dcPower' },
-        { path: 'tanks.freshWater.20.currentLevel' },
-        { path: 'tanks.freshWater.22.currentLevel' }
-      ]
-    }));
-  };
+  _ws.onopen = () => setStatus('live');
 
   _ws.onmessage = (e) => {
     try {
