@@ -496,6 +496,9 @@ const activeAlarms = {};
 let _twa = 0, _awa = 0;
 let _aws = 0, _stw = 0;
 let _hdg = 0, _cog = 0;
+let _awaDegSmooth = 0;
+
+const _sm = { sog:[], aws:[], tws:[], hdg:[], awa:[], twa:[] };
 
 let _ws = null;
 
@@ -536,24 +539,43 @@ function calcTrueWind(aws, awa, stw) {
   return { tws, twa };
 }
 
+function rollingAvg(buf, val, n) {
+  buf.push(val);
+  if (buf.length > n) buf.shift();
+  return buf.reduce((a, b) => a + b, 0) / buf.length;
+}
+
+function circularAvg(buf, deg, n) {
+  buf.push(deg);
+  if (buf.length > n) buf.shift();
+  let sx = 0, sy = 0;
+  buf.forEach(d => { sx += Math.cos(d * Math.PI / 180); sy += Math.sin(d * Math.PI / 180); });
+  return (Math.atan2(sy, sx) * 180 / Math.PI + 360) % 360;
+}
+
 function updateTrueWind() {
   const { tws, twa } = calcTrueWind(_aws, _awa, _stw);
   const twsKts = tws * 1.94384;
   const twaDeg = norm180(twa * R2D);
 
+  const twsSmooth = rollingAvg(_sm.tws, twsKts, 5);
+  const twaSmooth = rollingAvg(_sm.twa, twaDeg, 3);
+
+  _twsCur = twsSmooth;
+
   const twsEl = document.getElementById('tws');
-  if (twsEl) twsEl.textContent = twsKts.toFixed(1);
+  if (twsEl) twsEl.textContent = twsSmooth.toFixed(1);
 
   const twaEl = document.getElementById('twa');
-  if (twaEl) twaEl.textContent = Math.round(twaDeg) + '°';
+  if (twaEl) twaEl.textContent = Math.round(twaSmooth) + '°';
 
-  if (twsTrend.length === 0 && twsKts > 0) {
-    twsTrend.push(twsKts, twsKts);
+  if (twsTrend.length === 0 && twsSmooth > 0) {
+    twsTrend.push(twsSmooth, twsSmooth);
     drawTrend();
   }
 
-  _twa = twaDeg;
-  updateWindRose(_twa, norm180(_awa * R2D));
+  _twa = twaSmooth;
+  updateWindRose(_twa, _awaDegSmooth);
 }
 
 function setStatus(s, detail) {
@@ -1095,7 +1117,7 @@ function onValue(path, val) {
   switch (path) {
 
     case 'navigation.speedOverGround':
-      document.getElementById('sog').textContent = toKts(val).toFixed(1);
+      document.getElementById('sog').textContent = rollingAvg(_sm.sog, toKts(val), 5).toFixed(1);
       break;
 
     case 'navigation.courseOverGroundTrue':
@@ -1111,11 +1133,11 @@ function onValue(path, val) {
 
     case 'navigation.headingTrue':
     case 'navigation.headingMagnetic': {
-      const h = Math.round(norm360(toDeg(val)));
       _hdg = norm360(toDeg(val));
-      document.getElementById('heading').textContent = h + '°';
+      const hSmooth = Math.round(circularAvg(_sm.hdg, _hdg, 3));
+      document.getElementById('heading').textContent = hSmooth + '°';
       const hdg = document.getElementById('compass-hdg');
-      if (hdg) hdg.textContent = h + '°';
+      if (hdg) hdg.textContent = hSmooth + '°';
       updateNavVectors();
       break;
     }
@@ -1130,14 +1152,14 @@ function onValue(path, val) {
 
     case 'environment.wind.speedApparent':
       _aws = val;
-      document.getElementById('aws').textContent = toKts(val).toFixed(1);
+      document.getElementById('aws').textContent = rollingAvg(_sm.aws, toKts(val), 5).toFixed(1);
       updateTrueWind();
       break;
 
     case 'environment.wind.angleApparent': {
       _awa = val;
-      const a = norm180(toDeg(val));
-      document.getElementById('awa').textContent = Math.round(a) + '°';
+      _awaDegSmooth = rollingAvg(_sm.awa, norm180(toDeg(val)), 3);
+      document.getElementById('awa').textContent = Math.round(_awaDegSmooth) + '°';
       updateTrueWind();
       break;
     }
@@ -1191,7 +1213,6 @@ window.addEventListener('load', () => {
     const { tws } = calcTrueWind(_aws, _awa, _stw);
     const twsKts = tws * 1.94384;
     twsSamples.push(twsKts);
-    _twsCur = twsKts;
     drawTrend();
   }, 1000);
 
