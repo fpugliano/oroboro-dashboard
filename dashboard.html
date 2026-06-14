@@ -498,46 +498,33 @@ let _twa = 0, _awa = 0;
 let _aws = 0, _stw = 0;
 let _hdg = 0, _cog = 0;
 
-function flattenSK(obj, prefix) {
-  if (!obj || typeof obj !== 'object') return;
-  if ('value' in obj) { onValue(prefix, obj.value); return; }
+function flattenSK(obj, prefix, out) {
+  if (out === undefined) out = {};
+  if (!obj || typeof obj !== 'object') return out;
+  if ('value' in obj) { out[prefix] = obj.value; onValue(prefix, obj.value); return out; }
   for (const key of Object.keys(obj)) {
-    flattenSK(obj[key], prefix ? prefix + '.' + key : key);
+    flattenSK(obj[key], prefix ? prefix + '.' + key : key, out);
   }
+  return out;
 }
 
 let pollCount = 0;
 
-function flattenToDict(obj, prefix, out) {
-  if (!obj || typeof obj !== 'object') return;
-  if ('value' in obj) { out[prefix] = obj.value; return; }
-  for (const key of Object.keys(obj)) {
-    flattenToDict(obj[key], prefix ? prefix + '.' + key : key, out);
-  }
-}
-
 async function poll() {
-  pollCount++;
+  pollCount = (pollCount || 0) + 1;
   document.getElementById('poll-counter').textContent = 'polls: ' + pollCount;
-  const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const r = await fetch(POLL_URL + '?_=' + Date.now(), {
-      signal: ctrl.signal,
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache' }
-    });
-    clearTimeout(tid);
-    if (!r.ok) { setStatus('offline', 'HTTP ' + r.status); return; }
-    const data = await r.json();
+    const r = await fetch(POLL_URL);
+    console.log('fetch status:', r.status, r.ok);
+    if (!r.ok) { console.log('fetch failed:', r.status, r.statusText); setStatus('offline', 'HTTP ' + r.status); return; }
+    const json = await r.json();
+    console.log('json keys:', Object.keys(json));
     setStatus('live');
-    flattenSK(data, '');
-    const flat = {};
-    flattenToDict(data, '', flat);
-    console.log('dcPower value:', flat['electrical.venus.dcPower']);
+    const flat = flattenSK(json);
+    console.log('flat keys count:', Object.keys(flat).length);
+    console.log('dcPower:', flat['electrical.venus.dcPower']);
   } catch(e) {
-    clearTimeout(tid);
-    console.error('Poll error:', e);
+    console.log('poll error:', e.message);
     setStatus('offline', e && e.message ? e.message : String(e));
   }
 }
