@@ -1205,11 +1205,13 @@ function onValue(path, val) {
       pushSmooth(_sm.awa, norm180(toDeg(val)), 3);
       break;
 
+    case 'electrical.venus.0.totalPanelPower':
     case 'electrical.venus.totalPanelPower':
       document.getElementById('solar-total').textContent = Math.round(val) + ' W';
       document.getElementById('solar-stat').textContent  = Math.round(val) + 'W';
       break;
 
+    case 'electrical.venus.0.dcPower':
     case 'electrical.venus.dcPower':
       document.getElementById('dc-load').textContent = Math.round(Math.abs(val)) + 'W';
       break;
