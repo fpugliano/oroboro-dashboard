@@ -33,7 +33,7 @@ const DASHBOARD_CONFIG = {
   solar: [
     { id: '278', label: 'Rigid panels',  maxWatts: 960 },
     { id: '279', label: 'Flex panels 1', maxWatts: 200 },
-    { id: '290', label: 'Flex panels 2', maxWatts: 200 },
+    { id: '289', label: 'Flex panels 2', maxWatts: 200 },
   ],
 
   // Battery monitor instance ID
