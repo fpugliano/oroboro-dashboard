@@ -298,7 +298,7 @@ const DASHBOARD_CONFIG = {
 </script>
 </head>
 <body>
-<div id="poll-counter" style="position:fixed;bottom:4px;left:4px;color:yellow;font-size:12px;z-index:9999">polls: 0</div>
+
 
 <div class="dashboard">
 
@@ -508,23 +508,14 @@ function flattenSK(obj, prefix, out) {
   return out;
 }
 
-let pollCount = 0;
-
 async function poll() {
-  pollCount = (pollCount || 0) + 1;
-  document.getElementById('poll-counter').textContent = 'polls: ' + pollCount;
   try {
     const r = await fetch(POLL_URL);
-    console.log('fetch status:', r.status, r.ok);
-    if (!r.ok) { console.log('fetch failed:', r.status, r.statusText); setStatus('offline', 'HTTP ' + r.status); return; }
+    if (!r.ok) { setStatus('offline', 'HTTP ' + r.status); return; }
     const json = await r.json();
-    console.log('json keys:', Object.keys(json));
     setStatus('live');
-    const flat = flattenSK(json);
-    console.log('flat keys count:', Object.keys(flat).length);
-    console.log('dcPower:', flat['electrical.venus.dcPower']);
+    flattenSK(json);
   } catch(e) {
-    console.log('poll error:', e.message);
     setStatus('offline', e && e.message ? e.message : String(e));
   }
 }
@@ -1150,7 +1141,6 @@ function onValue(path, val) {
 
     case 'electrical.venus.dcPower':
       document.getElementById('dc-load').textContent = Math.round(Math.abs(val)) + 'W';
-      console.log('dc-load DOM:', document.getElementById('dc-load')?.textContent);
       break;
 
 
