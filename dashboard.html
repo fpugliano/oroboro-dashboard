@@ -530,11 +530,7 @@ let _hdg = 0, _cog = 0;
 
 function flattenSK(obj, prefix) {
   if (!obj || typeof obj !== 'object') return;
-  if ('value' in obj) {
-    if (prefix.startsWith('tanks.freshWater')) console.log('[SK tank]', prefix, '=', obj.value);
-    onValue(prefix, obj.value);
-    return;
-  }
+  if ('value' in obj) { onValue(prefix, obj.value); return; }
   for (const key of Object.keys(obj)) {
     flattenSK(obj[key], prefix ? prefix + '.' + key : key);
   }
@@ -631,7 +627,6 @@ function setBadge(el, text, bg, color) {
 }
 
 function updateTank(side, ratio) {
-  console.log('[updateTank]', side, ratio);
   const pct = Math.round(ratio * 100);
   const cap = (CFG.tanks[side] || {}).capacity || 380;
   const lit = Math.round(ratio * cap);
@@ -969,7 +964,6 @@ function buildHandlers() {
   };
 
   Object.entries(CFG.tanks).forEach(([side, tank]) => {
-    console.log('[tank handler]', side, '→', tank.path);
     PATH_HANDLERS[tank.path] = (val) => updateTank(side, val);
   });
 }
@@ -1044,7 +1038,7 @@ function onValue(path, val) {
     }
 
     case 'environment.depth.belowKeel':
-      document.getElementById('depth').textContent = val.toFixed(1);
+      document.getElementById('depth').textContent = val > 200 ? '--' : val.toFixed(1);
       break;
 
     case 'environment.water.temperature':
@@ -1109,7 +1103,7 @@ window.addEventListener('load', () => {
   buildHandlers();
   buildWindRose();
   poll();
-  setInterval(poll, 2000);
+  setInterval(poll, 1000);
   setInterval(() => {
     if (_aws === 0 && _stw === 0) return;
     const { tws } = calcTrueWind(_aws, _awa, _stw);
