@@ -505,41 +505,20 @@ function flattenSK(obj, prefix) {
   }
 }
 
-// DIAGNOSTIC — builds a plain dict of all flattened paths (remove after debugging)
-function flattenToDict(obj, prefix, out) {
-  if (!obj || typeof obj !== 'object') return;
-  if ('value' in obj) { out[prefix] = obj.value; return; }
-  for (const key of Object.keys(obj)) {
-    flattenToDict(obj[key], prefix ? prefix + '.' + key : key, out);
-  }
-}
-
-let _diagCount = 0;
-
 async function poll() {
   const ctrl = new AbortController();
   const tid = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const r = await fetch(POLL_URL, { signal: ctrl.signal });
+    const r = await fetch(POLL_URL + '?_=' + Date.now(), {
+      signal: ctrl.signal,
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
     clearTimeout(tid);
     if (!r.ok) { setStatus('offline', 'HTTP ' + r.status); return; }
     const data = await r.json();
     setStatus('live');
     flattenSK(data, '');
-    // DIAGNOSTIC — log once every 5 seconds (every 5th poll), remove after debugging
-    if (++_diagCount % 5 === 1) {
-      const flat = {};
-      flattenToDict(data, '', flat);
-      const venusKeys = Object.keys(flat).filter(k => k.startsWith('electrical.venus'));
-      console.log('Venus paths found:', venusKeys);
-      console.log('Venus totalPanelPower:', flat['electrical.venus.totalPanelPower']);
-      console.log('Venus 0 totalPanelPower:', flat['electrical.venus.0.totalPanelPower']);
-      console.log('Venus dcPower:', flat['electrical.venus.dcPower']);
-      console.log('Venus 0 dcPower:', flat['electrical.venus.0.dcPower']);
-      console.log('Solar 278 panelPower:', flat['electrical.solar.278.panelPower']);
-      console.log('DC load DOM value:', document.getElementById('dc-load')?.textContent);
-      console.log('Solar total DOM value:', document.getElementById('solar-total')?.textContent);
-    }
   } catch(e) {
     clearTimeout(tid);
     console.error('Poll error:', e);
