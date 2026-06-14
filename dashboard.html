@@ -484,8 +484,8 @@ const DASHBOARD_CONFIG = {
 'use strict';
 
 const CFG = DASHBOARD_CONFIG;
-const SK_HOST = CFG.signalk.host;
-const POLL_URL = `http://${SK_HOST}:${CFG.signalk.port}/signalk/v1/api/vessels/self`;
+const SK_HOST = window.location.hostname || CFG.signalk.host;
+const WS_URL  = `ws://${SK_HOST}:${CFG.signalk.port}/signalk/v1/stream?subscribe=all`;
 const R2D = 180 / Math.PI;
 
 const twsSamples = [];
@@ -497,29 +497,35 @@ let _twa = 0, _awa = 0;
 let _aws = 0, _stw = 0;
 let _hdg = 0, _cog = 0;
 
-function flattenSK(obj, prefix) {
-  if (!obj || typeof obj !== 'object') return;
-  if ('value' in obj) { onValue(prefix, obj.value); return; }
-  for (const key of Object.keys(obj)) {
-    flattenSK(obj[key], prefix ? prefix + '.' + key : key);
-  }
-}
+let _ws = null;
 
-async function poll() {
-  const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 8000);
-  try {
-    const r = await fetch(POLL_URL, { signal: ctrl.signal });
-    clearTimeout(tid);
-    if (!r.ok) { setStatus('offline', 'HTTP ' + r.status); return; }
-    const data = await r.json();
-    setStatus('live');
-    flattenSK(data, '');
-  } catch(e) {
-    clearTimeout(tid);
-    console.error('Poll error:', e);
-    setStatus('offline', e && e.message ? e.message : String(e));
-  }
+function connect() {
+  if (_ws) { _ws.onclose = null; _ws.close(); }
+  _ws = new WebSocket(WS_URL);
+
+  _ws.onopen = () => setStatus('live');
+
+  _ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (!msg.updates) return;
+      for (const update of msg.updates) {
+        if (!update.values) continue;
+        for (const v of update.values) {
+          onValue(v.path, v.value);
+        }
+      }
+    } catch (err) {
+      console.error('WS parse error:', err);
+    }
+  };
+
+  _ws.onclose = () => {
+    setStatus('offline');
+    setTimeout(connect, 3000);
+  };
+
+  _ws.onerror = () => setStatus('offline');
 }
 
 function calcTrueWind(aws, awa, stw) {
@@ -1162,7 +1168,7 @@ document.addEventListener('keydown', (e) => {
     if (document.fullscreenElement) document.exitFullscreen?.()?.catch(() => {});
     else document.documentElement.requestFullscreen?.()?.catch(() => {});
   }
-  if (e.key === 'r' || e.key === 'R') poll();
+  if (e.key === 'r' || e.key === 'R') connect();
 });
 
 function scaleToFit() {
@@ -1179,8 +1185,7 @@ window.addEventListener('load', () => {
   applyConfig();
   buildHandlers();
   buildWindRose();
-  poll();
-  setInterval(poll, 1000);
+  connect();
   setInterval(() => {
     if (_aws === 0 && _stw === 0) return;
     const { tws } = calcTrueWind(_aws, _awa, _stw);
