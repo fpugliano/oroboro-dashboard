@@ -10,6 +10,9 @@ module.exports = function (app) {
       // router stack so it runs before Signal K's own CORS middleware.
       const setHeader = function (req, res, next) {
         res.setHeader('Access-Control-Allow-Private-Network', 'true');
+        if (req.path && req.path.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
         next();
       };
 
