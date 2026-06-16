@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.2] — 2026-06-16
+
+### Fixed
+- `config.js` was not actually loaded by `dashboard.html` — an inline duplicate of `DASHBOARD_CONFIG` was being used instead. `config.js` is now loaded via `<script src="config.js">` and is the single source of truth for all boat-specific configuration.
+
 ## [1.0.0] — 2026-06-10
 
 ### Initial release

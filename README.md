@@ -99,12 +99,16 @@ sudo systemctl restart signalk
 ```bash
 sudo wget -O /usr/lib/node_modules/signalk-server/public/oroboro.html \
   https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/dashboard.html
+sudo wget -O /usr/lib/node_modules/signalk-server/public/config.js \
+  https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/config.js
 ```
+
+`config.js` is the single source of truth for all boat-specific settings (tank paths, solar IDs, battery instance, etc.). Edit it to match your setup before deploying.
 
 ### 5. Updating
 1. Edit on laptop with Claude Code → push to GitHub
 2. Switch Pi to a WiFi network with internet
-3. Run the wget command above
+3. Run both wget commands above (`dashboard.html` and `config.js`)
 4. Switch Pi back to boat WiFi
 
 ---

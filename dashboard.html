@@ -262,40 +262,7 @@ html, body {
 #alarm-popup.active { animation: alarmBorder 1s ease-in-out infinite; }
 #alarm-dot.active   { animation: alarmFlash  1s ease-in-out infinite; }
 </style>
-<script>
-const DASHBOARD_CONFIG = {
-  signalk: {
-    host: window.location.hostname || '192.168.1.238',
-    port: 3000,
-  },
-  vessel: {
-    name: 'My Boat',
-  },
-  tanks: {
-    port: {
-      path: 'tanks.freshWater.22.currentLevel',
-      capacity: 380,
-      label: 'PORT'
-    },
-    stbd: {
-      path: 'tanks.freshWater.20.currentLevel',
-      capacity: 380,
-      label: 'STBD'
-    }
-  },
-  solar: [
-    { id: '278', label: 'Rigid panels',  maxWatts: 960 },
-    { id: '279', label: 'Flex panels 1', maxWatts: 200 },
-    { id: '289', label: 'Flex panels 2', maxWatts: 200 },
-  ],
-  battery: {
-    instance: '288',
-  },
-  inverter: {
-    instance: '276',
-  },
-};
-</script>
+<script src="config.js"></script>
 </head>
 <body>
 
