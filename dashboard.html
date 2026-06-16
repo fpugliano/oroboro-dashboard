@@ -306,7 +306,7 @@ const DASHBOARD_CONFIG = {
   <div class="card" id="card-nav" style="padding:8px 10px;">
     <div class="lbl">Speed over ground</div>
     <div style="display:flex;align-items:baseline;gap:4px;">
-      <span id="sog" style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-0.5px;color:#5db832;">--</span>
+      <span id="sog" style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-0.5px;color:#ffffff;">--</span>
       <span style="font-size:14px;color:#7a9abf;">kts</span>
     </div>
 
@@ -497,6 +497,28 @@ const activeAlarms = {};
 let _twa = 0, _awa = 0;
 let _aws = 0, _stw = 0;
 let _hdg = 0, _cog = 0;
+
+let _dspTwa = 0, _dspAwa = 0, _dspCog = 0;
+let _tgtTwa = 0, _tgtAwa = 0, _tgtCog = 0;
+
+function lerpAngle(cur, tgt, alpha) {
+  const d = ((tgt - cur + 540) % 360) - 180;
+  return cur + d * alpha;
+}
+
+(function roseLoop() {
+  requestAnimationFrame(roseLoop);
+  const alpha = 0.08;
+  _dspTwa = lerpAngle(_dspTwa, _tgtTwa, alpha);
+  _dspAwa = lerpAngle(_dspAwa, _tgtAwa, alpha);
+  _dspCog = lerpAngle(_dspCog, _tgtCog, alpha);
+  const twaEl = document.getElementById('wr-twa');
+  const awaEl = document.getElementById('wr-awa');
+  const cogEl = document.getElementById('wr-cog');
+  if (twaEl) twaEl.setAttribute('transform', `rotate(${_dspTwa.toFixed(2)})`);
+  if (awaEl) awaEl.setAttribute('transform', `rotate(${_dspAwa.toFixed(2)})`);
+  if (cogEl) cogEl.setAttribute('transform', `rotate(${_dspCog.toFixed(2)})`);
+})();
 
 function flattenSK(obj, prefix, out) {
   if (out === undefined) out = {};
@@ -922,15 +944,12 @@ function buildWindRose() {
 }
 
 function updateWindRose(twa, awa) {
-  const twaEl = document.getElementById('wr-twa');
-  const awaEl = document.getElementById('wr-awa');
-  if (twaEl) twaEl.setAttribute('transform', `rotate(${twa})`);
-  if (awaEl) awaEl.setAttribute('transform', `rotate(${awa})`);
+  _tgtTwa = twa;
+  _tgtAwa = awa;
 }
 
 function updateNavVectors() {
-  const cogEl = document.getElementById('wr-cog');
-  if (cogEl) cogEl.setAttribute('transform', `rotate(${norm180(_cog - _hdg)})`);
+  _tgtCog = norm180(_cog - _hdg);
 }
 
 function updateAlarmPopup() {
