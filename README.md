@@ -22,6 +22,7 @@ Part of the Oroboro sailing project → [sailingoroboro.com](https://sailingorob
 - **Electrical** — AC loads, DC loads, solar input, inverter mode, shore power status
 - **Solar Panels** — total watts + individual array breakdown with progress bars
 - **Water Tanks** — PORT and STBD levels in % and litres
+- **Anchor Watch** (`anchor.html`) — GPS anchor alarm with Pushover notifications, swing track, directional sector mode
 
 ---
 
@@ -101,14 +102,16 @@ sudo wget -O /usr/lib/node_modules/signalk-server/public/oroboro.html \
   https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/dashboard.html
 sudo wget -O /usr/lib/node_modules/signalk-server/public/config.js \
   https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/config.js
+sudo wget -O /usr/lib/node_modules/signalk-server/public/anchor.html \
+  https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/anchor.html
 ```
 
-`config.js` is the single source of truth for all boat-specific settings (tank paths, solar IDs, battery instance, etc.). Edit it to match your setup before deploying.
+`config.js` is the single source of truth for all boat-specific settings (tank paths, solar IDs, battery instance, etc.). Edit it to match your setup before deploying. Add your Pushover `userKey` and `apiToken` to the `anchor.pushover` section to enable anchor alarm notifications.
 
 ### 5. Updating
 1. Edit on laptop with Claude Code → push to GitHub
 2. Switch Pi to a WiFi network with internet
-3. Run both wget commands above (`dashboard.html` and `config.js`)
+3. Run all three wget commands above (`dashboard.html`, `config.js`, `anchor.html`)
 4. Switch Pi back to boat WiFi
 
 ---

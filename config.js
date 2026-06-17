@@ -48,4 +48,20 @@ const DASHBOARD_CONFIG = {
     instance: '276',
   },
 
+  // Anchor Watch
+  anchor: {
+    defaultRadius: 30,
+    pushover: {
+      userKey: '',
+      apiToken: '',
+      events: {
+        dragging:     { enabled: true,  priority: 2,  title: "⚠️ Anchor Dragging!", message: "S/V Oroboro is dragging anchor. Check position immediately." },
+        gpsLost:      { enabled: true,  priority: 2,  title: "⚠️ Anchor Alarm: GPS Lost", message: "No GPS position updates received." },
+        anchorSet:    { enabled: true,  priority: 0,  title: "Anchor Set", message: "Anchor alarm armed on S/V Oroboro." },
+        anchorRaised: { enabled: true,  priority: 0,  title: "Anchor Raised", message: "Anchor alarm disarmed on S/V Oroboro." },
+        okCheckin:    { enabled: false, priority: -1, title: "Anchor OK", message: "Anchor holding, all normal." },
+      },
+    },
+  },
+
 };
