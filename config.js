@@ -52,8 +52,8 @@ const DASHBOARD_CONFIG = {
   anchor: {
     defaultRadius: 30,
     pushover: {
-      userKey: '',
-      apiToken: '',
+      userKey: 'uirif2gbor7m1jarpcrwhzgnntbxxq',
+      apiToken: 'amy9ojz9e7euc5gcgme5dcdd9j84ye',
       events: {
         dragging:     { enabled: true,  priority: 2,  title: "⚠️ Anchor Dragging!", message: "S/V Oroboro is dragging anchor. Check position immediately." },
         gpsLost:      { enabled: true,  priority: 2,  title: "⚠️ Anchor Alarm: GPS Lost", message: "No GPS position updates received." },
