@@ -271,10 +271,18 @@ html, body {
 
   <!-- ══ LEFT TOP: Navigation ══ -->
   <div class="card" id="card-nav" style="padding:8px 10px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><div class="lbl">Speed over ground</div><a href="anchor.html" style="font-size:15px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#0a0e14;background:#22d3ee;border-radius:7px;padding:5px 11px;text-decoration:none;line-height:1;display:inline-block;flex-shrink:0;" title="Anchor Watch">⚓ Anchor</a></div>
-    <div style="display:flex;align-items:baseline;gap:4px;">
-      <span id="sog" style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-0.5px;color:#ffffff;">--</span>
-      <span style="font-size:14px;color:#7a9abf;">kts</span>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px;">
+      <div style="flex:1;min-width:0;">
+        <div class="lbl" style="margin-bottom:4px;">Speed over ground</div>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span id="sog" style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-0.5px;color:#ffffff;">--</span>
+          <span style="font-size:14px;color:#7a9abf;">kts</span>
+        </div>
+      </div>
+      <a id="anchor-btn" href="anchor.html" style="display:flex;align-items:center;justify-content:center;flex-direction:column;width:84px;height:84px;border-radius:10px;border:2px solid #60a5fa;color:#60a5fa;text-decoration:none;font-family:inherit;gap:4px;flex-shrink:0;transition:color 0.3s,border-color 0.3s,box-shadow 0.3s;">
+        <span style="font-size:26px;line-height:1;">&#9875;</span>
+        <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Anchor</span>
+      </a>
     </div>
 
     <div class="divider"></div>
@@ -1183,5 +1191,38 @@ window.addEventListener('load', () => {
   }, 10000);
 });
 </script>
+  <script>
+  (function() {
+    var SK_ANCHOR_URL = (window.DASHBOARD_CONFIG && window.DASHBOARD_CONFIG.signalkUrl
+      ? window.DASHBOARD_CONFIG.signalkUrl
+      : location.protocol+"//"+location.hostname+":3000")
+      + "/signalk/v1/api/vessels/self/navigation/anchor";
+    function updateAnchorBtn(set) {
+      var btn = document.getElementById("anchor-btn");
+      if (!btn) return;
+      if (set) {
+        btn.style.borderColor = "#f87171";
+        btn.style.color       = "#f87171";
+        btn.style.boxShadow   = "0 0 14px rgba(248,113,113,0.35)";
+      } else {
+        btn.style.borderColor = "#60a5fa";
+        btn.style.color       = "#60a5fa";
+        btn.style.boxShadow   = "";
+      }
+    }
+    function pollAnchor() {
+      fetch(SK_ANCHOR_URL).then(function(r) {
+        if (!r.ok) { updateAnchorBtn(false); return; }
+        return r.json();
+      }).then(function(data) {
+        if (!data) return;
+        var pos = data && data.position && data.position.value;
+        updateAnchorBtn(!!(pos && pos.latitude != null && pos.longitude != null));
+      }).catch(function() { updateAnchorBtn(false); });
+    }
+    pollAnchor();
+    setInterval(pollAnchor, 10000);
+  })();
+  </script>
 </body>
 </html>

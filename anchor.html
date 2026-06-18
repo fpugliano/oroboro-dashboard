@@ -43,7 +43,8 @@ body { height: 100%; background: #0a0e14; color: #e2e8f0; font-family: 'Rajdhani
 
 .top-bar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #1e2a38; flex-shrink: 0; background: #0a0e14; }
 .top-bar-title { font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; flex: 1; color: #e2e8f0; }
-.back-btn { background: none; border: none; color: #22d3ee; font-size: 24px; cursor: pointer; padding: 0; line-height: 1; font-family: inherit; width: 24px; text-align: center; }
+.back-btn { background: none; border: none; color: #22d3ee; font-size: 24px; cursor: pointer; padding: 0; line-height: 1; font-family: inherit; width: 24px; text-align: center; flex-shrink: 0; }
+.dash-btn { font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #22d3ee; text-decoration: none; background: #111820; border: 1px solid #1e2a38; border-radius: 6px; padding: 5px 9px; white-space: nowrap; flex-shrink: 0; }
 
 .bottom-nav { display: flex; border-top: 1px solid #1e2a38; background: #111820; flex-shrink: 0; }
 .nav-btn { flex: 1; background: none; border: none; padding: 10px 0 14px; font-family: inherit; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; color: #7a9abf; }
@@ -54,11 +55,11 @@ body { height: 100%; background: #0a0e14; color: #e2e8f0; font-family: 'Rajdhani
 .card { background: #111820; border: 1px solid #1e2a38; border-radius: 8px; padding: 14px; }
 
 .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.stat-block { background: #0d1520; border-radius: 6px; padding: 8px 10px; }
-.stat-lbl { font-size: 8px; color: #7a9abf; text-transform: uppercase; letter-spacing: 0.07em; }
-.stat-val { font-size: 16px; font-weight: 600; color: #e2e8f0; margin-top: 3px; line-height: 1; }
+.stat-block { background: #0d1520; border-radius: 6px; padding: 8px 10px; min-width: 0; }
+.stat-lbl { font-size: 8px; color: #7a9abf; text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-val { font-size: 16px; font-weight: 600; color: #e2e8f0; margin-top: 3px; line-height: 1.1; display: flex; align-items: baseline; gap: 3px; flex-wrap: wrap; }
 .stat-val.big { font-size: 22px; }
-.stat-unit { font-size: 10px; color: #7a9abf; margin-left: 3px; font-weight: 500; }
+.stat-unit { font-size: 10px; color: #7a9abf; font-weight: 500; }
 
 .btn { border: none; border-radius: 8px; padding: 13px 16px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; font-family: inherit; width: 100%; display: block; }
 .btn-primary   { background: #22d3ee; color: #0a0e14; }
@@ -76,7 +77,7 @@ body { height: 100%; background: #0a0e14; color: #e2e8f0; font-family: 'Rajdhani
 .tab-btn { flex: 1; border: none; border-radius: 6px; padding: 8px 0; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; font-family: inherit; cursor: pointer; background: transparent; color: #7a9abf; }
 .tab-btn.active { background: #22d3ee; color: #0a0e14; }
 
-.quick-picks { display: flex; gap: 8px; }
+.quick-picks { display: flex; gap: 8px; flex-wrap: wrap; }
 .quick-btn { flex: 1; border: none; border-radius: 6px; padding: 8px 0; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; }
 
 .toggle { width: 38px; height: 22px; border-radius: 11px; border: none; position: relative; cursor: pointer; flex-shrink: 0; }
@@ -465,8 +466,8 @@ function svgArcWedge(small, big, startAngle, endAngle, size) {
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function topBar(title, backAction) {
-  const back = backAction ? '<button class="back-btn" data-action="'+backAction+'">&#8249;</button>' : '<div style="width:24px"></div>';
-  return '<div class="top-bar">'+back+'<div class="top-bar-title">'+esc(title)+'</div></div>';
+  const back = backAction ? '<button class="back-btn" data-action="'+backAction+'">&#8249;</button>' : '<div style="width:24px;flex-shrink:0"></div>';
+  return '<div class="top-bar">'+back+'<div class="top-bar-title">'+esc(title)+'</div><a href="oroboro.html" class="dash-btn">&#8592; Dashboard</a></div>';
 }
 
 function bottomNav(active) {
@@ -524,7 +525,7 @@ function renderMain() {
       '</div>'+
       arcNote+
       '<div style="flex:1"></div>'+
-      '<div style="display:flex;flex-direction:column;gap:0">'+buttons+'</div>'+
+      '<div style="display:flex;flex-direction:column;gap:8px">'+buttons+'</div>'+
     '</div>'+
     bottomNav('main');
 }
