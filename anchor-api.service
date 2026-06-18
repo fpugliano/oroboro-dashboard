@@ -1,0 +1,16 @@
+[Unit]
+Description=Oroboro Anchor API Proxy
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/anchor-api
+ExecStart=/usr/bin/node /home/pi/anchor-api/anchor-api.js
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

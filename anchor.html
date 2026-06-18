@@ -107,6 +107,7 @@ input[type=range] { width: 100%; accent-color: #22d3ee; cursor: pointer; }
   <div class="alarm-detail" id="alarm-detail"></div>
   <button class="btn btn-primary" style="width:100%;max-width:280px;margin-top:8px" data-action="ack-alarm">Acknowledge</button>
 </div>
+<div id="proxy-err" style="display:none;position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#7f1d1d;color:#fca5a5;font-size:12px;font-weight:600;font-family:inherit;padding:8px 16px;border-radius:8px;border:1px solid #f87171;z-index:9999;max-width:calc(100vw - 32px);text-align:center;"></div>
 <script>
 // ─── Config ──────────────────────────────────────────────────────────────
 const CFG = (typeof DASHBOARD_CONFIG !== 'undefined') ? DASHBOARD_CONFIG : {};
@@ -210,6 +211,7 @@ function isOutsideBound() {
 // completed the Set Anchor flow.
 const SK_ANCHOR_URL = POLL_URL + '/navigation/anchor';
 const SK_ANCHOR_PUT_URL = POLL_URL + '/navigation/anchor/position';
+const PROXY_URL = 'http://' + SK_HOST + ':3001';
 
 async function fetchAnchorState() {
   try {
@@ -259,17 +261,26 @@ function _applySkAnchorState(pos) {
   if ((firstFetch || wasSet !== S.anchorSet) && S.screen === 'main') render();
 }
 
-function putAnchorPosition(lat, lon) {
-  // Write anchor position to SK so other devices see the change.
-  // NOTE: PUT to /navigation/anchor/position requires a put-handler registered
-  // in this SK instance (standard in signalk-server-node). Verify on Pi if
-  // set/raise don't persist across devices after this change.
-  const value = (lat !== null) ? { latitude: lat, longitude: lon } : null;
-  fetch(SK_ANCHOR_PUT_URL, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ value }),
-  }).catch(() => {});
+function showProxyError(msg) {
+  const el = document.getElementById('proxy-err');
+  if (!el) return;
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+async function putAnchorPosition(lat, lon) {
+  try {
+    const endpoint = lat !== null ? '/api/anchor/set' : '/api/anchor/raise';
+    const opts = { method: 'POST', headers: { 'Content-Type': 'application/json' } };
+    if (lat !== null) opts.body = JSON.stringify({ latitude: lat, longitude: lon });
+    const r = await fetch(PROXY_URL + endpoint, opts);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || data.ok === false) showProxyError(data.error || 'Anchor write failed (HTTP ' + r.status + ')');
+  } catch (e) {
+    showProxyError('Anchor proxy unreachable — check anchor-api service on Pi');
+  }
 }
 
 // ─── Pushover ─────────────────────────────────────────────────────────────

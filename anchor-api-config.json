@@ -1,0 +1,7 @@
+{
+  "signalkHost": "localhost",
+  "signalkPort": 3000,
+  "username": "",
+  "password": "",
+  "proxyPort": 3001
+}
