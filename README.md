@@ -38,8 +38,8 @@ Raspberry Pi (OpenPlotter)
 ▼ HTTP polling every 1 second
 │
 ┌────┴────┐
-│ Alcatel │  ← boat WiFi router (Oroboro network)
-│  router │  ← powered from Pi USB (5V/2A)
+│ Alcatel │  ← boat WiFi router
+│  router │  
 └────┬────┘
 │ ethernet
 ▼
@@ -54,7 +54,7 @@ Victron devices (MPPT, Multiplus, BMV-712, batteries)
 
 | Device | IP | Notes |
 |---|---|---|
-| Alcatel router | 192.168.1.1 | Creates `Oroboro` WiFi, powered from Pi USB |
+| Alcatel router | 192.168.1.1 |
 | Raspberry Pi | 192.168.1.238 | Static IP, runs Signal K + dashboard |
 | Cerbo GX | 192.168.1.212 | Connected to router via ethernet |
 
@@ -112,7 +112,6 @@ sudo wget -O /usr/lib/node_modules/signalk-server/public/anchor.html \
 1. Edit on laptop with Claude Code → push to GitHub
 2. Switch Pi to a WiFi network with internet
 3. Run all three wget commands above (`dashboard.html`, `config.js`, `anchor.html`)
-4. Switch Pi back to boat WiFi
 
 ---
 
