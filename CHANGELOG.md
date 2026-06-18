@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.3] — 2026-06-18
+
+### Added
+- `anchor-api.js` — Node.js reverse proxy (built-in modules only, 110 lines) that authenticates to Signal K server-side and exposes `POST /api/anchor/set`, `POST /api/anchor/raise`, `GET /api/anchor/status` on port 3001. SK credentials never leave the Pi.
+- `anchor-api-config.json` — config template (signalkHost, signalkPort, username, password, proxyPort); credentials filled in manually on Pi after deploy.
+- `anchor-api.service` — systemd unit to run the proxy as `pi` user on boot with auto-restart.
+
+### Fixed
+- `anchor.html` — `putAnchorPosition()` now routes through the proxy instead of direct SK PUT (which was silently 401-ing). Write failures now show a visible red error toast that auto-dismisses after 5 seconds.
+
 ## [1.1.2] — 2026-06-18
 
 ### Fixed
