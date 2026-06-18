@@ -154,6 +154,7 @@ const S = {
   draggingAlert: false, alarmAcknowledged: false,
   lastAlarmState: 'ok',    // 'ok' | 'dragging' | 'gps-lost' — tracks previous poll's alarm state
   alarmSuppressed: false,  // true from Set Anchor tap until first confirmed SK poll on armed screen
+  skRadiusFetched: false,  // true once maxRadius has been read from SK for the current arm
   lastPushover: {},
 
   fRadius: anchorCfg.defaultRadius || 30,
@@ -228,6 +229,20 @@ async function fetchAnchorState() {
     const data = await r.json();
     const pos = data && data.position && data.position.value;
     _applySkAnchorState((pos && pos.latitude != null && pos.longitude != null) ? pos : null);
+    // Restore radius from SK on the first confirmed fetch — SK is source of truth for persistence
+    // (no localStorage; the user's last configured radius survives page reload via maxRadius).
+    if (S.anchorSet && !S.skRadiusFetched) {
+      const maxR = data && data.maxRadius && data.maxRadius.value;
+      if (typeof maxR === 'number' && maxR > 0) {
+        S.radius = maxR;
+        S.fRadius = maxR;
+        // Advanced mode: SK only stores maxRadius, not the arc's inner radius or start/end angles.
+        // The outer radius (big) is restored; small/startAngle/endAngle revert to their in-session
+        // defaults on page reload and cannot be recovered from SK alone.
+        if (S.arc) S.arc.big = maxR;
+      }
+      S.skRadiusFetched = true;
+    }
   } catch(e) {
     // Network error — don't change S.anchorSet, but unblock the 'checking' banner
     if (!S.skInitialized) { S.skInitialized = true; if (S.screen === 'main') render(); }
@@ -323,6 +338,8 @@ let _gpsLostNotified = false;
 
 async function poll() {
   await fetchAnchorState(); // re-sync armed/unarmed from SK on every poll cycle
+  // If anchor was cleared (by another device), reset so next arm re-fetches radius from SK
+  if (!S.anchorSet) S.skRadiusFetched = false;
   try {
     const r = await fetch(POLL_URL);
     if (!r.ok) return;
@@ -869,7 +886,25 @@ async function handleAction(action, btn) {
   if (action === 'nav-map')  { S.screen = 'map'; render(); return; }
   if (action === 'nav-settings' || action === 'go-settings') { S.screen = 'settings'; render(); return; }
   if (action === 'go-pushover') { S.fPvShowToken = false; S.screen = 'pushover'; render(); return; }
-  if (action === 'go-configure') { S.cfgTab = S.activeMode; S.screen = 'configure'; render(); return; }
+  if (action === 'go-configure') {
+    S.cfgTab = S.activeMode;
+    // Pre-fill sliders from live armed state so "Adjust Distance" shows current values
+    S.fRadius = S.radius;
+    if (S.arc) {
+      S.fArcSmall = String(S.arc.small);
+      S.fArcBig   = String(S.arc.big);
+      S.fArcStart = String(S.arc.startAngle);
+      S.fArcEnd   = String(S.arc.endAngle);
+    }
+    // Back-compute anchor placement distance/bearing from stored anchor position to current GPS.
+    // This reflects where the anchor IS relative to where the boat IS NOW (may differ from
+    // the original placement if the boat has swung on the rode).
+    if (S.anchorLat !== null && S.curLat !== null) {
+      S.fAnchorDist    = Math.max(1, Math.round(haversine(S.curLat, S.curLon, S.anchorLat, S.anchorLon)));
+      S.fAnchorBearing = Math.round(bearingTo(S.curLat, S.curLon, S.anchorLat, S.anchorLon));
+    }
+    S.screen = 'configure'; render(); return;
+  }
 
   // Configure tab
   if (action === 'cfg-tab-normal')   { S.cfgTab = 'normal';   render(); return; }
@@ -906,6 +941,7 @@ async function handleAction(action, btn) {
     S.trail = []; S.maxDist = 0; S.avgDistSum = 0; S.avgDistCount = 0;
     S.draggingAlert = false; S.alarmAcknowledged = false; hideAlarm();
     S.alarmSuppressed = true; S.lastAlarmState = 'ok'; // suppression cleared by poll() once SK confirms
+    S.skRadiusFetched = true; // radius was just written by this device — no need to re-read from SK
     sendPushover('anchorSet');
     S.screen = 'main'; render(); return;
   }
@@ -917,6 +953,7 @@ async function handleAction(action, btn) {
     S.anchorSet = false; S.anchorLat = null; S.anchorLon = null;
     S.arc = null; S.distance = null; S.bearing = null;
     S.draggingAlert = false; S.alarmAcknowledged = false; S.alarmSuppressed = false; S.lastAlarmState = 'ok';
+    S.skRadiusFetched = false;
     S.trail = []; S.maxDist = 0; S.avgDistSum = 0; S.avgDistCount = 0; S.watchStart = null;
     hideAlarm(); S.screen = 'configure'; render(); return;
   }
