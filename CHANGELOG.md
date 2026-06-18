@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.2] — 2026-06-18
+
+### Fixed
+- `anchor.html` — persistent "← Dashboard" link added to every screen via `topBar()` (Fix 1)
+- `anchor.html` — stat tile truncation: `min-width:0` on `.stat-block`, `flex-wrap` + `text-overflow:ellipsis` on value/label rows (Fix 3)
+- `anchor.html` — button container gap restored to 8px; `.quick-picks` now wraps on narrow viewports (Fix 3)
+- `dashboard.html` — replaced inline cyan anchor link with square 84×84px color-coded anchor button side-by-side with SOG number: blue (#60a5fa) when no anchor set; red (#f87171) with glow when anchor is set (Fix 2)
+- `dashboard.html` — added 10s polling script for Signal K `/navigation/anchor` to drive button color state (Fix 2)
+
 ## [1.1.0] — 2026-06-17
 
 ### Added
