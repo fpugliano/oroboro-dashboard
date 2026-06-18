@@ -3,6 +3,8 @@ const http = require('http');
 const fs   = require('fs');
 const path = require('path');
 
+const STATE_FILE = '/home/pi/anchor-api/anchor-state.json';
+
 const cfg      = JSON.parse(fs.readFileSync(path.join(__dirname, 'anchor-api-config.json'), 'utf8'));
 const SK_HOST  = cfg.signalkHost || 'localhost';
 const SK_PORT  = cfg.signalkPort || 3000;
@@ -71,6 +73,26 @@ http.createServer(async (req, res) => {
   console.log('[anchor-api]', method, url);
 
   if (method === 'OPTIONS') { cors(res); res.writeHead(204); res.end(); return; }
+
+  if (method === 'GET' && url === '/api/anchor/config') {
+    try {
+      const raw = fs.readFileSync(STATE_FILE, 'utf8');
+      json(res, 200, { ok: true, config: JSON.parse(raw) });
+    } catch (e) {
+      json(res, 200, { ok: true, config: null }); // file doesn't exist yet — not an error
+    }
+    return;
+  }
+
+  if (method === 'POST' && url === '/api/anchor/config') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
+      fs.writeFileSync(STATE_FILE, JSON.stringify(body, null, 2), 'utf8');
+      json(res, 200, { ok: true });
+    } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+    return;
+  }
 
   if (method === 'POST' && url === '/api/anchor/radius') {
     try {
