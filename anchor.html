@@ -152,7 +152,8 @@ const S = {
 
   skInitialized: false,   // true once first SK anchor fetch completes; drives banner state
   draggingAlert: false, alarmAcknowledged: false,
-  armingInProgress: false, // true from Set Anchor tap until SK confirms position; blocks alarm notifications
+  lastAlarmState: 'ok',    // 'ok' | 'dragging' | 'gps-lost' — tracks previous poll's alarm state
+  alarmSuppressed: false,  // true from Set Anchor tap until first confirmed SK poll on armed screen
   lastPushover: {},
 
   fRadius: anchorCfg.defaultRadius || 30,
@@ -289,8 +290,8 @@ async function putAnchorPosition(lat, lon) {
 // ─── Pushover ─────────────────────────────────────────────────────────────
 function sendPushover(eventKey) {
   // Alarm events require confirmed armed state and must not fire during the
-  // arming window (between proxy writes and first SK position confirmation).
-  if ((eventKey === 'dragging' || eventKey === 'gpsLost') && (!S.anchorSet || S.armingInProgress)) return;
+  // suppression window (between proxy writes and first SK position confirmation).
+  if ((eventKey === 'dragging' || eventKey === 'gpsLost') && (!S.anchorSet || S.alarmSuppressed)) return;
   const cfg = S.pushover;
   if (!cfg.userKey || !cfg.apiToken) return;
   const ev = cfg.events[eventKey];
@@ -322,8 +323,9 @@ let _gpsLostNotified = false;
 
 async function poll() {
   await fetchAnchorState(); // re-sync armed/unarmed from SK on every poll cycle
-  // Clear arming window once SK has confirmed the anchor position
-  if (S.armingInProgress && S.anchorSet) S.armingInProgress = false;
+  // Clear suppression window once SK has confirmed anchor — also reset lastAlarmState
+  // so the first genuine outside-bounds reading after arming fires a notification.
+  if (S.alarmSuppressed && S.anchorSet) { S.alarmSuppressed = false; S.lastAlarmState = 'ok'; }
   try {
     const r = await fetch(POLL_URL);
     if (!r.ok) return;
@@ -369,20 +371,24 @@ function checkAlarms() {
       sendPushover('gpsLost');
       showAlarm('gps');
     }
+    S.lastAlarmState = 'gps-lost';
     return;
   }
   if (isOutsideBound()) {
-    // Only transition ok→dragging; suppress during arming window
-    if (!S.draggingAlert && !S.armingInProgress) {
+    // Fire Pushover only on genuine ok→dragging transition, not on sustained dragging.
+    // sendPushover() also enforces a 60-second per-event cooldown.
+    if (S.lastAlarmState !== 'dragging' && !S.alarmSuppressed) {
       S.draggingAlert = true;
       sendPushover('dragging');
     }
+    S.lastAlarmState = 'dragging';
     if (!S.alarmAcknowledged) showAlarm('dragging');
   } else {
     if (S.draggingAlert && S.alarmAcknowledged) {
       S.draggingAlert = false;
       S.alarmAcknowledged = false;
     }
+    S.lastAlarmState = 'ok';
   }
 }
 
@@ -423,11 +429,30 @@ function updateLive() {
       const limit = S.arc ? S.arc.big : S.radius;
       if (S.distance !== null) distEl.style.color = S.distance > limit * 0.8 ? '#f59e0b' : '#22d3ee';
     }
-    if (_armedMap && S.curLat !== null) {
-      const pos = [S.curLat, S.curLon];
-      if (_armedBoatMark) _armedBoatMark.setLatLng(pos);
-      if (_armedTrail && S.trail.length > 1) {
-        _armedTrail.setLatLngs(S.trail.map(p => [p.lat, p.lon]));
+    if (_armedMap) {
+      // Sync anchor marker if SK updated the stored position
+      if (_armedAnchorMark && S.anchorLat !== null) {
+        _armedAnchorMark.setLatLng([S.anchorLat, S.anchorLon]);
+      } else if (!_armedAnchorMark && S.anchorLat !== null) {
+        _armedAnchorMark = L.circleMarker([S.anchorLat, S.anchorLon], {
+          radius: 8, color: '#fff', weight: 2, fillColor: '#f59e0b', fillOpacity: 1
+        }).addTo(_armedMap);
+      }
+      // Recreate zone if it was lost (e.g. after a re-render destroyed and rebuilt the map)
+      if (!_armedZone && S.anchorLat !== null) updateArmedMapZone();
+      if (S.curLat !== null) {
+        const pos = [S.curLat, S.curLon];
+        if (_armedBoatMark) {
+          _armedBoatMark.setLatLng(pos);
+        } else {
+          // GPS became available after map init — create the marker now
+          _armedBoatMark = L.circleMarker(pos, {
+            radius: 6, color: '#e2e8f0', weight: 2, fillColor: '#0f172a', fillOpacity: 1
+          }).addTo(_armedMap);
+        }
+        if (_armedTrail && S.trail.length > 1) {
+          _armedTrail.setLatLngs(S.trail.map(p => [p.lat, p.lon]));
+        }
       }
     }
   }
@@ -872,7 +897,7 @@ async function handleAction(action, btn) {
     S.anchorSet = true; S.watchStart = Date.now();
     S.trail = []; S.maxDist = 0; S.avgDistSum = 0; S.avgDistCount = 0;
     S.draggingAlert = false; S.alarmAcknowledged = false; hideAlarm();
-    S.armingInProgress = true; // cleared by poll() once SK confirms the position
+    S.alarmSuppressed = true; S.lastAlarmState = 'ok'; // suppression cleared by poll() once SK confirms
     sendPushover('anchorSet');
     S.screen = 'main'; render(); return;
   }
@@ -883,7 +908,7 @@ async function handleAction(action, btn) {
     putAnchorPosition(null, null); // clear in SK so other devices see it
     S.anchorSet = false; S.anchorLat = null; S.anchorLon = null;
     S.arc = null; S.distance = null; S.bearing = null;
-    S.draggingAlert = false; S.alarmAcknowledged = false; S.armingInProgress = false;
+    S.draggingAlert = false; S.alarmAcknowledged = false; S.alarmSuppressed = false; S.lastAlarmState = 'ok';
     S.trail = []; S.maxDist = 0; S.avgDistSum = 0; S.avgDistCount = 0; S.watchStart = null;
     hideAlarm(); S.screen = 'configure'; render(); return;
   }
@@ -1109,21 +1134,27 @@ function initArmedMap() {
   if (typeof L === 'undefined') return;
   const el = document.getElementById('armed-leaflet-map');
   if (!el || _armedMap || !S.anchorSet) return;
-  const center = S.anchorLat !== null ? [S.anchorLat, S.anchorLon] : (S.curLat !== null ? [S.curLat, S.curLon] : [0,0]);
+  const anchorPos = S.anchorLat !== null ? [S.anchorLat, S.anchorLon] : (S.curLat !== null ? [S.curLat, S.curLon] : [0,0]);
   _armedMap = L.map(el, { zoomControl: false, scrollWheelZoom: false, attributionControl: false });
   L.control.zoom({ position: 'bottomright' }).addTo(_armedMap);
   makeTileLayer(_armedMap);
-  _armedMap.setView(center, 16);
-  const anchorIcon = L.divIcon({ html: '<div style="font-size:18px;line-height:1">&#9875;</div>', className: '', iconAnchor: [9,9] });
-  _armedAnchorMark = L.marker([S.anchorLat, S.anchorLon], { icon: anchorIcon }).addTo(_armedMap);
+  _armedMap.setView(anchorPos, 16);
+  // Anchor marker — amber circleMarker avoids divIcon iconSize/clip issues
+  if (S.anchorLat !== null) {
+    _armedAnchorMark = L.circleMarker([S.anchorLat, S.anchorLon], {
+      radius: 8, color: '#fff', weight: 2, fillColor: '#f59e0b', fillOpacity: 1
+    }).addTo(_armedMap);
+  }
+  // Boat position marker — created lazily in updateLive() if GPS not yet available
   if (S.curLat !== null) {
-    _armedBoatMark = L.circleMarker([S.curLat, S.curLon], { radius: 7, color: '#e2e8f0', fillColor: '#e2e8f0', fillOpacity: 1 }).addTo(_armedMap);
+    _armedBoatMark = L.circleMarker([S.curLat, S.curLon], {
+      radius: 6, color: '#e2e8f0', weight: 2, fillColor: '#0f172a', fillOpacity: 1
+    }).addTo(_armedMap);
   }
-  if (S.trail.length > 1) {
-    _armedTrail = L.polyline(S.trail.map(p => [p.lat, p.lon]), { color: '#22d3ee', weight: 1.5, opacity: 0.7 }).addTo(_armedMap);
-  } else {
-    _armedTrail = L.polyline([], { color: '#22d3ee', weight: 1.5, opacity: 0.7 }).addTo(_armedMap);
-  }
+  _armedTrail = L.polyline(
+    S.trail.length > 1 ? S.trail.map(p => [p.lat, p.lon]) : [],
+    { color: '#22d3ee', weight: 1.5, opacity: 0.7 }
+  ).addTo(_armedMap);
   updateArmedMapZone();
   updateAISOnMap();
   // Try to seed trail from SK tracks plugin
