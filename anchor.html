@@ -98,6 +98,8 @@ input[type=range] { width: 100%; accent-color: #22d3ee; cursor: pointer; }
 .alarm-title  { font-size: 18px; font-weight: 700; color: #f87171; letter-spacing: 0.04em; text-transform: uppercase; }
 .alarm-detail { font-size: 12px; color: #7a9abf; line-height: 1.6; }
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -154,6 +156,8 @@ const S = {
 
   fRadius: anchorCfg.defaultRadius || 30,
   fArcSmall: '40', fArcBig: '55', fArcStart: '345', fArcEnd: '20',
+  fAnchorDist: 18, fAnchorBearing: 305,
+  activeMode: 'normal',
   fPvShowToken: false,
 };
 
@@ -302,6 +306,12 @@ function sendPushoverTest() {
   fetch('https://api.pushover.net/1/messages.json', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() }).catch(() => {});
 }
 
+// ─── Map globals ──────────────────────────────────────────────────────────
+let _cfgMap = null, _cfgZone = null, _cfgAnchorMark = null;
+let _armedMap = null, _armedZone = null, _armedBoatMark = null,
+    _armedAnchorMark = null, _armedTrail = null, _armedAis = [];
+let _aisPollCount = 0;
+
 // ─── Poll ─────────────────────────────────────────────────────────────────
 let _gpsLostNotified = false;
 
@@ -334,6 +344,8 @@ async function poll() {
       S.avgDistSum += S.distance;
       S.avgDistCount++;
     }
+    _aisPollCount++;
+    if (_aisPollCount % 30 === 0) updateAISOnMap();
     checkAlarms();
     updateLive();
   } catch(e) { /* network error, ignore */ }
@@ -396,27 +408,27 @@ function hideAlarm() {
 // ─── Live DOM updates (no full re-render) ─────────────────────────────────
 function updateLive() {
   if (S.screen === 'main') {
-    const latEl = document.getElementById('live-lat');
-    const lonEl = document.getElementById('live-lon');
     const distEl = document.getElementById('live-dist');
-    const limitEl = document.getElementById('live-limit');
-    if (latEl) latEl.textContent = S.curLat !== null ? S.curLat.toFixed(4) : '—';
-    if (lonEl) lonEl.textContent = S.curLon !== null ? S.curLon.toFixed(4) : '—';
     if (distEl && S.anchorSet) {
       const d = S.distance !== null ? Math.round(S.distance) : '—';
       distEl.textContent = d;
       const limit = S.arc ? S.arc.big : S.radius;
       if (S.distance !== null) distEl.style.color = S.distance > limit * 0.8 ? '#f59e0b' : '#22d3ee';
     }
-    if (limitEl && S.anchorSet) limitEl.textContent = S.arc ? S.arc.small + '–' + S.arc.big : S.radius;
+    if (_armedMap && S.curLat !== null) {
+      const pos = [S.curLat, S.curLon];
+      if (_armedBoatMark) _armedBoatMark.setLatLng(pos);
+      if (_armedTrail && S.trail.length > 1) {
+        _armedTrail.setLatLngs(S.trail.map(p => [p.lat, p.lon]));
+      }
+    }
   }
   if (S.screen === 'configure') {
-    // Update Set Anchor button enabled state as GPS arrives
     const btn = document.getElementById('set-anchor-btn');
     if (btn && S.curLat !== null && btn.disabled) {
       const sm = Number(S.fArcSmall)||0, bi = Number(S.fArcBig)||1;
       const valid = S.cfgTab === 'normal' || sm < bi;
-      if (valid) { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = ''; btn.innerHTML = '&#9875; Set Anchor'; }
+      if (valid) { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = ''; btn.innerHTML = S.anchorSet ? '&#9875; Update Anchor' : '&#9875; Set Anchor'; }
     }
   }
   if (S.screen === 'map') renderMapUpdate();
@@ -554,26 +566,33 @@ function renderAnchorBanner() {
 function renderMain() {
   const as = S.anchorSet;
   const d = S.distance !== null ? Math.round(S.distance) : '—';
-  const lim = S.arc ? (S.arc.small+'–'+S.arc.big) : S.radius;
+  const maxD = S.maxDist > 0 ? Math.round(S.maxDist) : '—';
   const distColor = (S.distance !== null && S.distance > (S.arc?S.arc.big:S.radius)*0.8) ? '#f59e0b' : '#22d3ee';
-  const dialHtml = as
-    ? '<div style="display:flex;justify-content:center;padding:4px 0">'+svgRadiusDial(S.arc?S.arc.big:S.radius, S.distance||0)+'</div>'
-    : '<div class="info-box">Anchor was raised on another device. Tap ← Dashboard to go back.</div>';
-  const arcNote = (as && S.arc) ? '<div style="font-size:10px;color:#7a9abf;padding:0 2px">Directional sector '+S.arc.startAngle+'°–'+S.arc.endAngle+'°</div>' : '';
+  const modeBadge = '<span style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#22d3ee;background:rgba(34,211,238,0.12);border:1px solid #22d3ee;border-radius:4px;padding:3px 6px;flex-shrink:0">'+(S.activeMode==='advanced'?'ADV':'NRM')+'</span>';
+  const modeSubtitle = S.activeMode === 'advanced' && S.arc
+    ? 'Advanced: '+S.arc.small+'–'+S.arc.big+'m, '+S.arc.startAngle+'°–'+S.arc.endAngle+'°'
+    : 'Normal: '+S.radius+'m radius';
+  const banner = as
+    ? '<div style="background:rgba(93,184,50,0.12);border:1.5px solid #5db832;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px">'+
+        '<span style="width:10px;height:10px;border-radius:50%;background:#5db832;flex-shrink:0;box-shadow:0 0 8px #5db832"></span>'+
+        '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#e2e8f0">ANCHOR SET</div>'+
+        '<div style="font-size:10px;color:#7a9abf">Synced from Signal K · '+modeSubtitle+'</div></div>'+
+        modeBadge+'</div>'
+    : renderAnchorBanner();
+  const mapDiv = '<div id="armed-leaflet-map" style="height:240px;border-radius:10px;overflow:hidden;border:1px solid #1e2a38;background:#0b2d3d"></div>';
   const buttons = as
-    ? '<button class="btn btn-secondary" data-action="go-configure">Adjust Distance</button><button class="btn btn-danger" style="margin-top:8px" data-action="raise-anchor">Raise Anchor</button>'
-    : '';
+    ? '<button class="btn btn-secondary" data-action="go-configure">Adjust Distance</button>'+
+      '<button class="btn btn-danger" style="margin-top:8px" data-action="raise-anchor">Raise Anchor</button>'
+    : '<div style="font-size:11px;color:#7a9abf;text-align:center">No anchor set — use the dashboard anchor button.</div>';
   return topBar('Anchor Watch') +
     '<div class="screen-content">'+
-      renderAnchorBanner()+
-      dialHtml+
-      '<div class="stat-grid">'+
-        statBlock('Current Lat', '<span id="live-lat">'+(S.curLat!==null?S.curLat.toFixed(4):'—')+'</span>', '', '')+
-        statBlock('Current Lon', '<span id="live-lon">'+(S.curLon!==null?S.curLon.toFixed(4):'—')+'</span>', '', '')+
-        statBlock('Distance to Anchor', '<span id="live-dist" style="color:'+distColor+'">'+(as?d:'—')+'</span>', as?'m':'', '', true)+
-        statBlock('Allowed Distance', '<span id="live-limit">'+(as?lim:'—')+'</span>', as?'m':'', '', true)+
+      banner+
+      mapDiv+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+
+        '<div class="stat-block"><div class="stat-lbl">Distance</div><div class="stat-val big"><span id="live-dist" style="color:'+distColor+'">'+(as?d:'—')+'</span>'+(as?'<span class="stat-unit">m</span>':'')+'</div></div>'+
+        '<div class="stat-block"><div class="stat-lbl">Max Swing</div><div class="stat-val big"><span style="color:#f59e0b">'+(as && maxD!=='—'?maxD:'—')+'</span>'+(as && maxD!=='—'?'<span class="stat-unit">m</span>':'')+'</div></div>'+
+        '<div class="stat-block"><div class="stat-lbl">AIS Nearby</div><div class="stat-val big"><span id="live-ais" style="color:#f59e0b">—</span></div></div>'+
       '</div>'+
-      arcNote+
       '<div style="flex:1"></div>'+
       '<div style="display:flex;flex-direction:column;gap:8px">'+buttons+'</div>'+
     '</div>'+
@@ -595,10 +614,8 @@ function renderConfigure() {
 
   let body;
   if (tab === 'normal') {
-    const qp = [20,30,50,75].map(v =>
-      '<button class="quick-btn" style="background:'+(S.fRadius===v?'#22d3ee':'#0d1520')+';color:'+(S.fRadius===v?'#0a0e14':'#7a9abf')+'" data-action="cfg-quick-'+v+'">'+v+'m</button>'
-    ).join('');
-    body = '<div id="cfg-map">'+svgCfgMap()+'</div>'+
+    body = renderAnchorPlacement()+
+      '<div id="cfg-leaflet-map" style="height:220px;border-radius:10px;overflow:hidden;border:1px solid #1e2a38;background:#0b2d3d"></div>'+
       '<div style="padding:0 4px">'+
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
           '<span style="font-size:10px;color:#7a9abf;text-transform:uppercase;letter-spacing:0.06em">Allowed Radius</span>'+
@@ -606,10 +623,10 @@ function renderConfigure() {
         '</div>'+
         '<input type="range" min="10" max="100" step="1" value="'+S.fRadius+'" data-field="fRadius" style="width:100%;accent-color:#22d3ee">'+
         '<div style="display:flex;justify-content:space-between;font-size:9px;color:#7a9abf;margin-top:4px"><span>10m</span><span>100m</span></div>'+
-      '</div>'+
-      '<div class="quick-picks">'+qp+'</div>';
+      '</div>';
   } else {
-    body = '<div id="cfg-map">'+svgCfgMap()+'</div>'+
+    body = renderAnchorPlacement()+
+      '<div id="cfg-leaflet-map" style="height:220px;border-radius:10px;overflow:hidden;border:1px solid #1e2a38;background:#0b2d3d"></div>'+
       '<div id="cfg-arc-error" style="display:'+(arcValid?'none':'block')+';font-size:11px;color:#f87171;font-weight:600;padding:0 4px">Small distance must be less than Big distance</div>'+
       '<div style="padding:0 4px">'+
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
@@ -643,7 +660,7 @@ function renderConfigure() {
 
   const noGps = S.curLat === null;
   const btnDisabled = !valid || noGps;
-  const btnLabel = noGps ? '&#9875; Waiting for GPS&hellip;' : '&#9875; Set Anchor';
+  const btnLabel = noGps ? '&#9875; Waiting for GPS&hellip;' : (S.anchorSet ? '&#9875; Update Anchor' : '&#9875; Set Anchor');
   const backAction = S.anchorSet ? 'go-main' : null;
 
   return topBar('Set Allowed Radius', backAction) +
@@ -780,6 +797,7 @@ function renderPushover() {
 function render() {
   const app = document.getElementById('app');
   if (!app) return;
+  destroyMaps();
   switch(S.screen) {
     case 'main':         app.innerHTML = renderMain(); break;
     case 'configure':    app.innerHTML = renderConfigure(); break;
@@ -788,13 +806,14 @@ function render() {
     case 'pushover':     app.innerHTML = renderPushover(); break;
     default:             app.innerHTML = renderConfigure();
   }
+  setTimeout(initMapIfNeeded, 0);
 }
 
 // ─── Event delegation ─────────────────────────────────────────────────────
 document.addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
-  handleAction(btn.dataset.action, btn);
+  handleAction(btn.dataset.action, btn).catch(err => showProxyError(err.message || 'Error'));
 });
 
 document.addEventListener('input', e => {
@@ -803,38 +822,49 @@ document.addEventListener('input', e => {
   handleField(el.dataset.field, el.value);
 });
 
-function handleAction(action, btn) {
+async function handleAction(action, btn) {
   // Nav
   if (action === 'nav-main' || action === 'go-main') { S.screen = 'main'; render(); return; }
   if (action === 'nav-map')  { S.screen = 'map'; render(); return; }
   if (action === 'nav-settings' || action === 'go-settings') { S.screen = 'settings'; render(); return; }
   if (action === 'go-pushover') { S.fPvShowToken = false; S.screen = 'pushover'; render(); return; }
-  if (action === 'go-configure') { S.screen = 'configure'; render(); return; }
+  if (action === 'go-configure') { S.cfgTab = S.activeMode; S.screen = 'configure'; render(); return; }
 
-  // Configure tab / quick-picks
+  // Configure tab
   if (action === 'cfg-tab-normal')   { S.cfgTab = 'normal';   render(); return; }
   if (action === 'cfg-tab-advanced') { S.cfgTab = 'advanced'; render(); return; }
-  if (action.startsWith('cfg-quick-')) { S.fRadius = parseInt(action.slice(10), 10); render(); return; }
 
-  // Set anchor — configure zone FIRST, then write position to SK
+  // Set anchor — write radius FIRST, then position
   if (action === 'set-anchor-confirm') {
-    if (S.curLat === null) { showProxyError('No GPS position — wait for Signal K'); return; }
-    // 1. Commit zone config
+    if (S.curLat === null) { showProxyError('No GPS — wait for Signal K'); return; }
+    if (S.cfgTab === 'advanced' && Number(S.fArcSmall) >= Number(S.fArcBig)) return;
+    // 1. Commit zone
+    const rad = S.cfgTab === 'normal' ? S.fRadius : Number(S.fArcBig);
     if (S.cfgTab === 'normal') {
       S.radius = S.fRadius; S.arc = null;
     } else {
-      const small = Number(S.fArcSmall), big = Number(S.fArcBig);
-      if (small >= big) return;
-      S.arc = { small, big, startAngle: Number(S.fArcStart), endAngle: Number(S.fArcEnd) };
-      S.radius = big;
+      S.arc = { small: Number(S.fArcSmall), big: Number(S.fArcBig), startAngle: Number(S.fArcStart), endAngle: Number(S.fArcEnd) };
+      S.radius = S.arc.big;
     }
-    // 2. Set anchor position and arm watch
-    S.anchorLat = S.curLat; S.anchorLon = S.curLon;
+    S.activeMode = S.cfgTab;
+    // 2. Calc anchor position from placement
+    const ap = destinationPoint(S.curLat, S.curLon, S.fAnchorDist, S.fAnchorBearing);
+    S.anchorLat = ap.lat; S.anchorLon = ap.lon;
+    // 3. Write radius FIRST
+    try {
+      const r1 = await fetch(PROXY_URL+'/api/anchor/radius', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({value:rad})});
+      const d1 = await r1.json().catch(()=>({}));
+      if (!r1.ok || d1.ok===false) { showProxyError(d1.error||'Failed to write radius (HTTP '+r1.status+')'); return; }
+      // 4. Write position
+      const r2 = await fetch(PROXY_URL+'/api/anchor/set', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({latitude:S.anchorLat, longitude:S.anchorLon})});
+      const d2 = await r2.json().catch(()=>({}));
+      if (!r2.ok || d2.ok===false) { showProxyError(d2.error||'Failed to write position (HTTP '+r2.status+')'); return; }
+    } catch(e) { showProxyError('Proxy unreachable — check anchor-api service'); return; }
+    // 5. Arm
     S.anchorSet = true; S.watchStart = Date.now();
     S.trail = []; S.maxDist = 0; S.avgDistSum = 0; S.avgDistCount = 0;
     S.draggingAlert = false; S.alarmAcknowledged = false; hideAlarm();
     sendPushover('anchorSet');
-    putAnchorPosition(S.anchorLat, S.anchorLon); // proxy writes zone-first, then position
     S.screen = 'main'; render(); return;
   }
 
@@ -885,19 +915,27 @@ function handleField(field, value) {
       const rd = document.getElementById('rel-dial');
       if (rd) rd.innerHTML = svgRelDial(Number(value)||0);
       break;
+    case 'fAnchorDist': {
+      S.fAnchorDist = Number(value)||5;
+      const v = document.getElementById('cfg-adist-val'); if (v) v.textContent = S.fAnchorDist+'m';
+      const c = document.getElementById('cfg-compass'); if (c) c.innerHTML = svgCompassDial(S.fAnchorDist, S.fAnchorBearing);
+      updateConfigureMapZone(); break;
+    }
+    case 'fAnchorBearing': {
+      S.fAnchorBearing = Number(value)||0;
+      const v = document.getElementById('cfg-abearing-val'); if (v) v.textContent = S.fAnchorBearing+'°';
+      const c = document.getElementById('cfg-compass'); if (c) c.innerHTML = svgCompassDial(S.fAnchorDist, S.fAnchorBearing);
+      updateConfigureMapZone(); break;
+    }
     case 'fRadius': {
       S.fRadius = Number(value) || 10;
       const rv = document.getElementById('cfg-radius-val');
       if (rv) rv.textContent = S.fRadius + 'm';
-      updateCfgMap();
-      [20,30,50,75].forEach(v => {
-        const qb = document.querySelector('[data-action="cfg-quick-'+v+'"]');
-        if (qb) { qb.style.background = S.fRadius===v?'#22d3ee':'#0d1520'; qb.style.color = S.fRadius===v?'#0a0e14':'#7a9abf'; }
-      });
+      updateConfigureMapZone();
       break;
     }
     case 'fArcSmall': {
-      S.fArcSmall = value; updateCfgMap();
+      S.fArcSmall = value; updateConfigureMapZone();
       const sm = Number(value)||0, bi = Number(S.fArcBig)||1, v2 = sm < bi;
       const c = v2 ? '#22d3ee' : '#f87171';
       const sv = document.getElementById('cfg-small-val'); if (sv) { sv.textContent = value+'m'; sv.style.color = c; }
@@ -907,7 +945,7 @@ function handleField(field, value) {
       break;
     }
     case 'fArcBig': {
-      S.fArcBig = value; updateCfgMap();
+      S.fArcBig = value; updateConfigureMapZone();
       const sm = Number(S.fArcSmall)||0, bi = Number(value)||1, v2 = sm < bi;
       const c = v2 ? '#22d3ee' : '#f87171';
       const sv = document.getElementById('cfg-small-val'); if (sv) sv.style.color = c;
@@ -917,12 +955,12 @@ function handleField(field, value) {
       break;
     }
     case 'fArcStart': {
-      S.fArcStart = value; updateCfgMap();
+      S.fArcStart = value; updateConfigureMapZone();
       const sv = document.getElementById('cfg-start-val'); if (sv) sv.textContent = value + '°';
       break;
     }
     case 'fArcEnd': {
-      S.fArcEnd = value; updateCfgMap();
+      S.fArcEnd = value; updateConfigureMapZone();
       const ev = document.getElementById('cfg-end-val'); if (ev) ev.textContent = value + '°';
       break;
     }
@@ -942,6 +980,197 @@ function handleField(field, value) {
 function updateCfgMap() {
   const el = document.getElementById('cfg-map');
   if (el) el.innerHTML = svgCfgMap();
+}
+
+// ─── Compass placement dial ───────────────────────────────────────────────
+function svgCompassDial(dist, bearing) {
+  const cx=60, cy=60, r=45;
+  const rad=(bearing-90)*Math.PI/180;
+  const ax=(cx+Math.cos(rad)*r*0.7).toFixed(1), ay=(cy+Math.sin(rad)*r*0.7).toFixed(1);
+  const cards=['N','E','S','W'];
+  const ticks=[0,90,180,270].map(a=>{
+    const tr=(a-90)*Math.PI/180;
+    return '<text x="'+(cx+Math.cos(tr)*(r+10)).toFixed(1)+'" y="'+(cy+Math.sin(tr)*(r+10)+3).toFixed(1)+'" text-anchor="middle" font-size="8" fill="#7a9abf" font-family="Rajdhani,sans-serif">'+cards[a/90]+'</text>';
+  }).join('');
+  return '<svg width="120" height="120" viewBox="0 0 120 120" style="flex-shrink:0">'+
+    '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#1e2a38" stroke-width="1"/>'+ticks+
+    '<line x1="'+cx+'" y1="'+cy+'" x2="'+ax+'" y2="'+ay+'" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="3 2"/>'+
+    '<circle cx="'+cx+'" cy="'+cy+'" r="5" fill="#e2e8f0"/>'+
+    '<text x="'+cx+'" y="'+(cy+3)+'" text-anchor="middle" font-size="6" fill="#0a0e14" font-weight="700" font-family="Rajdhani,sans-serif">B</text>'+
+    '<circle cx="'+ax+'" cy="'+ay+'" r="5" fill="#f59e0b"/>'+
+    '<text x="'+((cx+Number(ax))/2+8).toFixed(1)+'" y="'+((cy+Number(ay))/2).toFixed(1)+'" font-size="9" fill="#22d3ee" font-weight="700" font-family="Rajdhani,sans-serif">'+dist+'m</text>'+
+    '</svg>';
+}
+
+function renderAnchorPlacement() {
+  return '<div style="background:#0d1520;border-radius:10px;border:1px solid #1e2a38;padding:14px;display:flex;gap:14px;align-items:center">'+
+    '<div id="cfg-compass">'+svgCompassDial(S.fAnchorDist, S.fAnchorBearing)+'</div>'+
+    '<div style="flex:1;display:flex;flex-direction:column;gap:10px">'+
+      '<div style="font-size:10px;color:#7a9abf;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Anchor Position</div>'+
+      '<div style="padding:0 4px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+          '<span style="font-size:9px;color:#7a9abf;text-transform:uppercase">Distance to anchor</span>'+
+          '<span id="cfg-adist-val" style="font-size:16px;font-weight:700;color:#22d3ee">'+S.fAnchorDist+'m</span>'+
+        '</div>'+
+        '<input type="range" min="5" max="80" step="1" value="'+S.fAnchorDist+'" data-field="fAnchorDist" style="width:100%;accent-color:#22d3ee">'+
+      '</div>'+
+      '<div style="padding:0 4px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+          '<span style="font-size:9px;color:#7a9abf;text-transform:uppercase">Bearing to anchor</span>'+
+          '<span id="cfg-abearing-val" style="font-size:16px;font-weight:700;color:#22d3ee">'+S.fAnchorBearing+'°</span>'+
+        '</div>'+
+        '<input type="range" min="0" max="359" step="1" value="'+S.fAnchorBearing+'" data-field="fAnchorBearing" style="width:100%;accent-color:#22d3ee">'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+// ─── Geo sector polygon (for Leaflet) ─────────────────────────────────────
+function geoSectorPoints(lat, lon, small, big, startAngle, endAngle) {
+  let span = endAngle - startAngle;
+  if (span < 0) span += 360;
+  if (span === 0) span = 360;
+  const steps = 32, outer = [], inner = [];
+  for (let i = 0; i <= steps; i++) {
+    const a = startAngle + span * i / steps;
+    const po = destinationPoint(lat, lon, big, a);
+    const pi = destinationPoint(lat, lon, small, a);
+    outer.push([po.lat, po.lon]);
+    inner.push([pi.lat, pi.lon]);
+  }
+  return [...outer, ...inner.reverse()];
+}
+
+function calcAnchorLatLon() {
+  if (S.curLat === null) return null;
+  return destinationPoint(S.curLat, S.curLon, S.fAnchorDist, S.fAnchorBearing);
+}
+
+// ─── Map lifecycle ────────────────────────────────────────────────────────
+function destroyMaps() {
+  if (_cfgMap)   { try { _cfgMap.remove(); }   catch(e){} _cfgMap = null; _cfgZone = null; _cfgAnchorMark = null; }
+  if (_armedMap) { try { _armedMap.remove(); } catch(e){} _armedMap = null; _armedZone = null; _armedBoatMark = null; _armedAnchorMark = null; _armedTrail = null; _armedAis = []; }
+}
+
+function makeTileLayer(map) {
+  if (typeof L === 'undefined') return;
+  const tile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; CartoDB', maxZoom: 19
+  });
+  tile.on('tileerror', function() {
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM', maxZoom: 19 }).addTo(map);
+  });
+  tile.addTo(map);
+}
+
+function initConfigureMap() {
+  if (typeof L === 'undefined') return;
+  const el = document.getElementById('cfg-leaflet-map');
+  if (!el || _cfgMap) return;
+  const center = S.curLat !== null ? [S.curLat, S.curLon] : [0, 0];
+  _cfgMap = L.map(el, { zoomControl: false, scrollWheelZoom: false, attributionControl: false });
+  L.control.zoom({ position: 'bottomright' }).addTo(_cfgMap);
+  makeTileLayer(_cfgMap);
+  _cfgMap.setView(center, 17);
+  updateConfigureMapZone();
+}
+
+function updateConfigureMapZone() {
+  if (!_cfgMap) return;
+  if (_cfgZone)       { _cfgMap.removeLayer(_cfgZone);       _cfgZone = null; }
+  if (_cfgAnchorMark) { _cfgMap.removeLayer(_cfgAnchorMark); _cfgAnchorMark = null; }
+  const ap = calcAnchorLatLon();
+  if (!ap) return;
+  const aLatLon = [ap.lat, ap.lon];
+  _cfgAnchorMark = L.circleMarker(aLatLon, { radius: 6, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1 }).addTo(_cfgMap);
+  if (S.cfgTab === 'normal') {
+    _cfgZone = L.circle(aLatLon, { radius: S.fRadius, color: '#22d3ee', fillColor: '#22d3ee', fillOpacity: 0.12, weight: 2 }).addTo(_cfgMap);
+  } else {
+    const sm = Number(S.fArcSmall)||0, bi = Number(S.fArcBig)||1;
+    if (sm < bi) {
+      const pts = geoSectorPoints(ap.lat, ap.lon, sm, bi, Number(S.fArcStart), Number(S.fArcEnd));
+      _cfgZone = L.polygon(pts, { color: '#22d3ee', fillColor: '#22d3ee', fillOpacity: 0.18, weight: 2 }).addTo(_cfgMap);
+    }
+  }
+  const bounds = _cfgZone ? _cfgZone.getBounds() : null;
+  if (bounds && bounds.isValid()) _cfgMap.fitBounds(bounds, { padding: [24, 24] });
+}
+
+function initArmedMap() {
+  if (typeof L === 'undefined') return;
+  const el = document.getElementById('armed-leaflet-map');
+  if (!el || _armedMap || !S.anchorSet) return;
+  const center = S.anchorLat !== null ? [S.anchorLat, S.anchorLon] : (S.curLat !== null ? [S.curLat, S.curLon] : [0,0]);
+  _armedMap = L.map(el, { zoomControl: false, scrollWheelZoom: false, attributionControl: false });
+  L.control.zoom({ position: 'bottomright' }).addTo(_armedMap);
+  makeTileLayer(_armedMap);
+  _armedMap.setView(center, 16);
+  const anchorIcon = L.divIcon({ html: '<div style="font-size:18px;line-height:1">&#9875;</div>', className: '', iconAnchor: [9,9] });
+  _armedAnchorMark = L.marker([S.anchorLat, S.anchorLon], { icon: anchorIcon }).addTo(_armedMap);
+  if (S.curLat !== null) {
+    _armedBoatMark = L.circleMarker([S.curLat, S.curLon], { radius: 7, color: '#e2e8f0', fillColor: '#e2e8f0', fillOpacity: 1 }).addTo(_armedMap);
+  }
+  if (S.trail.length > 1) {
+    _armedTrail = L.polyline(S.trail.map(p => [p.lat, p.lon]), { color: '#22d3ee', weight: 1.5, opacity: 0.7 }).addTo(_armedMap);
+  } else {
+    _armedTrail = L.polyline([], { color: '#22d3ee', weight: 1.5, opacity: 0.7 }).addTo(_armedMap);
+  }
+  updateArmedMapZone();
+  updateAISOnMap();
+  // Try to seed trail from SK tracks plugin
+  fetch('http://'+SK_HOST+':'+SK_PORT+'/signalk/v1/api/vessels/self/navigation/track?limit=500')
+    .then(r => r.ok ? r.json() : null)
+    .then(geo => {
+      if (!geo || !Array.isArray(geo.coordinates)) return;
+      const pts = geo.coordinates.map(c => [c[1], c[0]]); // GeoJSON [lon,lat] → Leaflet [lat,lon]
+      if (pts.length > 1 && _armedTrail) _armedTrail.setLatLngs(pts);
+    })
+    .catch(() => {});
+}
+
+function updateArmedMapZone() {
+  if (!_armedMap || !S.anchorSet) return;
+  if (_armedZone) { _armedMap.removeLayer(_armedZone); _armedZone = null; }
+  if (S.arc) {
+    const pts = geoSectorPoints(S.anchorLat, S.anchorLon, S.arc.small, S.arc.big, S.arc.startAngle, S.arc.endAngle);
+    _armedZone = L.polygon(pts, { color: '#22d3ee', fillColor: '#22d3ee', fillOpacity: 0.12, weight: 2 }).addTo(_armedMap);
+  } else {
+    _armedZone = L.circle([S.anchorLat, S.anchorLon], { radius: S.radius, color: '#22d3ee', fillColor: '#22d3ee', fillOpacity: 0.12, weight: 2 }).addTo(_armedMap);
+  }
+  if (_armedZone) {
+    const b = _armedZone.getBounds ? _armedZone.getBounds() : null;
+    if (b && b.isValid()) _armedMap.fitBounds(b, { padding: [20, 20] });
+  }
+}
+
+async function updateAISOnMap() {
+  if (typeof L === 'undefined' || !_armedMap) return;
+  _armedAis.forEach(m => { try { _armedMap.removeLayer(m); } catch(e){} });
+  _armedAis = [];
+  try {
+    const r = await fetch('http://'+SK_HOST+':'+SK_PORT+'/signalk/v1/api/vessels');
+    if (!r.ok) return;
+    const vessels = await r.json();
+    let count = 0;
+    Object.entries(vessels).forEach(([mmsi, v]) => {
+      if (mmsi === 'self') return;
+      const pos = v.navigation && v.navigation.position && v.navigation.position.value;
+      if (!pos || pos.latitude == null) return;
+      const name = (v.name && v.name.value) || (v.mmsi && v.mmsi.value) || mmsi;
+      const dist = S.curLat !== null ? Math.round(haversine(S.curLat, S.curLon, pos.latitude, pos.longitude)) : null;
+      const icon = L.divIcon({ html: '<div style="color:#f59e0b;font-size:16px;line-height:1">&#9650;</div><div style="font-size:8px;color:#f59e0b;white-space:nowrap;text-align:center">'+name+(dist?'<br>'+dist+'m':'')+'</div>', className: '', iconAnchor: [8,8] });
+      const m = L.marker([pos.latitude, pos.longitude], { icon }).addTo(_armedMap);
+      _armedAis.push(m);
+      count++;
+    });
+    const el = document.getElementById('live-ais');
+    if (el) el.textContent = count;
+  } catch(e) {}
+}
+
+function initMapIfNeeded() {
+  if (S.screen === 'configure') initConfigureMap();
+  else if (S.screen === 'main') initArmedMap();
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────

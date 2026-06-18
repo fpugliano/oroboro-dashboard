@@ -72,6 +72,20 @@ http.createServer(async (req, res) => {
 
   if (method === 'OPTIONS') { cors(res); res.writeHead(204); res.end(); return; }
 
+  if (method === 'POST' && url === '/api/anchor/radius') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      if (body.value == null || isNaN(Number(body.value))) {
+        json(res, 400, { ok: false, error: 'value (meters) required' }); return;
+      }
+      const r = await skPut('/signalk/v1/api/vessels/self/navigation/anchor/maxRadius', Number(body.value));
+      r.status >= 200 && r.status < 300
+        ? json(res, 200, { ok: true })
+        : json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });
+    } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+    return;
+  }
+
   if (method === 'POST' && url === '/api/anchor/set') {
     try {
       const body = JSON.parse(await readBody(req));
