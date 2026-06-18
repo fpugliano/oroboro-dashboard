@@ -323,9 +323,6 @@ let _gpsLostNotified = false;
 
 async function poll() {
   await fetchAnchorState(); // re-sync armed/unarmed from SK on every poll cycle
-  // Clear suppression window once SK has confirmed anchor — also reset lastAlarmState
-  // so the first genuine outside-bounds reading after arming fires a notification.
-  if (S.alarmSuppressed && S.anchorSet) { S.alarmSuppressed = false; S.lastAlarmState = 'ok'; }
   try {
     const r = await fetch(POLL_URL);
     if (!r.ok) return;
@@ -356,6 +353,9 @@ async function poll() {
     _aisPollCount++;
     if (_aisPollCount % 30 === 0) updateAISOnMap();
     checkAlarms();
+    // Clear suppression AFTER checkAlarms() so the confirmation poll is used
+    // to calibrate lastAlarmState against the current real state, not to fire.
+    if (S.alarmSuppressed && S.anchorSet) S.alarmSuppressed = false;
     updateLive();
   } catch(e) { /* network error, ignore */ }
 }
@@ -374,10 +374,18 @@ function checkAlarms() {
     S.lastAlarmState = 'gps-lost';
     return;
   }
+  // During the suppression window: silently calibrate lastAlarmState against
+  // the actual current alarm state so that when suppression lifts (end of this
+  // same poll cycle), the gate already reflects reality and no spurious
+  // ok→dragging transition fires just because alarmSuppressed cleared.
+  if (S.alarmSuppressed) {
+    S.lastAlarmState = isOutsideBound() ? 'dragging' : 'ok';
+    return;
+  }
   if (isOutsideBound()) {
     // Fire Pushover only on genuine ok→dragging transition, not on sustained dragging.
     // sendPushover() also enforces a 60-second per-event cooldown.
-    if (S.lastAlarmState !== 'dragging' && !S.alarmSuppressed) {
+    if (S.lastAlarmState !== 'dragging') {
       S.draggingAlert = true;
       sendPushover('dragging');
     }
