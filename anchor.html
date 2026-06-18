@@ -152,6 +152,7 @@ const S = {
 
   skInitialized: false,   // true once first SK anchor fetch completes; drives banner state
   draggingAlert: false, alarmAcknowledged: false,
+  armingInProgress: false, // true from Set Anchor tap until SK confirms position; blocks alarm notifications
   lastPushover: {},
 
   fRadius: anchorCfg.defaultRadius || 30,
@@ -287,11 +288,15 @@ async function putAnchorPosition(lat, lon) {
 
 // ─── Pushover ─────────────────────────────────────────────────────────────
 function sendPushover(eventKey) {
+  // Alarm events require confirmed armed state and must not fire during the
+  // arming window (between proxy writes and first SK position confirmation).
+  if ((eventKey === 'dragging' || eventKey === 'gpsLost') && (!S.anchorSet || S.armingInProgress)) return;
   const cfg = S.pushover;
   if (!cfg.userKey || !cfg.apiToken) return;
   const ev = cfg.events[eventKey];
   if (!ev || !ev.enabled) return;
   const now = Date.now();
+  // 60-second per-event cooldown — prevents spam even if draggingAlert resets (e.g. brief SK hiccup)
   if (S.lastPushover[eventKey] && now - S.lastPushover[eventKey] < 60000) return;
   S.lastPushover[eventKey] = now;
   const params = new URLSearchParams({ token: cfg.apiToken, user: cfg.userKey, title: ev.title, message: ev.message, priority: String(ev.priority) });
@@ -317,6 +322,8 @@ let _gpsLostNotified = false;
 
 async function poll() {
   await fetchAnchorState(); // re-sync armed/unarmed from SK on every poll cycle
+  // Clear arming window once SK has confirmed the anchor position
+  if (S.armingInProgress && S.anchorSet) S.armingInProgress = false;
   try {
     const r = await fetch(POLL_URL);
     if (!r.ok) return;
@@ -365,7 +372,8 @@ function checkAlarms() {
     return;
   }
   if (isOutsideBound()) {
-    if (!S.draggingAlert) {
+    // Only transition ok→dragging; suppress during arming window
+    if (!S.draggingAlert && !S.armingInProgress) {
       S.draggingAlert = true;
       sendPushover('dragging');
     }
@@ -864,6 +872,7 @@ async function handleAction(action, btn) {
     S.anchorSet = true; S.watchStart = Date.now();
     S.trail = []; S.maxDist = 0; S.avgDistSum = 0; S.avgDistCount = 0;
     S.draggingAlert = false; S.alarmAcknowledged = false; hideAlarm();
+    S.armingInProgress = true; // cleared by poll() once SK confirms the position
     sendPushover('anchorSet');
     S.screen = 'main'; render(); return;
   }
@@ -874,7 +883,7 @@ async function handleAction(action, btn) {
     putAnchorPosition(null, null); // clear in SK so other devices see it
     S.anchorSet = false; S.anchorLat = null; S.anchorLon = null;
     S.arc = null; S.distance = null; S.bearing = null;
-    S.draggingAlert = false; S.alarmAcknowledged = false;
+    S.draggingAlert = false; S.alarmAcknowledged = false; S.armingInProgress = false;
     S.trail = []; S.maxDist = 0; S.avgDistSum = 0; S.avgDistCount = 0; S.watchStart = null;
     hideAlarm(); S.screen = 'configure'; render(); return;
   }
