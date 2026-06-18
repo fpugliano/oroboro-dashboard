@@ -128,10 +128,8 @@ const anchorCfg = (CFG.anchor) || {};
 const pvCfg = (anchorCfg.pushover) || {};
 
 const S = {
-  screen: 'main',
-  saStep: 'picker',     // set-anchor sub: picker | current | relative
-  sdTab: 'normal',      // set-distance tab: normal | advanced
-  sdBack: 'go-main',    // back action for set-distance screen
+  screen: 'configure',
+  cfgTab: 'normal',
   pvExpanded: 'dragging',
 
   anchorSet: false,
@@ -154,7 +152,6 @@ const S = {
   draggingAlert: false, alarmAcknowledged: false,
   lastPushover: {},
 
-  fRelDist: '18', fRelBearing: '0',
   fRadius: anchorCfg.defaultRadius || 30,
   fArcSmall: '40', fArcBig: '55', fArcStart: '345', fArcEnd: '20',
   fPvShowToken: false,
@@ -198,9 +195,10 @@ function bearingInArc(b, start, end) {
 function isOutsideBound() {
   if (!S.anchorSet || S.distance === null) return false;
   if (S.arc) {
-    const inSector = bearingInArc(S.bearing, S.arc.startAngle, S.arc.endAngle);
-    if (inSector) return S.distance < S.arc.small || S.distance > S.arc.big;
-    return S.distance > S.arc.big;
+    // In bounds ONLY if BOTH: bearing inside wedge AND distance between small and big.
+    const inBearing  = bearingInArc(S.bearing, S.arc.startAngle, S.arc.endAngle);
+    const inDistance = S.distance >= S.arc.small && S.distance <= S.arc.big;
+    return !(inBearing && inDistance);
   }
   return S.distance > S.radius;
 }
@@ -412,16 +410,13 @@ function updateLive() {
     }
     if (limitEl && S.anchorSet) limitEl.textContent = S.arc ? S.arc.small + '–' + S.arc.big : S.radius;
   }
-  if (S.screen === 'set-anchor' && S.saStep === 'current') {
-    const latEl = document.getElementById('sa-lat');
-    const lonEl = document.getElementById('sa-lon');
-    const ageEl = document.getElementById('sa-age');
-    if (latEl) latEl.textContent = S.curLat !== null ? S.curLat.toFixed(4) : '—';
-    if (lonEl) lonEl.textContent = S.curLon !== null ? S.curLon.toFixed(4) : '—';
-    if (ageEl && S.lastGpsFix) {
-      const age = Math.round((Date.now() - S.lastGpsFix) / 1000);
-      ageEl.textContent = age + 's ago';
-      ageEl.style.color = age < 5 ? '#5db832' : age < 15 ? '#f59e0b' : '#f87171';
+  if (S.screen === 'configure') {
+    // Update Set Anchor button enabled state as GPS arrives
+    const btn = document.getElementById('set-anchor-btn');
+    if (btn && S.curLat !== null && btn.disabled) {
+      const sm = Number(S.fArcSmall)||0, bi = Number(S.fArcBig)||1;
+      const valid = S.cfgTab === 'normal' || sm < bi;
+      if (valid) { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = ''; btn.innerHTML = '&#9875; Set Anchor'; }
     }
   }
   if (S.screen === 'map') renderMapUpdate();
@@ -473,6 +468,50 @@ function svgArcWedge(small, big, startAngle, endAngle, size) {
   return '<svg width="'+size+'" height="'+size+'" style="display:block"><circle cx="'+c+'" cy="'+c+'" r="'+maxR.toFixed(1)+'" fill="none" stroke="#1e2a38" stroke-width="1"/><circle cx="'+c+'" cy="'+c+'" r="'+rS.toFixed(1)+'" fill="none" stroke="#1e2a38" stroke-width="1" stroke-dasharray="2 4"/><path d="'+path+'" fill="#22d3ee" fill-opacity="0.18" stroke="#22d3ee" stroke-width="1.5"/><circle cx="'+c+'" cy="'+c+'" r="3.5" fill="#f59e0b"/><text x="'+c+'" y="'+(c-maxR-4).toFixed(1)+'" text-anchor="middle" font-size="9" fill="#7a9abf" font-family="inherit">N</text></svg>';
 }
 
+// ─── Configure-screen map ────────────────────────────────────────────────────
+function svgCfgMap() {
+  const CX = 160, CY = 155, MAX_R = 115;
+  const bg = '<rect width="320" height="280" fill="#0b2d3d"/>'+
+    '<path d="M 0,35 Q 50,8 110,30 T 230,18 Q 275,12 320,28 L 320,0 L 0,0 Z" fill="#3a4a2e" opacity="0.9"/>'+
+    '<text x="35" y="18" font-size="8" fill="#8aa68a" font-family="Rajdhani,sans-serif">SHORE</text>';
+  let inner = '';
+  if (S.cfgTab === 'normal') {
+    const r = Math.max((S.fRadius || 30) * MAX_R / 100, 2);
+    inner = '<circle cx="'+CX+'" cy="'+CY+'" r="'+r.toFixed(1)+'" fill="#22d3ee" fill-opacity="0.15" stroke="#22d3ee" stroke-width="2"/>'+
+      '<circle cx="'+CX+'" cy="'+CY+'" r="4" fill="#f59e0b"/>'+
+      '<text x="'+CX+'" y="'+(CY+r+16).toFixed(1)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#22d3ee" font-family="Rajdhani,sans-serif">'+S.fRadius+'m</text>';
+  } else {
+    const sm = Number(S.fArcSmall)||0, bi = Number(S.fArcBig)||1;
+    const st = Number(S.fArcStart)||0, en = Number(S.fArcEnd)||0;
+    const scale = bi > 0 ? MAX_R / bi : 1;
+    const rS = sm * scale, rB = bi * scale;
+    const valid = sm < bi;
+    let span = en - st; if (span < 0) span += 360; if (span === 0) span = 360;
+    function toXY(a, r) {
+      const rad = (a - 90) * Math.PI / 180;
+      return [(CX + Math.cos(rad)*r).toFixed(1), (CY + Math.sin(rad)*r).toFixed(1)];
+    }
+    const steps = 32, outer = [], innerPts = [];
+    for (let i = 0; i <= steps; i++) {
+      const a = st + span*i/steps;
+      outer.push(toXY(a, rB)); innerPts.push(toXY(a, rS));
+    }
+    const pts = [...outer, ...innerPts.reverse()];
+    const sPath = 'M ' + pts.map(p => p[0]+','+p[1]).join(' L ') + ' Z';
+    const [sx, sy] = toXY(st, rB + 14), [ex, ey] = toXY(en, rB + 14);
+    inner = '<circle cx="'+CX+'" cy="'+CY+'" r="'+rB.toFixed(1)+'" fill="none" stroke="#22d3ee" stroke-width="1" stroke-opacity="0.3" stroke-dasharray="2 4"/>'+
+      '<circle cx="'+CX+'" cy="'+CY+'" r="'+rS.toFixed(1)+'" fill="none" stroke="#22d3ee" stroke-width="1" stroke-opacity="0.3" stroke-dasharray="2 4"/>'+
+      (valid ? '<path d="'+sPath+'" fill="#22d3ee" fill-opacity="0.25" stroke="#22d3ee" stroke-width="2"/>' : '')+
+      '<circle cx="'+CX+'" cy="'+CY+'" r="4" fill="#f59e0b"/>'+
+      '<text x="'+CX+'" y="'+(CY-MAX_R-4)+'" text-anchor="middle" font-size="10" font-weight="700" fill="#7a9abf" font-family="Rajdhani,sans-serif">N</text>'+
+      '<circle cx="'+sx+'" cy="'+sy+'" r="8" fill="#22d3ee" fill-opacity="0.3" stroke="#22d3ee" stroke-width="2"/>'+
+      '<text x="'+sx+'" y="'+(Number(sy)+4).toFixed(1)+'" text-anchor="middle" font-size="8" font-weight="700" fill="#e2e8f0" font-family="Rajdhani,sans-serif">S</text>'+
+      '<circle cx="'+ex+'" cy="'+ey+'" r="8" fill="#22d3ee" fill-opacity="0.3" stroke="#22d3ee" stroke-width="2"/>'+
+      '<text x="'+ex+'" y="'+(Number(ey)+4).toFixed(1)+'" text-anchor="middle" font-size="8" font-weight="700" fill="#e2e8f0" font-family="Rajdhani,sans-serif">E</text>';
+  }
+  return '<svg width="100%" height="280" viewBox="0 0 320 280" style="display:block;border-radius:10px;overflow:hidden">'+bg+inner+'</svg>';
+}
+
 // ─── HTML helpers ──────────────────────────────────────────────────────────
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
@@ -519,11 +558,11 @@ function renderMain() {
   const distColor = (S.distance !== null && S.distance > (S.arc?S.arc.big:S.radius)*0.8) ? '#f59e0b' : '#22d3ee';
   const dialHtml = as
     ? '<div style="display:flex;justify-content:center;padding:4px 0">'+svgRadiusDial(S.arc?S.arc.big:S.radius, S.distance||0)+'</div>'
-    : '<div class="info-box">No anchor set. Drop anchor, then tap <strong style="color:#e2e8f0">Set Anchor</strong> below to start the watch.</div>';
+    : '<div class="info-box">Anchor was raised on another device. Tap ← Dashboard to go back.</div>';
   const arcNote = (as && S.arc) ? '<div style="font-size:10px;color:#7a9abf;padding:0 2px">Directional sector '+S.arc.startAngle+'°–'+S.arc.endAngle+'°</div>' : '';
-  const buttons = !as
-    ? '<button class="btn btn-primary" data-action="go-set-anchor">Set Anchor</button><button class="btn btn-secondary" style="margin-top:8px" data-action="go-set-distance-pre">Set Allowed Distance</button>'
-    : '<button class="btn btn-secondary" data-action="go-set-distance-adj">Adjust Distance</button><button class="btn btn-danger" style="margin-top:8px" data-action="raise-anchor">Raise Anchor</button>';
+  const buttons = as
+    ? '<button class="btn btn-secondary" data-action="go-configure">Adjust Distance</button><button class="btn btn-danger" style="margin-top:8px" data-action="raise-anchor">Raise Anchor</button>'
+    : '';
   return topBar('Anchor Watch') +
     '<div class="screen-content">'+
       renderAnchorBanner()+
@@ -541,76 +580,80 @@ function renderMain() {
     bottomNav('main');
 }
 
-// ─── Screen: Set Anchor ───────────────────────────────────────────────────
-function renderSetAnchor() {
-  if (S.saStep === 'picker') {
-    return topBar('Set Anchor', 'go-main') +
-      '<div class="screen-content">'+
-        '<div style="font-size:12px;color:#7a9abf;margin-bottom:4px">How do you want to set the anchor position?</div>'+
-        '<button class="btn btn-ghost" data-action="sa-current">Current Location</button>'+
-        '<button class="btn btn-ghost" data-action="sa-relative">Relative Location</button>'+
-        '<div style="font-size:10px;color:#7a9abf;line-height:1.5;padding:2px 0 0">Current Location marks the anchor where you\'re standing now. Relative Location lets you enter distance &amp; bearing to the anchor — use this once you\'ve backed down and the anchor isn\'t directly below the boat.</div>'+
-      '</div>';
-  }
-  if (S.saStep === 'current') {
-    const lat = S.curLat !== null ? S.curLat.toFixed(4) : '—';
-    const lon = S.curLon !== null ? S.curLon.toFixed(4) : '—';
-    const age = S.lastGpsFix ? Math.round((Date.now()-S.lastGpsFix)/1000)+'s ago' : '—';
-    const ageColor = S.lastGpsFix && (Date.now()-S.lastGpsFix)<5000 ? '#5db832' : S.lastGpsFix && (Date.now()-S.lastGpsFix)<15000 ? '#f59e0b' : '#f87171';
-    const disabled = S.curLat === null ? ' disabled' : '';
-    return topBar('Set Anchor', 'sa-back-picker') +
-      '<div class="screen-content">'+
-        '<div class="stat-grid">'+
-          statBlock('Latitude',  '<span id="sa-lat">'+lat+'</span>', '', '')+
-          statBlock('Longitude', '<span id="sa-lon">'+lon+'</span>', '', '')+
-          statBlock('GPS Accuracy', S.gpsAccuracy!==null?Math.round(S.gpsAccuracy):'—', S.gpsAccuracy!==null?'m':'', '')+
-          statBlock('Last Fix', '<span id="sa-age" style="color:'+ageColor+'">'+age+'</span>', '', '')+
+// ─── Screen: Configure zone ───────────────────────────────────────────────
+function renderConfigure() {
+  const tab = S.cfgTab;
+  const sm = Number(S.fArcSmall)||0, bi = Number(S.fArcBig)||1;
+  const arcValid = sm < bi;
+  const valid = tab === 'normal' || arcValid;
+  const vcol = arcValid ? '#22d3ee' : '#f87171';
+
+  const tabBar = '<div class="tab-picker">'+
+    '<button class="tab-btn'+(tab==='normal'?' active':'')+'" data-action="cfg-tab-normal">Normal</button>'+
+    '<button class="tab-btn'+(tab==='advanced'?' active':'')+'" data-action="cfg-tab-advanced">Advanced</button>'+
+  '</div>';
+
+  let body;
+  if (tab === 'normal') {
+    const qp = [20,30,50,75].map(v =>
+      '<button class="quick-btn" style="background:'+(S.fRadius===v?'#22d3ee':'#0d1520')+';color:'+(S.fRadius===v?'#0a0e14':'#7a9abf')+'" data-action="cfg-quick-'+v+'">'+v+'m</button>'
+    ).join('');
+    body = '<div id="cfg-map">'+svgCfgMap()+'</div>'+
+      '<div style="padding:0 4px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+          '<span style="font-size:10px;color:#7a9abf;text-transform:uppercase;letter-spacing:0.06em">Allowed Radius</span>'+
+          '<span id="cfg-radius-val" style="font-size:20px;font-weight:700;color:#22d3ee">'+S.fRadius+'m</span>'+
         '</div>'+
-        '<div style="font-size:11px;color:#7a9abf;line-height:1.5">This marks your current GPS position as the anchor point. Next, you\'ll set the allowed swing radius.</div>'+
-        '<div style="flex:1"></div>'+
-        '<button class="btn btn-primary"'+disabled+' data-action="sa-confirm-current">Confirm &amp; Continue</button>'+
+        '<input type="range" min="10" max="100" step="1" value="'+S.fRadius+'" data-field="fRadius" style="width:100%;accent-color:#22d3ee">'+
+        '<div style="display:flex;justify-content:space-between;font-size:9px;color:#7a9abf;margin-top:4px"><span>10m</span><span>100m</span></div>'+
+      '</div>'+
+      '<div class="quick-picks">'+qp+'</div>';
+  } else {
+    body = '<div id="cfg-map">'+svgCfgMap()+'</div>'+
+      '<div id="cfg-arc-error" style="display:'+(arcValid?'none':'block')+';font-size:11px;color:#f87171;font-weight:600;padding:0 4px">Small distance must be less than Big distance</div>'+
+      '<div style="padding:0 4px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+          '<span style="font-size:9px;color:#7a9abf;text-transform:uppercase">Small distance (inner)</span>'+
+          '<span id="cfg-small-val" style="font-size:16px;font-weight:700;color:'+vcol+'">'+S.fArcSmall+'m</span>'+
+        '</div>'+
+        '<input type="range" min="5" max="95" step="1" value="'+S.fArcSmall+'" data-field="fArcSmall" style="width:100%;accent-color:'+vcol+'">'+
+      '</div>'+
+      '<div style="padding:0 4px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+          '<span style="font-size:9px;color:#7a9abf;text-transform:uppercase">Big distance (outer)</span>'+
+          '<span id="cfg-big-val" style="font-size:16px;font-weight:700;color:'+vcol+'">'+S.fArcBig+'m</span>'+
+        '</div>'+
+        '<input type="range" min="10" max="150" step="1" value="'+S.fArcBig+'" data-field="fArcBig" style="width:100%;accent-color:'+vcol+'">'+
+      '</div>'+
+      '<div style="padding:0 4px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+          '<span style="font-size:9px;color:#7a9abf;text-transform:uppercase">Start angle</span>'+
+          '<span id="cfg-start-val" style="font-size:14px;font-weight:700;color:#e2e8f0">'+S.fArcStart+'°</span>'+
+        '</div>'+
+        '<input type="range" min="0" max="359" step="1" value="'+S.fArcStart+'" data-field="fArcStart" style="width:100%;accent-color:#22d3ee">'+
+      '</div>'+
+      '<div style="padding:0 4px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+          '<span style="font-size:9px;color:#7a9abf;text-transform:uppercase">End angle</span>'+
+          '<span id="cfg-end-val" style="font-size:14px;font-weight:700;color:#e2e8f0">'+S.fArcEnd+'°</span>'+
+        '</div>'+
+        '<input type="range" min="0" max="359" step="1" value="'+S.fArcEnd+'" data-field="fArcEnd" style="width:100%;accent-color:#22d3ee">'+
       '</div>';
   }
-  // relative
-  const b = Number(S.fRelBearing) || 0;
-  return topBar('Set Anchor', 'sa-back-picker') +
+
+  const noGps = S.curLat === null;
+  const btnDisabled = !valid || noGps;
+  const btnLabel = noGps ? '&#9875; Waiting for GPS&hellip;' : '&#9875; Set Anchor';
+  const backAction = S.anchorSet ? 'go-main' : null;
+
+  return topBar('Set Allowed Radius', backAction) +
     '<div class="screen-content">'+
-      '<div id="rel-dial" style="display:flex;justify-content:center;padding:4px 0">'+svgRelDial(b)+'</div>'+
-      fieldEl('Distance to anchor', 'fRelDist', S.fRelDist, 'm')+
-      fieldEl('Bearing to anchor (true north = 0°)', 'fRelBearing', S.fRelBearing, '°')+
-      '<div style="font-size:10px;color:#7a9abf;line-height:1.5">Calculated from your current GPS position. Bearing is true, 0° = north.</div>'+
-      '<div style="flex:1"></div>'+
-      '<button class="btn btn-primary" data-action="sa-confirm-relative">Confirm &amp; Continue</button>'+
+      tabBar+ body+
+      '<div style="flex:1;min-height:8px"></div>'+
+      '<button id="set-anchor-btn" class="btn btn-primary" data-action="set-anchor-confirm"'+(btnDisabled?' disabled':'')+' style="'+(btnDisabled?'opacity:0.4;cursor:not-allowed;':'')+'">'+btnLabel+'</button>'+
     '</div>';
 }
 
-// ─── Screen: Set Distance ─────────────────────────────────────────────────
-function renderSetDistance() {
-  const tab = S.sdTab, r = S.fRadius;
-  const tabs = '<div class="tab-picker"><button class="tab-btn'+(tab==='normal'?' active':'')+'" data-action="sd-tab-normal">Normal</button><button class="tab-btn'+(tab==='advanced'?' active':'')+'" data-action="sd-tab-advanced">Advanced</button></div>';
-  let body;
-  if (tab === 'normal') {
-    const qp = [20,30,50,75].map(v => '<button class="quick-btn" style="background:'+(r===v?'#22d3ee':'#0d1520')+';color:'+(r===v?'#0a0e14':'#7a9abf')+'" data-action="sd-quick-'+v+'">'+v+'m</button>').join('');
-    body = '<div class="info-box">A single radius around the anchor. Use this when wind or current direction isn\'t a concern.</div>'+
-      '<div id="radius-dial" style="display:flex;justify-content:center;padding:6px 0">'+svgRadiusDial(r, r*0.18)+'</div>'+
-      '<div><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:9px;color:#7a9abf;text-transform:uppercase;letter-spacing:0.07em">Radius</span><span id="radius-display" style="font-size:18px;font-weight:700;color:#22d3ee">'+r+' m</span></div>'+
-      '<input type="range" min="10" max="100" value="'+r+'" data-field="fRadius">'+
-      '<div style="display:flex;justify-content:space-between;font-size:9px;color:#7a9abf;margin-top:4px"><span>10 m</span><span>100 m</span></div></div>'+
-      '<div class="quick-picks">'+qp+'</div>';
-  } else {
-    const small=Number(S.fArcSmall)||0, big=Number(S.fArcBig)||1, start=Number(S.fArcStart)||0, end=Number(S.fArcEnd)||0;
-    body = '<div class="info-box">A directional sector between two distances and two bearings. Use this when the swing should only be watched on the wind or current side.</div>'+
-      fieldEl('Small distance (inner radius)', 'fArcSmall', S.fArcSmall, 'm')+
-      fieldEl('Big distance (outer radius)', 'fArcBig', S.fArcBig, 'm')+
-      fieldEl('Start angle (true north = 0°)', 'fArcStart', S.fArcStart, '°')+
-      fieldEl('End angle (true north = 0°)', 'fArcEnd', S.fArcEnd, '°')+
-      '<div id="arc-preview" style="display:flex;justify-content:center;padding:4px 0">'+svgArcWedge(small, big, start, end)+'</div>';
-  }
-  const armable = S.anchorLat !== null && !S.anchorSet;
-  const label = S.anchorSet ? 'Update Radius' : (armable ? 'Set Radius &amp; Arm Watch' : 'Save Default Radius');
-  return topBar('Allowed Radius', S.sdBack) +
-    '<div class="screen-content">'+tabs+body+'<div style="flex:1"></div><button class="btn btn-primary" data-action="sd-confirm">'+label+'</button></div>';
-}
 
 // ─── Screen: Swing Map ────────────────────────────────────────────────────
 function renderMap() {
@@ -739,12 +782,11 @@ function render() {
   if (!app) return;
   switch(S.screen) {
     case 'main':         app.innerHTML = renderMain(); break;
-    case 'set-anchor':   app.innerHTML = renderSetAnchor(); break;
-    case 'set-distance': app.innerHTML = renderSetDistance(); break;
+    case 'configure':    app.innerHTML = renderConfigure(); break;
     case 'map':          app.innerHTML = renderMap(); break;
     case 'settings':     app.innerHTML = renderSettings(); break;
     case 'pushover':     app.innerHTML = renderPushover(); break;
-    default:             app.innerHTML = renderMain();
+    default:             app.innerHTML = renderConfigure();
   }
 }
 
@@ -767,50 +809,32 @@ function handleAction(action, btn) {
   if (action === 'nav-map')  { S.screen = 'map'; render(); return; }
   if (action === 'nav-settings' || action === 'go-settings') { S.screen = 'settings'; render(); return; }
   if (action === 'go-pushover') { S.fPvShowToken = false; S.screen = 'pushover'; render(); return; }
+  if (action === 'go-configure') { S.screen = 'configure'; render(); return; }
 
-  // Set Anchor
-  if (action === 'go-set-anchor') { S.screen = 'set-anchor'; S.saStep = 'picker'; render(); return; }
-  if (action === 'sa-current')    { S.saStep = 'current'; render(); return; }
-  if (action === 'sa-relative')   { S.saStep = 'relative'; render(); return; }
-  if (action === 'sa-back-picker') { S.saStep = 'picker'; render(); return; }
-  if (action === 'sa-confirm-current') {
-    if (S.curLat === null) return;
-    S.anchorLat = S.curLat; S.anchorLon = S.curLon;
-    S.fRadius = S.radius; S.sdTab = 'normal'; S.sdBack = 'go-set-anchor';
-    S.screen = 'set-distance'; render(); return;
-  }
-  if (action === 'sa-confirm-relative') {
-    if (S.curLat === null) return;
-    const dist = parseFloat(S.fRelDist), brng = parseFloat(S.fRelBearing);
-    if (isNaN(dist) || isNaN(brng)) return;
-    const pos = destinationPoint(S.curLat, S.curLon, dist, brng);
-    S.anchorLat = pos.lat; S.anchorLon = pos.lon;
-    S.fRadius = S.radius; S.sdTab = 'normal'; S.sdBack = 'go-set-anchor';
-    S.screen = 'set-distance'; render(); return;
-  }
+  // Configure tab / quick-picks
+  if (action === 'cfg-tab-normal')   { S.cfgTab = 'normal';   render(); return; }
+  if (action === 'cfg-tab-advanced') { S.cfgTab = 'advanced'; render(); return; }
+  if (action.startsWith('cfg-quick-')) { S.fRadius = parseInt(action.slice(10), 10); render(); return; }
 
-  // Set Distance (pre = no anchor yet, adj = adjusting existing)
-  if (action === 'go-set-distance-pre') { S.fRadius = S.radius; S.sdTab = 'normal'; S.sdBack = 'go-main'; S.screen = 'set-distance'; render(); return; }
-  if (action === 'go-set-distance-adj') { S.fRadius = S.radius; S.sdTab = 'normal'; S.sdBack = 'go-main'; S.screen = 'set-distance'; render(); return; }
-  if (action === 'sd-tab-normal')   { S.sdTab = 'normal';   render(); return; }
-  if (action === 'sd-tab-advanced') { S.sdTab = 'advanced'; render(); return; }
-  if (action.startsWith('sd-quick-')) { S.fRadius = parseInt(action.slice(9), 10); render(); return; }
-  if (action === 'sd-confirm') {
-    if (S.sdTab === 'normal') {
+  // Set anchor — configure zone FIRST, then write position to SK
+  if (action === 'set-anchor-confirm') {
+    if (S.curLat === null) { showProxyError('No GPS position — wait for Signal K'); return; }
+    // 1. Commit zone config
+    if (S.cfgTab === 'normal') {
       S.radius = S.fRadius; S.arc = null;
     } else {
       const small = Number(S.fArcSmall), big = Number(S.fArcBig);
-      if (!big || big <= 0) return;
+      if (small >= big) return;
       S.arc = { small, big, startAngle: Number(S.fArcStart), endAngle: Number(S.fArcEnd) };
       S.radius = big;
     }
-    if (!S.anchorSet && S.anchorLat !== null) {
-      S.anchorSet = true; S.watchStart = Date.now();
-      S.trail = []; S.maxDist = 0; S.avgDistSum = 0; S.avgDistCount = 0;
-      sendPushover('anchorSet');
-      putAnchorPosition(S.anchorLat, S.anchorLon); // write to SK so other devices see it
-    }
+    // 2. Set anchor position and arm watch
+    S.anchorLat = S.curLat; S.anchorLon = S.curLon;
+    S.anchorSet = true; S.watchStart = Date.now();
+    S.trail = []; S.maxDist = 0; S.avgDistSum = 0; S.avgDistCount = 0;
     S.draggingAlert = false; S.alarmAcknowledged = false; hideAlarm();
+    sendPushover('anchorSet');
+    putAnchorPosition(S.anchorLat, S.anchorLon); // proxy writes zone-first, then position
     S.screen = 'main'; render(); return;
   }
 
@@ -822,7 +846,7 @@ function handleAction(action, btn) {
     S.arc = null; S.distance = null; S.bearing = null;
     S.draggingAlert = false; S.alarmAcknowledged = false;
     S.trail = []; S.maxDist = 0; S.avgDistSum = 0; S.avgDistCount = 0; S.watchStart = null;
-    hideAlarm(); S.screen = 'main'; render(); return;
+    hideAlarm(); S.screen = 'configure'; render(); return;
   }
 
   // Pushover screen actions
@@ -863,20 +887,45 @@ function handleField(field, value) {
       break;
     case 'fRadius': {
       S.fRadius = Number(value) || 10;
-      const disp = document.getElementById('radius-display');
-      if (disp) disp.textContent = S.fRadius + ' m';
-      const dial = document.getElementById('radius-dial');
-      if (dial) dial.innerHTML = svgRadiusDial(S.fRadius, S.fRadius * 0.18);
+      const rv = document.getElementById('cfg-radius-val');
+      if (rv) rv.textContent = S.fRadius + 'm';
+      updateCfgMap();
       [20,30,50,75].forEach(v => {
-        const qb = document.querySelector('[data-action="sd-quick-'+v+'"]');
+        const qb = document.querySelector('[data-action="cfg-quick-'+v+'"]');
         if (qb) { qb.style.background = S.fRadius===v?'#22d3ee':'#0d1520'; qb.style.color = S.fRadius===v?'#0a0e14':'#7a9abf'; }
       });
       break;
     }
-    case 'fArcSmall': S.fArcSmall = value; updateArcPreview(); break;
-    case 'fArcBig':   S.fArcBig   = value; updateArcPreview(); break;
-    case 'fArcStart': S.fArcStart = value; updateArcPreview(); break;
-    case 'fArcEnd':   S.fArcEnd   = value; updateArcPreview(); break;
+    case 'fArcSmall': {
+      S.fArcSmall = value; updateCfgMap();
+      const sm = Number(value)||0, bi = Number(S.fArcBig)||1, v2 = sm < bi;
+      const c = v2 ? '#22d3ee' : '#f87171';
+      const sv = document.getElementById('cfg-small-val'); if (sv) { sv.textContent = value+'m'; sv.style.color = c; }
+      const bv = document.getElementById('cfg-big-val');   if (bv) bv.style.color = c;
+      const er = document.getElementById('cfg-arc-error'); if (er) er.style.display = v2 ? 'none' : 'block';
+      const btn = document.getElementById('set-anchor-btn'); if (btn) { btn.disabled = !v2; btn.style.opacity = v2?'1':'0.4'; btn.style.cursor = v2?'':'not-allowed'; }
+      break;
+    }
+    case 'fArcBig': {
+      S.fArcBig = value; updateCfgMap();
+      const sm = Number(S.fArcSmall)||0, bi = Number(value)||1, v2 = sm < bi;
+      const c = v2 ? '#22d3ee' : '#f87171';
+      const sv = document.getElementById('cfg-small-val'); if (sv) sv.style.color = c;
+      const bv = document.getElementById('cfg-big-val');   if (bv) { bv.textContent = value+'m'; bv.style.color = c; }
+      const er = document.getElementById('cfg-arc-error'); if (er) er.style.display = v2 ? 'none' : 'block';
+      const btn = document.getElementById('set-anchor-btn'); if (btn) { btn.disabled = !v2; btn.style.opacity = v2?'1':'0.4'; btn.style.cursor = v2?'':'not-allowed'; }
+      break;
+    }
+    case 'fArcStart': {
+      S.fArcStart = value; updateCfgMap();
+      const sv = document.getElementById('cfg-start-val'); if (sv) sv.textContent = value + '°';
+      break;
+    }
+    case 'fArcEnd': {
+      S.fArcEnd = value; updateCfgMap();
+      const ev = document.getElementById('cfg-end-val'); if (ev) ev.textContent = value + '°';
+      break;
+    }
     case 'pv-userkey':  S.pushover.userKey  = value; break;
     case 'pv-apitoken': if (S.fPvShowToken) S.pushover.apiToken = value; break;
     default:
@@ -890,16 +939,17 @@ function handleField(field, value) {
   }
 }
 
-function updateArcPreview() {
-  const el = document.getElementById('arc-preview');
-  if (!el) return;
-  el.innerHTML = svgArcWedge(Number(S.fArcSmall)||0, Number(S.fArcBig)||1, Number(S.fArcStart)||0, Number(S.fArcEnd)||0);
+function updateCfgMap() {
+  const el = document.getElementById('cfg-map');
+  if (el) el.innerHTML = svgCfgMap();
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────
 window.addEventListener('load', async () => {
-  render(); // initial render — banner shows CHECKING SIGNAL K…
-  await fetchAnchorState(); // fetch SK state before poll loop; re-renders with actual state
+  render(); // initial render — configure screen while SK state is unknown
+  await fetchAnchorState();
+  // Route: if SK says anchor is already set, go directly to armed screen
+  if (S.anchorSet) { S.screen = 'main'; render(); }
   setInterval(poll, 1000);
 });
 </script>
