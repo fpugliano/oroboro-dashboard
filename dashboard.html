@@ -271,18 +271,10 @@ html, body {
 
   <!-- ══ LEFT TOP: Navigation ══ -->
   <div class="card" id="card-nav" style="padding:8px 10px;">
-    <div class="lbl" style="margin-bottom:4px">Speed over ground</div>
-    <div style="display:flex;align-items:flex-start;gap:10px;">
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:baseline;gap:4px;">
-          <span id="sog" style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-0.5px;color:#ffffff;">--</span>
-          <span style="font-size:14px;color:#7a9abf;">kts</span>
-        </div>
-      </div>
-      <a href="anchor.html" id="anchor-nav-btn" style="width:84px;height:84px;flex-shrink:0;background:rgba(96,165,250,0.14);border:2px solid #60a5fa;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-decoration:none;">
-        <span style="font-size:26px">⚓</span>
-        <span id="anchor-nav-lbl" style="font-size:9px;font-weight:800;letter-spacing:0.04em;color:#60a5fa">ANCHOR</span>
-      </a>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><div class="lbl">Speed over ground</div><a href="anchor.html" style="font-size:15px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#0a0e14;background:#22d3ee;border-radius:7px;padding:5px 11px;text-decoration:none;line-height:1;display:inline-block;flex-shrink:0;" title="Anchor Watch">⚓ Anchor</a></div>
+    <div style="display:flex;align-items:baseline;gap:4px;">
+      <span id="sog" style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-0.5px;color:#ffffff;">--</span>
+      <span style="font-size:14px;color:#7a9abf;">kts</span>
     </div>
 
     <div class="divider"></div>
@@ -1190,41 +1182,6 @@ window.addEventListener('load', () => {
     if (twsTrend.length > 60) twsTrend.shift();
   }, 10000);
 });
-</script>
-<script>
-(function() {
-  const CFG2 = (typeof DASHBOARD_CONFIG !== "undefined") ? DASHBOARD_CONFIG : {};
-  const H = (CFG2.signalk && CFG2.signalk.host) || window.location.hostname || "192.168.1.238";
-  const P = (CFG2.signalk && CFG2.signalk.port) || 3000;
-  const ANCHOR_URL = "http://" + H + ":" + P + "/signalk/v1/api/vessels/self/navigation/anchor";
-  function updateAnchorBtn(isSet) {
-    const btn = document.getElementById("anchor-nav-btn");
-    const lbl = document.getElementById("anchor-nav-lbl");
-    if (!btn || !lbl) return;
-    if (isSet) {
-      btn.style.background = "rgba(248,113,113,0.16)";
-      btn.style.border = "2px solid #f87171";
-      btn.style.boxShadow = "0 0 14px rgba(248,113,113,0.35)";
-      lbl.style.color = "#f87171";
-      lbl.textContent = "SET";
-    } else {
-      btn.style.background = "rgba(96,165,250,0.14)";
-      btn.style.border = "2px solid #60a5fa";
-      btn.style.boxShadow = "none";
-      lbl.style.color = "#60a5fa";
-      lbl.textContent = "ANCHOR";
-    }
-  }
-  function pollAnchor() {
-    fetch(ANCHOR_URL).then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
-      if (!d) return;
-      const pos = d && d.position && d.position.value;
-      updateAnchorBtn(!!(pos && pos.latitude !== null && pos.latitude !== undefined));
-    }).catch(function() {});
-  }
-  pollAnchor();
-  setInterval(pollAnchor, 5000);
-})();
 </script>
 </body>
 </html>
