@@ -148,6 +148,7 @@ const S = {
 
   trail: [], maxDist: 0, avgDistSum: 0, avgDistCount: 0, watchStart: null,
 
+  skInitialized: false,   // true once first SK anchor fetch completes; drives banner state
   draggingAlert: false, alarmAcknowledged: false,
   lastPushover: {},
 
@@ -202,6 +203,74 @@ function isOutsideBound() {
   return S.distance > S.radius;
 }
 
+// ─── Signal K anchor sync ─────────────────────────────────────────────────
+// Reads and writes navigation.anchor.position via the SK REST API so that
+// every device sees the same armed/unarmed state, not just the tab that
+// completed the Set Anchor flow.
+const SK_ANCHOR_URL = POLL_URL + '/navigation/anchor';
+const SK_ANCHOR_PUT_URL = POLL_URL + '/navigation/anchor/position';
+
+async function fetchAnchorState() {
+  try {
+    const r = await fetch(SK_ANCHOR_URL);
+    if (!r.ok) {
+      // 404 means the anchor path doesn't exist in SK (not set or plugin absent)
+      _applySkAnchorState(null);
+      return;
+    }
+    const data = await r.json();
+    const pos = data && data.position && data.position.value;
+    _applySkAnchorState((pos && pos.latitude != null && pos.longitude != null) ? pos : null);
+  } catch(e) {
+    // Network error — don't change S.anchorSet, but unblock the 'checking' banner
+    if (!S.skInitialized) { S.skInitialized = true; if (S.screen === 'main') render(); }
+  }
+}
+
+function _applySkAnchorState(pos) {
+  const wasSet = S.anchorSet;
+  if (pos) {
+    if (!wasSet) {
+      // Anchor just became set (this device armed it, or another device did)
+      S.watchStart = S.watchStart || Date.now();
+      S.trail = []; S.maxDist = 0; S.avgDistSum = 0; S.avgDistCount = 0;
+    }
+    S.anchorSet = true;
+    S.anchorLat = pos.latitude;
+    S.anchorLon = pos.longitude;
+  } else {
+    if (wasSet) {
+      // Anchor was raised (possibly on another device) — reset all watch state
+      S.anchorSet = false; S.anchorLat = null; S.anchorLon = null;
+      S.arc = null; S.distance = null; S.bearing = null;
+      S.draggingAlert = false; S.alarmAcknowledged = false;
+      S.trail = []; S.maxDist = 0; S.avgDistSum = 0; S.avgDistCount = 0; S.watchStart = null;
+      hideAlarm();
+    } else if (S.screen !== 'set-anchor' && S.screen !== 'set-distance') {
+      // Not set and not mid-flow — clear any stale staged position
+      S.anchorLat = null; S.anchorLon = null;
+    }
+    S.anchorSet = false;
+  }
+  const firstFetch = !S.skInitialized;
+  S.skInitialized = true;
+  // Re-render main screen when state is first known, or when set/unset flips
+  if ((firstFetch || wasSet !== S.anchorSet) && S.screen === 'main') render();
+}
+
+function putAnchorPosition(lat, lon) {
+  // Write anchor position to SK so other devices see the change.
+  // NOTE: PUT to /navigation/anchor/position requires a put-handler registered
+  // in this SK instance (standard in signalk-server-node). Verify on Pi if
+  // set/raise don't persist across devices after this change.
+  const value = (lat !== null) ? { latitude: lat, longitude: lon } : null;
+  fetch(SK_ANCHOR_PUT_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ value }),
+  }).catch(() => {});
+}
+
 // ─── Pushover ─────────────────────────────────────────────────────────────
 function sendPushover(eventKey) {
   const cfg = S.pushover;
@@ -227,6 +296,7 @@ function sendPushoverTest() {
 let _gpsLostNotified = false;
 
 async function poll() {
+  await fetchAnchorState(); // re-sync armed/unarmed from SK on every poll cycle
   try {
     const r = await fetch(POLL_URL);
     if (!r.ok) return;
@@ -260,6 +330,9 @@ async function poll() {
 }
 
 function checkAlarms() {
+  // INVARIANT: dragging alert can only trigger when S.anchorSet === true.
+  // S.anchorSet is set exclusively by _applySkAnchorState(), so the alarm
+  // overlay and "NO ANCHOR SET" state are mutually exclusive by construction.
   if (!S.anchorSet) return;
   if (S.lastGpsFix && Date.now() - S.lastGpsFix > 30000) {
     if (!_gpsLostNotified) {
@@ -421,6 +494,12 @@ function toggleEl(actionKey, on) {
 }
 
 // ─── Screen: Main ─────────────────────────────────────────────────────────
+function renderAnchorBanner() {
+  if (!S.skInitialized) return '<div style="font-size:10px;color:#f59e0b;padding:0 2px 8px">&#9679; CHECKING SIGNAL K&#8230;</div>';
+  if (S.anchorSet)      return '<div style="font-size:10px;color:#5db832;padding:0 2px 8px">&#9679; ANCHOR SET &#8212; synced from Signal K</div>';
+  return                       '<div style="font-size:10px;color:#7a9abf;padding:0 2px 8px">&#9679; NO ANCHOR SET</div>';
+}
+
 function renderMain() {
   const as = S.anchorSet;
   const d = S.distance !== null ? Math.round(S.distance) : '—';
@@ -435,6 +514,7 @@ function renderMain() {
     : '<button class="btn btn-secondary" data-action="go-set-distance-adj">Adjust Distance</button><button class="btn btn-danger" style="margin-top:8px" data-action="raise-anchor">Raise Anchor</button>';
   return topBar('Anchor Watch') +
     '<div class="screen-content">'+
+      renderAnchorBanner()+
       dialHtml+
       '<div class="stat-grid">'+
         statBlock('Current Lat', '<span id="live-lat">'+(S.curLat!==null?S.curLat.toFixed(4):'—')+'</span>', '', '')+
@@ -716,6 +796,7 @@ function handleAction(action, btn) {
       S.anchorSet = true; S.watchStart = Date.now();
       S.trail = []; S.maxDist = 0; S.avgDistSum = 0; S.avgDistCount = 0;
       sendPushover('anchorSet');
+      putAnchorPosition(S.anchorLat, S.anchorLon); // write to SK so other devices see it
     }
     S.draggingAlert = false; S.alarmAcknowledged = false; hideAlarm();
     S.screen = 'main'; render(); return;
@@ -724,6 +805,7 @@ function handleAction(action, btn) {
   // Raise anchor
   if (action === 'raise-anchor') {
     sendPushover('anchorRaised');
+    putAnchorPosition(null, null); // clear in SK so other devices see it
     S.anchorSet = false; S.anchorLat = null; S.anchorLon = null;
     S.arc = null; S.distance = null; S.bearing = null;
     S.draggingAlert = false; S.alarmAcknowledged = false;
@@ -803,8 +885,9 @@ function updateArcPreview() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────
-window.addEventListener('load', () => {
-  render();
+window.addEventListener('load', async () => {
+  render(); // initial render — banner shows CHECKING SIGNAL K…
+  await fetchAnchorState(); // fetch SK state before poll loop; re-renders with actual state
   setInterval(poll, 1000);
 });
 </script>
