@@ -40,7 +40,7 @@
   },
   "main": "package.json",
   "files": [
-    "dashboard.html",
+    "oroboro.html",
     "config.js",
     "public/",
     "LICENSE",

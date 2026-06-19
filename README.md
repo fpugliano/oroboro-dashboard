@@ -99,7 +99,7 @@ sudo systemctl restart signalk
 ### 4. Deploy the dashboard
 ```bash
 sudo wget -O /usr/lib/node_modules/signalk-server/public/oroboro.html \
-  https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/dashboard.html
+  https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/oroboro.html
 sudo wget -O /usr/lib/node_modules/signalk-server/public/config.js \
   https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/config.js
 sudo wget -O /usr/lib/node_modules/signalk-server/public/anchor.html \
@@ -111,7 +111,7 @@ sudo wget -O /usr/lib/node_modules/signalk-server/public/anchor.html \
 ### 5. Updating
 1. Edit on laptop with Claude Code → push to GitHub
 2. Switch Pi to a WiFi network with internet
-3. Run all three wget commands above (`dashboard.html`, `config.js`, `anchor.html`)
+3. Run all three wget commands above (`oroboro.html`, `config.js`, `anchor.html`)
 
 ---
 
