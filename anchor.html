@@ -17,7 +17,7 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
 #bottom-nav{display:flex;background:#151c28;border-top:.5px solid #1e2a38;flex-shrink:0;padding:6px 0 10px}
 .nav-btn{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:inherit;font-size:9px;font-weight:700;letter-spacing:.03em;cursor:pointer;padding:4px 0;color:#7a9abf;text-transform:uppercase}
 .nav-btn.active{color:#22d3ee}
-.nav-btn span:first-child{font-size:18px}
+.nav-btn svg{flex-shrink:0}
 
 /* ── Tab content ── */
 .tab{flex:1;overflow-y:auto;overflow-x:hidden;display:none;flex-direction:column}
@@ -57,7 +57,9 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
 
 /* ── Modal ── */
 .modal-backdrop{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:24px}
-.modal-card{background:#1a2030;border-radius:16px;padding:24px 22px;width:100%;max-width:340px;box-shadow:0 20px 40px rgba(0,0,0,.5)}
+.modal-card{background:#1a2030;border-radius:16px;padding:24px 22px;width:100%;max-width:340px;box-shadow:0 20px 40px rgba(0,0,0,.5);position:relative;max-height:calc(100vh - 64px);overflow-y:auto}
+.modal-close{position:absolute;top:10px;right:12px;background:none;border:none;color:#7a9abf;font-size:24px;line-height:1;cursor:pointer;padding:4px 6px;font-weight:300;font-family:sans-serif;z-index:1}
+.modal-close:hover{color:#e2e8f0}
 .modal-title{font-size:18px;font-weight:700;margin-bottom:6px}
 .modal-sub{font-size:13px;color:#7a9abf;margin-bottom:18px}
 .modal-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
@@ -196,10 +198,10 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
 
   <!-- ── Bottom nav ── -->
   <nav id="bottom-nav">
-    <button class="nav-btn active" data-tab="tab-main"><span>★</span>Main</button>
-    <button class="nav-btn" data-tab="tab-map"><span>🗺</span>Map</button>
-    <button class="nav-btn" data-tab="tab-history"><span>📍</span>Anchor history</button>
-    <button class="nav-btn" data-tab="tab-settings"><span>⚙</span>Settings</button>
+    <button class="nav-btn active" data-tab="tab-main"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="4.5" r="2"/><line x1="10" y1="6.5" x2="10" y2="17"/><line x1="4" y1="10" x2="16" y2="10"/><path d="M4,10 C4,15.5 7,17 10,17 C13,17 16,15.5 16,10"/></svg>Main</button>
+    <button class="nav-btn" data-tab="tab-map"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10,2 C7.2,2 5,4.3 5,7 C5,11 10,18 10,18 C10,18 15,11 15,7 C15,4.3 12.8,2 10,2 Z"/><circle cx="10" cy="7" r="2"/></svg>Map</button>
+    <button class="nav-btn" data-tab="tab-history"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><polyline points="10,5.5 10,10 13.5,12.5"/></svg>Anchor history</button>
+    <button class="nav-btn" data-tab="tab-settings"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="3"/><line x1="10" y1="2" x2="10" y2="5.5"/><line x1="10" y1="14.5" x2="10" y2="18"/><line x1="2" y1="10" x2="5.5" y2="10"/><line x1="14.5" y1="10" x2="18" y2="10"/><line x1="4.35" y1="4.35" x2="6.76" y2="6.76"/><line x1="13.24" y1="13.24" x2="15.65" y2="15.65"/><line x1="4.35" y1="15.65" x2="6.76" y2="13.24"/><line x1="13.24" y1="6.76" x2="15.65" y2="4.35"/></svg>Settings</button>
   </nav>
 </div>
 
@@ -665,6 +667,7 @@ function openModal(html, id) {
   bd.style.display = 'flex';
   S.activeModal = id;
   bd.addEventListener('click', e => { if (e.target === bd) closeModal(); }, { once: true });
+  requestAnimationFrame(() => { bd.querySelector('.modal-close')?.addEventListener('click', closeModal); });
 }
 function closeModal() {
   const bd = document.getElementById('modal-backdrop');
@@ -674,32 +677,48 @@ function closeModal() {
 
 // ─── Set Distance modal ───────────────────────────────────────────────────
 // Built once — inputs are never removed from DOM, so mobile keyboard stays open.
-// Only the arc SVG and validation state are updated on input events.
+// Only the SVG previews and validation state are updated on input events.
+// Sliders sync bidirectionally with text inputs without rebuilding DOM.
 function openSetDistanceModal() {
   let tab = S.mode === 'advanced' ? 'advanced' : 'normal';
+  const sliderStyle = 'width:100%;accent-color:#22d3ee;margin-top:2px';
 
   openModal(`<div class="modal-card">
+    <button class="modal-close">&times;</button>
     <div class="tab-toggle">
       <button class="tab-toggle-btn" id="dt-tab-normal">Normal distance</button>
       <button class="tab-toggle-btn" id="dt-tab-advanced">Advanced distance</button>
     </div>
-    <div id="dt-panel-normal" style="display:none;flex-direction:column;align-items:center;gap:14px">
+    <div id="dt-panel-normal" style="display:none;flex-direction:column;align-items:center;gap:12px">
       <div style="font-size:14px;color:#7a9abf">Maximum distance:</div>
       <div style="display:flex;align-items:center;gap:8px">
         <input id="dt-radius" class="modal-input large" type="number" inputmode="decimal" value="${esc(String(S.radius))}" min="1" max="500"/>
         <span class="modal-unit">m</span>
       </div>
+      <input id="dt-radius-slider" type="range" min="10" max="150" step="1" value="${esc(String(Math.max(10,Math.min(150,S.radius))))}" style="${sliderStyle}"/>
       <div id="dt-normal-svg"></div>
     </div>
-    <div id="dt-panel-advanced" style="display:none;flex-direction:column;gap:12px">
-      <div class="modal-row"><span class="modal-label">Small distance:</span>
-        <div class="modal-input-wrap"><input id="dt-small" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.small))}" min="1"/><span class="modal-unit">m</span></div></div>
-      <div class="modal-row"><span class="modal-label">Big distance:</span>
-        <div class="modal-input-wrap"><input id="dt-big" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.big))}" min="1"/><span class="modal-unit">m</span></div></div>
-      <div class="modal-row"><span class="modal-label">Start angle:</span>
-        <div class="modal-input-wrap"><input id="dt-start" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.startAngle))}" min="0" max="359"/><span class="modal-unit">°</span></div></div>
-      <div class="modal-row"><span class="modal-label">End angle:</span>
-        <div class="modal-input-wrap"><input id="dt-end" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.endAngle))}" min="0" max="359"/><span class="modal-unit">°</span></div></div>
+    <div id="dt-panel-advanced" style="display:none;flex-direction:column;gap:8px">
+      <div>
+        <div class="modal-row" style="margin-bottom:2px"><span class="modal-label">Small distance:</span>
+          <div class="modal-input-wrap"><input id="dt-small" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.small))}" min="1"/><span class="modal-unit">m</span></div></div>
+        <input id="dt-small-slider" type="range" min="5" max="150" step="1" value="${esc(String(Math.max(5,Math.min(150,S.small))))}" style="${sliderStyle}"/>
+      </div>
+      <div>
+        <div class="modal-row" style="margin-bottom:2px"><span class="modal-label">Big distance:</span>
+          <div class="modal-input-wrap"><input id="dt-big" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.big))}" min="1"/><span class="modal-unit">m</span></div></div>
+        <input id="dt-big-slider" type="range" min="10" max="200" step="1" value="${esc(String(Math.max(10,Math.min(200,S.big))))}" style="${sliderStyle}"/>
+      </div>
+      <div>
+        <div class="modal-row" style="margin-bottom:2px"><span class="modal-label">Start angle:</span>
+          <div class="modal-input-wrap"><input id="dt-start" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.startAngle))}" min="0" max="359"/><span class="modal-unit">°</span></div></div>
+        <input id="dt-start-slider" type="range" min="0" max="359" step="1" value="${esc(String(S.startAngle))}" style="${sliderStyle}"/>
+      </div>
+      <div>
+        <div class="modal-row" style="margin-bottom:2px"><span class="modal-label">End angle:</span>
+          <div class="modal-input-wrap"><input id="dt-end" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.endAngle))}" min="0" max="359"/><span class="modal-unit">°</span></div></div>
+        <input id="dt-end-slider" type="range" min="0" max="359" step="1" value="${esc(String(S.endAngle))}" style="${sliderStyle}"/>
+      </div>
       <div id="dt-adv-err" class="modal-err" style="display:none">Small must be less than Big</div>
       <div style="display:flex;justify-content:center"><div id="dt-arc-preview"></div></div>
     </div>
@@ -717,17 +736,23 @@ function openSetDistanceModal() {
 
   function validate() {
     const btn = document.getElementById('dt-confirm');
-    // Always refresh normal preview — radius input may have changed
+    // Sync normal slider ↔ text input
+    const rv = Number(document.getElementById('dt-radius')?.value || S.radius);
+    const rs = document.getElementById('dt-radius-slider'); if (rs) rs.value = rv;
+    // Refresh normal preview
     const normalSvg = document.getElementById('dt-normal-svg');
-    if (normalSvg) {
-      const rv = Number(document.getElementById('dt-radius')?.value || S.radius);
-      normalSvg.innerHTML = buildNormalPreviewSVG(rv, S.distance, S.bearing, 140);
-    }
+    if (normalSvg) normalSvg.innerHTML = buildNormalPreviewSVG(rv, S.distance, S.bearing, 140);
+
     if (tab === 'advanced') {
       const sv  = Number(document.getElementById('dt-small')?.value);
       const bv  = Number(document.getElementById('dt-big')?.value);
       const sav = Number(document.getElementById('dt-start')?.value ?? S.startAngle);
       const eav = Number(document.getElementById('dt-end')?.value   ?? S.endAngle);
+      // Sync advanced sliders ↔ text inputs
+      const ss = document.getElementById('dt-small-slider'); if (ss) ss.value = sv;
+      const bs = document.getElementById('dt-big-slider');   if (bs) bs.value = bv;
+      const sas = document.getElementById('dt-start-slider'); if (sas) sas.value = sav;
+      const eas = document.getElementById('dt-end-slider');   if (eas) eas.value = eav;
       const valid = sv < bv && sv > 0 && bv > 0;
       document.getElementById('dt-small').classList.toggle('invalid', !valid);
       document.getElementById('dt-big').classList.toggle('invalid', !valid);
@@ -736,7 +761,6 @@ function openSetDistanceModal() {
       btn.style.background = valid ? '#60a5fa' : '#2d3748';
       btn.style.opacity    = valid ? '1' : '0.5';
       btn.style.cursor     = valid ? 'pointer' : 'not-allowed';
-      // Update arc SVG with current boat position
       document.getElementById('dt-arc-preview').innerHTML = buildArcPreviewSVG(sv, bv, sav, eav, 140, S.distance, S.bearing);
     } else {
       btn.disabled = false; btn.style.background = '#60a5fa'; btn.style.opacity = '1'; btn.style.cursor = 'pointer';
@@ -746,8 +770,17 @@ function openSetDistanceModal() {
   requestAnimationFrame(() => {
     document.getElementById('dt-tab-normal')  ?.addEventListener('click', () => switchTab('normal'));
     document.getElementById('dt-tab-advanced')?.addEventListener('click', () => switchTab('advanced'));
+    // Text input → validate (also syncs slider)
     ['dt-radius','dt-small','dt-big','dt-start','dt-end'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', validate);
+    });
+    // Slider → update paired text input → validate
+    [['dt-radius-slider','dt-radius'],['dt-small-slider','dt-small'],['dt-big-slider','dt-big'],
+     ['dt-start-slider','dt-start'],['dt-end-slider','dt-end']].forEach(([sldId, inpId]) => {
+      document.getElementById(sldId)?.addEventListener('input', function() {
+        const inp = document.getElementById(inpId); if (inp) inp.value = this.value;
+        validate();
+      });
     });
     document.getElementById('dt-confirm')?.addEventListener('click', async () => {
       if (tab === 'normal') {
@@ -818,21 +851,21 @@ function buildNormalPreviewSVG(rv, boatDist, boatBear, size) {
 // ─── Set Anchor modal ─────────────────────────────────────────────────────
 function openSetAnchorModal() {
   openModal(`<div class="modal-card">
+    <button class="modal-close">&times;</button>
     <div class="modal-title">Set Anchor</div>
     <div class="modal-sub">How do you want to set the anchor?</div>
     <button class="choice-btn" id="anc-current">Current location</button>
     <button class="choice-btn" id="anc-relative">Relative location</button>
-    <button class="choice-btn" id="anc-custom">Custom coordinates</button>
   </div>`, 'setAnchor');
   requestAnimationFrame(() => {
     document.getElementById('anc-current') ?.addEventListener('click', () => doSetAnchor('current'));
     document.getElementById('anc-relative')?.addEventListener('click', openRelativeModal);
-    document.getElementById('anc-custom')  ?.addEventListener('click', openCustomModal);
   });
 }
 
 function openRelativeModal() {
   openModal(`<div class="modal-card">
+    <button class="modal-close">&times;</button>
     <div class="modal-title">Relative location</div>
     <div class="modal-row" style="margin-top:14px">
       <span class="modal-label">Distance to anchor:</span>
@@ -864,28 +897,6 @@ function openRelativeModal() {
   });
 }
 
-function openCustomModal() {
-  openModal(`<div class="modal-card">
-    <div class="modal-title">Custom coordinates</div>
-    <div class="modal-row" style="margin-top:14px">
-      <span class="modal-label">Latitude:</span>
-      <input id="cust-lat" class="modal-input" style="width:130px;font-size:16px" type="number" step="0.00001" placeholder="${S.curLat ? S.curLat.toFixed(5) : ''}"/>
-    </div>
-    <div class="modal-row">
-      <span class="modal-label">Longitude:</span>
-      <input id="cust-lon" class="modal-input" style="width:130px;font-size:16px" type="number" step="0.00001" placeholder="${S.curLon ? S.curLon.toFixed(5) : ''}"/>
-    </div>
-    <button id="cust-confirm" class="modal-btn-set" style="background:#60a5fa;color:#e2e8f0">Set Anchor</button>
-  </div>`, 'custom');
-  requestAnimationFrame(() => {
-    document.getElementById('cust-confirm')?.addEventListener('click', () => {
-      const lat = Number(document.getElementById('cust-lat')?.value);
-      const lon = Number(document.getElementById('cust-lon')?.value);
-      if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90) { showToast('Invalid coordinates'); return; }
-      doSetAnchor('custom', null, null, lat, lon);
-    });
-  });
-}
 
 async function doSetAnchor(type, relDist, relBear, customLat, customLon) {
   if (S.curLat === null && type !== 'custom') { showToast('No GPS — wait for Signal K'); return; }
@@ -1119,7 +1130,10 @@ function renderSettings() {
     <div style="font-size:20px;font-weight:700;padding:18px 18px 12px;flex-shrink:0">Settings</div>
     <div style="flex:1;overflow-y:auto;padding:0 18px 18px">
       <div class="settings-section">
-        <div class="settings-heading">Pushover Credentials</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="settings-heading" style="margin-bottom:0">Pushover Credentials</div>
+          <button id="pv-help" style="background:transparent;border:1.5px solid #22d3ee;color:#22d3ee;font-size:10px;font-weight:700;font-family:inherit;border-radius:12px;padding:4px 10px;cursor:pointer;text-transform:uppercase;letter-spacing:.04em">Help</button>
+        </div>
         <div class="settings-input-wrap">
           <div class="settings-input-label">User Key</div>
           <input class="settings-input" id="pv-userkey" type="text" value="${esc(S.pushover.userKey)}" autocomplete="off" placeholder="Your Pushover user key"/>
@@ -1158,6 +1172,7 @@ function renderSettings() {
       </div>
     </div>`;
 
+  el.querySelector('#pv-help')?.addEventListener('click', openPushoverHelpModal);
   el.querySelector('#pv-toggle-token')?.addEventListener('click', () => { S.pvShowToken = !S.pvShowToken; renderSettings(); });
   el.querySelector('#pv-save')?.addEventListener('click', async () => {
     const uk = document.getElementById('pv-userkey')?.value.trim() || '';
@@ -1182,6 +1197,23 @@ function renderSettings() {
       if (S.pushover.events[k]) { S.pushover.events[k].priority = p; renderSettings(); }
     });
   });
+}
+
+function openPushoverHelpModal() {
+  openModal(`<div class="modal-card">
+    <button class="modal-close">&times;</button>
+    <div class="modal-title">Pushover Setup</div>
+    <div style="font-size:13px;color:#e2e8f0;line-height:1.75;margin-top:12px">
+      <p style="color:#7a9abf;margin-bottom:10px">To receive anchor alarm notifications on your phone:</p>
+      <ol style="padding-left:18px;display:flex;flex-direction:column;gap:8px">
+        <li>Install the <strong>Pushover</strong> app on your phone (iOS or Android)</li>
+        <li>Create an account at <span style="color:#22d3ee">pushover.net</span></li>
+        <li>Your <strong>User Key</strong> is shown on the main dashboard after login</li>
+        <li>Create a new Application at <span style="color:#22d3ee">pushover.net/apps</span> — your <strong>API Token</strong> is shown after creation</li>
+        <li>Enter both values in the fields above and tap <strong>Save Settings</strong></li>
+      </ol>
+    </div>
+  </div>`, 'pushoverHelp');
 }
 
 // ─── Startup ──────────────────────────────────────────────────────────────
