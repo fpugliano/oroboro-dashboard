@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Settings — Oroboro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',system-ui,sans-serif;min-height:100vh}
+
+#top-bar{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;background:#0a0e14;border-bottom:0.5px solid #1e2a38;
+}
+#top-bar .title{font-size:14px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase}
+.dash-link{
+  background:#111820;border:1px solid #1e2a38;color:#22d3ee;
+  font-size:11px;font-weight:700;border-radius:6px;padding:5px 10px;
+  text-decoration:none;font-family:inherit;cursor:pointer;
+}
+
+.screen{padding:16px;display:flex;flex-direction:column;min-height:calc(100vh - 49px)}
+
+.section-hdr{
+  font-size:10px;color:#7a9abf;text-transform:uppercase;letter-spacing:0.07em;
+  padding:0 2px;margin:20px 0 8px;
+}
+.section-hdr:first-child{margin-top:4px}
+
+.row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:13px 2px;border-bottom:0.5px solid #1e2a38;
+  background:none;border-left:none;border-right:none;border-top:none;
+  width:100%;font-family:inherit;text-align:left;color:#e2e8f0;cursor:pointer;
+}
+.row-label{font-size:13px}
+.row-value{font-size:13px;color:#7a9abf;display:flex;align-items:center;gap:6px}
+.row-chevron{color:#22d3ee;font-size:15px}
+
+.back-btn{
+  background:none;border:none;color:#22d3ee;font-size:12px;font-weight:700;
+  cursor:pointer;padding:0 0 12px;font-family:inherit;text-align:left;display:block;
+}
+
+.field{margin-bottom:12px}
+.field-label{font-size:10px;color:#7a9abf;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px}
+.field-hint{font-size:9px;color:#7a9abf;margin-top:3px;line-height:1.4}
+.field-wrap{
+  background:#0d1520;border-radius:6px;border:1px solid #1e2a38;
+  padding:10px 12px;display:flex;align-items:center;gap:6px;
+}
+.field-wrap input{
+  background:none;border:none;color:#e2e8f0;font-size:15px;
+  font-family:inherit;font-weight:600;width:100%;outline:none;
+}
+.field-unit{font-size:11px;color:#7a9abf;flex-shrink:0}
+
+.grow{flex:1}
+
+.btn{
+  border:none;border-radius:8px;padding:13px 16px;
+  font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;
+  cursor:pointer;font-family:inherit;width:100%;margin-top:8px;
+}
+.btn-primary{background:#22d3ee;color:#0a0e14}
+.btn-secondary{background:transparent;color:#22d3ee;border:1px solid #22d3ee}
+.btn-sm{
+  background:#22d3ee;color:#0a0e14;border:none;border-radius:5px;
+  padding:4px 10px;font-size:10px;font-weight:700;font-family:inherit;cursor:pointer;
+  white-space:nowrap;
+}
+
+.card-list{display:flex;flex-direction:column;gap:8px}
+.card-item{
+  background:#111820;border:1px solid #1e2a38;border-radius:8px;
+  padding:12px;display:flex;justify-content:space-between;align-items:center;
+  cursor:pointer;font-family:inherit;text-align:left;width:100%;color:#e2e8f0;
+}
+.card-title{font-size:13px;font-weight:600}
+.card-sub{font-size:10px;color:#7a9abf;margin-top:2px}
+
+.scan-section{border-top:1px solid #1e2a38;margin-top:16px;padding-top:16px}
+.scan-hdr{font-size:10px;color:#7a9abf;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px}
+.scan-results{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.scan-card{
+  background:#0d1520;border:1px solid #1e2a38;border-radius:8px;
+  padding:10px;display:flex;justify-content:space-between;align-items:center;
+  cursor:pointer;font-family:inherit;text-align:left;width:100%;color:#e2e8f0;
+}
+.scan-card.selected{background:rgba(34,211,238,0.12);border-color:#22d3ee}
+.scan-card-title{font-size:12px;font-weight:600;color:#22d3ee}
+.scan-card-sub{font-size:9px;color:#7a9abf}
+.scan-check{font-size:12px;color:#22d3ee}
+.scan-configured{font-size:9px;color:#5db832;font-weight:700}
+
+.footnote{font-size:10px;color:#7a9abf;line-height:1.5;margin-top:20px;padding:0 2px}
+
+#toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#111820;border:1px solid #1e2a38;border-radius:8px;
+  padding:10px 18px;font-size:12px;font-weight:600;z-index:9999;
+  opacity:0;transition:opacity 0.2s,transform 0.2s;pointer-events:none;white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.error{border-color:#f87171;color:#f87171}
+#toast.success{border-color:#5db832;color:#5db832}
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <span class="title">Settings</span>
+  <a href="dashboard.html" class="dash-link">← Dashboard</a>
+</div>
+
+<div id="toast"></div>
+
+<!-- ── Home ── -->
+<div id="s-home" class="screen"></div>
+
+<!-- ── Vessel ── -->
+<div id="s-vessel" class="screen" style="display:none">
+  <button class="back-btn" onclick="nav('home')">‹ Back</button>
+  <div class="field">
+    <div class="field-label">Vessel Name</div>
+    <div class="field-wrap"><input id="f-vessel-name" type="text"></div>
+    <div class="field-hint">Shown in the browser tab title</div>
+  </div>
+  <div class="grow"></div>
+  <button class="btn btn-primary" onclick="saveVessel()">Save</button>
+</div>
+
+<!-- ── Signal K Server ── -->
+<div id="s-server" class="screen" style="display:none">
+  <button class="back-btn" onclick="nav('home')">‹ Back</button>
+  <div class="field">
+    <div class="field-label">Host</div>
+    <div class="field-wrap"><input id="f-sk-host" type="text" inputmode="url"></div>
+  </div>
+  <div class="field">
+    <div class="field-label">Port</div>
+    <div class="field-wrap"><input id="f-sk-port" type="text" inputmode="numeric"></div>
+  </div>
+  <div class="grow"></div>
+  <button class="btn btn-primary" onclick="saveServer()">Save</button>
+</div>
+
+<!-- ── Solar list ── -->
+<div id="s-solar" class="screen" style="display:none"></div>
+
+<!-- ── Solar edit ── -->
+<div id="s-solar-edit" class="screen" style="display:none">
+  <button class="back-btn" onclick="nav('solar')">‹ Back to Solar</button>
+  <div class="field">
+    <div class="field-label">Label</div>
+    <div class="field-wrap"><input id="f-solar-label" type="text"></div>
+  </div>
+  <div class="field">
+    <div class="field-label">Instance ID</div>
+    <div class="field-wrap"><input id="f-solar-id" type="text"></div>
+    <div class="field-hint">Found under electrical.solar.* in Signal K Data Browser</div>
+  </div>
+  <div class="field">
+    <div class="field-label">Max Watts</div>
+    <div class="field-wrap">
+      <input id="f-solar-watts" type="text" inputmode="numeric">
+      <span class="field-unit">W</span>
+    </div>
+  </div>
+  <div class="grow"></div>
+  <button class="btn btn-primary" onclick="doneSolarEdit()">Done</button>
+</div>
+
+<!-- ── Battery ── -->
+<div id="s-battery" class="screen" style="display:none"></div>
+
+<!-- ── Inverter ── -->
+<div id="s-inverter" class="screen" style="display:none"></div>
+
+<!-- ── Tanks list ── -->
+<div id="s-tanks" class="screen" style="display:none"></div>
+
+<!-- ── Tank edit ── -->
+<div id="s-tank-edit" class="screen" style="display:none">
+  <button class="back-btn" onclick="nav('tanks')">‹ Back to Tanks</button>
+  <div class="field">
+    <div class="field-label">Label</div>
+    <div class="field-wrap"><input id="f-tank-label" type="text"></div>
+  </div>
+  <div class="field">
+    <div class="field-label">Signal K Path</div>
+    <div class="field-wrap"><input id="f-tank-path" type="text"></div>
+    <div class="field-hint">e.g. tanks.freshWater.22.currentLevel</div>
+  </div>
+  <div class="field">
+    <div class="field-label">Capacity</div>
+    <div class="field-wrap">
+      <input id="f-tank-capacity" type="text" inputmode="numeric">
+      <span class="field-unit">L</span>
+    </div>
+  </div>
+  <div class="grow"></div>
+  <button class="btn btn-primary" onclick="doneTankEdit()">Done</button>
+</div>
+
+<script>
+'use strict';
+
+const PROXY = location.protocol + '//' + location.hostname + ':3001';
+let C = {};
+let _localSolar = [];
+let _localTanks = [];
+let _editIdx    = null;
+let _scanCache  = {};
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+
+function nav(screen) {
+  document.querySelectorAll('.screen').forEach(s => { s.style.display = 'none'; });
+  const el = document.getElementById('s-' + screen);
+  if (el) el.style.display = '';
+  if (screen === 'home')        renderHome();
+  if (screen === 'solar')       renderSolar();
+  if (screen === 'solar-edit')  fillSolarEdit();
+  if (screen === 'battery')     renderBattery();
+  if (screen === 'inverter')    renderInverter();
+  if (screen === 'tanks')       renderTanks();
+  if (screen === 'tank-edit')   fillTankEdit();
+  if (screen === 'vessel') {
+    document.getElementById('f-vessel-name').value = (C.vessel && C.vessel.name) || '';
+  }
+  if (screen === 'server') {
+    document.getElementById('f-sk-host').value = String((C.signalk && C.signalk.host) || '');
+    document.getElementById('f-sk-port').value = String((C.signalk && C.signalk.port) || '');
+  }
+  window.scrollTo(0, 0);
+}
+
+// ── Config I/O ────────────────────────────────────────────────────────────────
+
+async function loadConfig() {
+  try {
+    const r = await fetch(PROXY + '/api/dashboard/config');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Load failed');
+    C = d.config || {};
+    _localSolar = (C.solar || []).map(p => ({
+      id: String(p.id), label: String(p.label || ''), maxWatts: String(p.maxWatts)
+    }));
+    _localTanks = Object.entries(C.tanks || {}).map(([key, t]) => ({
+      key, label: String(t.label || ''), path: String(t.path || ''), capacity: String(t.capacity || '')
+    }));
+    nav('home');
+  } catch(e) {
+    showToast('Load error: ' + e.message, true);
+    nav('home');
+  }
+}
+
+async function writeConfig() {
+  const r = await fetch(PROXY + '/api/dashboard/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ config: C })
+  });
+  const d = await r.json();
+  if (!d.ok) throw new Error(d.error || 'Write failed');
+}
+
+function applyLocalArrays() {
+  C.solar = _localSolar.map(p => ({ id: p.id, label: p.label, maxWatts: Number(p.maxWatts) || 0 }));
+  C.tanks = Object.fromEntries(
+    _localTanks.map(t => [t.key, { path: t.path, label: t.label, capacity: Number(t.capacity) || 0 }])
+  );
+}
+
+async function saveVessel() {
+  if (!C.vessel) C.vessel = {};
+  C.vessel.name = document.getElementById('f-vessel-name').value.trim();
+  try { await writeConfig(); showToast('Saved — reload dashboard to apply'); } catch(e) { showToast(e.message, true); }
+}
+
+async function saveServer() {
+  if (!C.signalk) C.signalk = {};
+  C.signalk.host = document.getElementById('f-sk-host').value.trim();
+  C.signalk.port = Number(document.getElementById('f-sk-port').value.trim()) || 3000;
+  try { await writeConfig(); showToast('Saved — reload dashboard to apply'); } catch(e) { showToast(e.message, true); }
+}
+
+async function saveSolar() {
+  applyLocalArrays();
+  try { await writeConfig(); showToast('Saved — reload dashboard to apply'); } catch(e) { showToast(e.message, true); }
+}
+
+async function saveBattery() {
+  const inst = document.getElementById('f-battery-id').value.trim();
+  if (!C.battery) C.battery = {};
+  C.battery.instance = inst;
+  try { await writeConfig(); showToast('Saved — reload dashboard to apply'); } catch(e) { showToast(e.message, true); }
+}
+
+async function saveInverter() {
+  const inst = document.getElementById('f-inverter-id').value.trim();
+  if (!C.inverter) C.inverter = {};
+  C.inverter.instance = inst;
+  try { await writeConfig(); showToast('Saved — reload dashboard to apply'); } catch(e) { showToast(e.message, true); }
+}
+
+async function saveTanks() {
+  applyLocalArrays();
+  try { await writeConfig(); showToast('Saved — reload dashboard to apply'); } catch(e) { showToast(e.message, true); }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+
+function renderHome() {
+  const nSolar  = _localSolar.length;
+  const nTanks  = _localTanks.length;
+  const battInst = String((C.battery  && C.battery.instance)  || '—');
+  const invInst  = String((C.inverter && C.inverter.instance) || '—');
+  const vessel   = (C.vessel && C.vessel.name) || '—';
+  const skHost   = (C.signalk && C.signalk.host) || '—';
+  const skPort   = (C.signalk && C.signalk.port) || '—';
+
+  document.getElementById('s-home').innerHTML = `
+    <div class="section-hdr" style="margin-top:4px">Vessel</div>
+    <button class="row" onclick="nav('vessel')">
+      <span class="row-label">Vessel Name</span>
+      <span class="row-value">${esc(vessel)}<span class="row-chevron">›</span></span>
+    </button>
+
+    <div class="section-hdr">Signal K Server</div>
+    <button class="row" onclick="nav('server')">
+      <span class="row-label">Host</span>
+      <span class="row-value">${esc(String(skHost))}<span class="row-chevron">›</span></span>
+    </button>
+    <button class="row" onclick="nav('server')">
+      <span class="row-label">Port</span>
+      <span class="row-value">${esc(String(skPort))}<span class="row-chevron">›</span></span>
+    </button>
+
+    <div class="section-hdr">Power</div>
+    <button class="row" onclick="nav('solar')">
+      <span class="row-label">Solar Panels</span>
+      <span class="row-value">${nSolar} array${nSolar !== 1 ? 's' : ''}<span class="row-chevron">›</span></span>
+    </button>
+    <button class="row" onclick="nav('battery')">
+      <span class="row-label">Battery Monitor</span>
+      <span class="row-value">Instance ${esc(battInst)}<span class="row-chevron">›</span></span>
+    </button>
+    <button class="row" onclick="nav('inverter')">
+      <span class="row-label">Inverter / Charger</span>
+      <span class="row-value">Instance ${esc(invInst)}<span class="row-chevron">›</span></span>
+    </button>
+
+    <div class="section-hdr">Tanks</div>
+    <button class="row" onclick="nav('tanks')">
+      <span class="row-label">Water Tanks</span>
+      <span class="row-value">${nTanks} tank${nTanks !== 1 ? 's' : ''}<span class="row-chevron">›</span></span>
+    </button>
+
+    <p class="footnote">Changes are saved to config.js on the Pi and take effect on next dashboard reload.</p>
+  `;
+}
+
+function renderSolar() {
+  _scanCache.solar = null;
+  const cards = _localSolar.map((p, i) => `
+    <button class="card-item" onclick="editSolar(${i})">
+      <div>
+        <div class="card-title">${esc(p.label || '(unlabeled)')}</div>
+        <div class="card-sub">Instance ${esc(p.id)} · max ${esc(p.maxWatts)}W</div>
+      </div>
+      <span class="row-chevron">›</span>
+    </button>
+  `).join('');
+
+  document.getElementById('s-solar').innerHTML = `
+    <button class="back-btn" onclick="nav('home')">‹ Back</button>
+    <div class="card-list">${cards || '<p style="font-size:12px;color:#7a9abf;padding:8px 2px">No arrays configured.</p>'}</div>
+    <button class="btn btn-secondary" onclick="addSolar()" style="margin-top:8px">+ Add Solar Array</button>
+    <div class="scan-section">
+      <div class="scan-hdr">Auto-discover from Signal K</div>
+      <button class="btn btn-secondary" onclick="doScan('solar',this)">Scan for Solar Chargers</button>
+      <div id="scan-solar-results" class="scan-results"></div>
+    </div>
+    <button class="btn btn-primary" onclick="saveSolar()">Save All</button>
+  `;
+}
+
+function editSolar(i) {
+  _editIdx = i;
+  nav('solar-edit');
+}
+
+function addSolar() {
+  _localSolar.push({ id: '', label: '', maxWatts: '' });
+  _editIdx = _localSolar.length - 1;
+  nav('solar-edit');
+}
+
+function fillSolarEdit() {
+  const p = _localSolar[_editIdx];
+  if (!p) return;
+  document.getElementById('f-solar-label').value = p.label;
+  document.getElementById('f-solar-id').value    = p.id;
+  document.getElementById('f-solar-watts').value = p.maxWatts;
+}
+
+function doneSolarEdit() {
+  const p = _localSolar[_editIdx];
+  if (p) {
+    p.label    = document.getElementById('f-solar-label').value;
+    p.id       = document.getElementById('f-solar-id').value;
+    p.maxWatts = document.getElementById('f-solar-watts').value;
+  }
+  _editIdx = null;
+  nav('solar');
+}
+
+function renderBattery() {
+  _scanCache.batteries = null;
+  const inst = String((C.battery && C.battery.instance) || '');
+  document.getElementById('s-battery').innerHTML = `
+    <button class="back-btn" onclick="nav('home')">‹ Back</button>
+    <div class="field">
+      <div class="field-label">Instance ID</div>
+      <div class="field-wrap"><input id="f-battery-id" type="text" value="${esc(inst)}"></div>
+      <div class="field-hint">Found under electrical.batteries.* in Signal K Data Browser</div>
+    </div>
+    <button class="btn btn-secondary" onclick="doScan('batteries',this)">Scan Signal K</button>
+    <div id="scan-batteries-results" class="scan-results"></div>
+    <div class="grow"></div>
+    <button class="btn btn-primary" onclick="saveBattery()">Save</button>
+  `;
+}
+
+function renderInverter() {
+  _scanCache.inverters = null;
+  const inst = String((C.inverter && C.inverter.instance) || '');
+  document.getElementById('s-inverter').innerHTML = `
+    <button class="back-btn" onclick="nav('home')">‹ Back</button>
+    <div class="field">
+      <div class="field-label">Instance ID</div>
+      <div class="field-wrap"><input id="f-inverter-id" type="text" value="${esc(inst)}"></div>
+      <div class="field-hint">Found under electrical.inverters.* in Signal K Data Browser</div>
+    </div>
+    <button class="btn btn-secondary" onclick="doScan('inverters',this)">Scan Signal K</button>
+    <div id="scan-inverters-results" class="scan-results"></div>
+    <div class="grow"></div>
+    <button class="btn btn-primary" onclick="saveInverter()">Save</button>
+  `;
+}
+
+function renderTanks() {
+  const cards = _localTanks.map((t, i) => `
+    <button class="card-item" onclick="editTank(${i})">
+      <div>
+        <div class="card-title">${esc(t.label || '(unlabeled)')}</div>
+        <div class="card-sub">${esc(String(t.capacity))}L · ${esc(t.path)}</div>
+      </div>
+      <span class="row-chevron">›</span>
+    </button>
+  `).join('');
+
+  document.getElementById('s-tanks').innerHTML = `
+    <button class="back-btn" onclick="nav('home')">‹ Back</button>
+    <div class="card-list">${cards || '<p style="font-size:12px;color:#7a9abf;padding:8px 2px">No tanks configured.</p>'}</div>
+    <div class="grow"></div>
+    <button class="btn btn-primary" onclick="saveTanks()">Save All</button>
+  `;
+}
+
+function editTank(i) {
+  _editIdx = i;
+  nav('tank-edit');
+}
+
+function fillTankEdit() {
+  const t = _localTanks[_editIdx];
+  if (!t) return;
+  document.getElementById('f-tank-label').value    = t.label;
+  document.getElementById('f-tank-path').value     = t.path;
+  document.getElementById('f-tank-capacity').value = t.capacity;
+}
+
+function doneTankEdit() {
+  const t = _localTanks[_editIdx];
+  if (t) {
+    t.label    = document.getElementById('f-tank-label').value;
+    t.path     = document.getElementById('f-tank-path').value;
+    t.capacity = document.getElementById('f-tank-capacity').value;
+  }
+  _editIdx = null;
+  nav('tanks');
+}
+
+// ── Scan ──────────────────────────────────────────────────────────────────────
+
+async function doScan(category, btn) {
+  const orig = btn.textContent;
+  btn.textContent = 'Scanning…';
+  btn.disabled = true;
+  try {
+    const r = await fetch(PROXY + '/api/signalk/scan/' + category);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    _scanCache[category] = d.instances;
+    renderScanResults(category, d.instances);
+  } catch(e) {
+    showToast('Scan failed: ' + e.message, true);
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+function renderScanResults(category, instances) {
+  const el = document.getElementById('scan-' + category + '-results');
+  if (!el) return;
+  if (!instances || !instances.length) {
+    el.innerHTML = '<p style="font-size:11px;color:#7a9abf;margin-top:6px">No instances found.</p>';
+    return;
+  }
+
+  if (category === 'solar') {
+    el.innerHTML = instances.map(r => {
+      const already = _localSolar.some(p => String(p.id) === String(r.id));
+      return `<div class="scan-card" style="cursor:default">
+        <div>
+          <div class="scan-card-title">Instance ${esc(r.id)}</div>
+          <div class="scan-card-sub">${esc(r.path)} · ${esc(r.sample)}</div>
+        </div>
+        ${already
+          ? '<span class="scan-configured">✓ Configured</span>'
+          : `<button class="btn-sm" onclick="addFromScan('${esc(r.id)}')">Add</button>`}
+      </div>`;
+    }).join('');
+  } else {
+    const fieldId = category === 'batteries' ? 'f-battery-id' : 'f-inverter-id';
+    const curVal  = (document.getElementById(fieldId) || {}).value || '';
+    el.innerHTML = instances.map(r => {
+      const sel = String(r.id) === String(curVal);
+      return `<button class="scan-card ${sel ? 'selected' : ''}" onclick="selectInstance('${esc(category)}','${esc(r.id)}')">
+        <div>
+          <div class="scan-card-title">Instance ${esc(r.id)}</div>
+          <div class="scan-card-sub">${esc(r.path)} · ${esc(r.sample)}</div>
+        </div>
+        ${sel ? '<span class="scan-check">✓</span>' : ''}
+      </button>`;
+    }).join('');
+  }
+}
+
+function addFromScan(id) {
+  _localSolar.push({ id, label: '', maxWatts: '' });
+  _editIdx = _localSolar.length - 1;
+  nav('solar-edit');
+}
+
+function selectInstance(category, id) {
+  const fieldId = category === 'batteries' ? 'f-battery-id' : 'f-inverter-id';
+  const inp = document.getElementById(fieldId);
+  if (inp) inp.value = id;
+  renderScanResults(category, _scanCache[category] || []);
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+let _toastTimer = null;
+function showToast(msg, isError) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + (isError ? 'error' : 'success');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadConfig();
+</script>
+</body>
+</html>
