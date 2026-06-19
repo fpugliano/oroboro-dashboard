@@ -622,6 +622,23 @@ function updateUI() {
 
   // History tab
   renderHistory();
+
+  // Live-update Set Distance modal previews while modal is open
+  if (S.activeModal === 'setDistance') {
+    const normalSvg = document.getElementById('dt-normal-svg');
+    if (normalSvg) {
+      const rv = Number(document.getElementById('dt-radius')?.value || S.radius);
+      normalSvg.innerHTML = buildNormalPreviewSVG(rv, S.distance, S.bearing, 140);
+    }
+    const arcPrev = document.getElementById('dt-arc-preview');
+    if (arcPrev) {
+      const sv  = Number(document.getElementById('dt-small')?.value  || S.small);
+      const bv  = Number(document.getElementById('dt-big')?.value    || S.big);
+      const sav = Number(document.getElementById('dt-start')?.value  ?? S.startAngle);
+      const eav = Number(document.getElementById('dt-end')?.value    ?? S.endAngle);
+      arcPrev.innerHTML = buildArcPreviewSVG(sv, bv, sav, eav, 140, S.distance, S.bearing);
+    }
+  }
 }
 
 // ─── Navigation ───────────────────────────────────────────────────────────
@@ -672,6 +689,7 @@ function openSetDistanceModal() {
         <input id="dt-radius" class="modal-input large" type="number" inputmode="decimal" value="${esc(String(S.radius))}" min="1" max="500"/>
         <span class="modal-unit">m</span>
       </div>
+      <div id="dt-normal-svg"></div>
     </div>
     <div id="dt-panel-advanced" style="display:none;flex-direction:column;gap:12px">
       <div class="modal-row"><span class="modal-label">Small distance:</span>
@@ -699,6 +717,12 @@ function openSetDistanceModal() {
 
   function validate() {
     const btn = document.getElementById('dt-confirm');
+    // Always refresh normal preview — radius input may have changed
+    const normalSvg = document.getElementById('dt-normal-svg');
+    if (normalSvg) {
+      const rv = Number(document.getElementById('dt-radius')?.value || S.radius);
+      normalSvg.innerHTML = buildNormalPreviewSVG(rv, S.distance, S.bearing, 140);
+    }
     if (tab === 'advanced') {
       const sv  = Number(document.getElementById('dt-small')?.value);
       const bv  = Number(document.getElementById('dt-big')?.value);
@@ -712,8 +736,8 @@ function openSetDistanceModal() {
       btn.style.background = valid ? '#60a5fa' : '#2d3748';
       btn.style.opacity    = valid ? '1' : '0.5';
       btn.style.cursor     = valid ? 'pointer' : 'not-allowed';
-      // Update only the arc SVG — no DOM rebuild
-      document.getElementById('dt-arc-preview').innerHTML = buildArcPreviewSVG(sv, bv, sav, eav, 140);
+      // Update arc SVG with current boat position
+      document.getElementById('dt-arc-preview').innerHTML = buildArcPreviewSVG(sv, bv, sav, eav, 140, S.distance, S.bearing);
     } else {
       btn.disabled = false; btn.style.background = '#60a5fa'; btn.style.opacity = '1'; btn.style.cursor = 'pointer';
     }
@@ -722,7 +746,7 @@ function openSetDistanceModal() {
   requestAnimationFrame(() => {
     document.getElementById('dt-tab-normal')  ?.addEventListener('click', () => switchTab('normal'));
     document.getElementById('dt-tab-advanced')?.addEventListener('click', () => switchTab('advanced'));
-    ['dt-small','dt-big','dt-start','dt-end'].forEach(id => {
+    ['dt-radius','dt-small','dt-big','dt-start','dt-end'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', validate);
     });
     document.getElementById('dt-confirm')?.addEventListener('click', async () => {
@@ -748,7 +772,7 @@ function openSetDistanceModal() {
   });
 }
 
-function buildArcPreviewSVG(sv, bv, sav, eav, size) {
+function buildArcPreviewSVG(sv, bv, sav, eav, size, boatDist, boatBear) {
   const c = size/2, maxR = size/2 - 12;
   const sc = maxR / Math.max(Number(bv)||1, 1);
   const rS = (Number(sv)||0)*sc, rB = (Number(bv)||1)*sc;
@@ -759,11 +783,35 @@ function buildArcPreviewSVG(sv, bv, sav, eav, size) {
   const pts = [...outer,...inner.reverse()];
   const valid = Number(sv) < Number(bv);
   const d = 'M '+pts.map(([x,y])=>x.toFixed(1)+','+y.toFixed(1)).join(' L ')+' Z';
+  let boatDot = '';
+  if (typeof boatDist === 'number' && typeof boatBear === 'number') {
+    const bPx = Math.min(boatDist * sc, c - 5);
+    const [bx, by] = toXY(boatBear, bPx);
+    boatDot = `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="4" fill="#3b82f6" stroke="white" stroke-width="1.5"/>`;
+  }
   return `<svg width="${size}" height="${size}">
     <circle cx="${c}" cy="${c}" r="${rB.toFixed(1)}" fill="none" stroke="#22d3ee" stroke-width="1.5" stroke-opacity=".4"/>
     <circle cx="${c}" cy="${c}" r="${rS.toFixed(1)}" fill="none" stroke="#22d3ee" stroke-width="1.5" stroke-opacity=".4"/>
     ${valid ? `<path d="${d}" fill="#22d3ee" fill-opacity=".25" stroke="#22d3ee" stroke-width="2"/>` : ''}
     <circle cx="${c}" cy="${c}" r="3" fill="#f87171"/>
+    ${boatDot}
+  </svg>`;
+}
+
+function buildNormalPreviewSVG(rv, boatDist, boatBear, size) {
+  const c = size/2, maxR = size/2 - 12;
+  const sc = maxR / Math.max(Number(rv)||1, 1);
+  const toXY = (a, r) => { const rad = (a-90)*Math.PI/180; return [c+Math.cos(rad)*r, c+Math.sin(rad)*r]; };
+  let boatDot = '';
+  if (typeof boatDist === 'number' && typeof boatBear === 'number') {
+    const bPx = Math.min(boatDist * sc, c - 5);
+    const [bx, by] = toXY(boatBear, bPx);
+    boatDot = `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="4" fill="#3b82f6" stroke="white" stroke-width="1.5"/>`;
+  }
+  return `<svg width="${size}" height="${size}">
+    <circle cx="${c}" cy="${c}" r="${maxR.toFixed(1)}" fill="#22d3ee" fill-opacity=".12" stroke="#22d3ee" stroke-width="2"/>
+    <circle cx="${c}" cy="${c}" r="3" fill="#f87171"/>
+    ${boatDot}
   </svg>`;
 }
 
