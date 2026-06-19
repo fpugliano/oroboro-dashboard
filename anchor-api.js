@@ -175,11 +175,23 @@ http.createServer(async (req, res) => {
 
   if (method === 'GET' && url === '/api/dashboard/config') {
     try {
+      console.log('[anchor-api] GET /api/dashboard/config, path:', CONFIG_JS_PATH);
+      const exists = fs.existsSync(CONFIG_JS_PATH);
+      console.log('[anchor-api] config.js exists:', exists);
+      if (!exists) { json(res, 500, { ok: false, error: 'config.js not found at ' + CONFIG_JS_PATH }); return; }
       const src = fs.readFileSync(CONFIG_JS_PATH, 'utf8');
-      const ctx = vm.createContext({ window: { location: { hostname: '' } } });
-      vm.runInContext(src, ctx);
-      json(res, 200, { ok: true, config: ctx.DASHBOARD_CONFIG });
-    } catch(e) { json(res, 500, { ok: false, error: e.message }); }
+      console.log('[anchor-api] config.js first 200 chars:', src.slice(0, 200));
+      const eqIdx = src.indexOf('DASHBOARD_CONFIG');
+      if (eqIdx === -1) { json(res, 500, { ok: false, error: 'DASHBOARD_CONFIG not found in config.js' }); return; }
+      const afterEq = src.slice(src.indexOf('=', eqIdx) + 1).trim().replace(/\s*;\s*$/, '');
+      console.log('[anchor-api] extracted object (first 100):', afterEq.slice(0, 100));
+      const config = vm.runInNewContext('(' + afterEq + ')', { window: { location: { hostname: '' } } });
+      console.log('[anchor-api] parsed config keys:', Object.keys(config));
+      json(res, 200, { ok: true, config });
+    } catch(e) {
+      console.error('[anchor-api] GET /api/dashboard/config error:', e.message);
+      json(res, 500, { ok: false, error: e.message });
+    }
     return;
   }
 
