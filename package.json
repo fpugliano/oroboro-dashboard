@@ -16,7 +16,7 @@
     "openplotter"
   ],
   "author": "Francesco Pugliano <fpugliano@gmail.com> (https://sailingoroboro.com)",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fpugliano/oroboro-dashboard.git"

@@ -78,6 +78,11 @@ html, body {
 #card-battery{ grid-column: 3; grid-row: 1; }
 #card-solar  { grid-column: 3; grid-row: 2; }
 
+/* iPhone: push content below status bar */
+@media (max-width: 500px) {
+  .dashboard { padding-top: env(safe-area-inset-top, 44px); }
+}
+
 /* Portrait / narrow-screen reflow */
 @media (orientation: portrait) and (max-width: 767px) {
   .dashboard {
@@ -244,7 +249,7 @@ html, body {
   padding-left: max(16px, env(safe-area-inset-left, 16px));
 }
 #bar-logo { display: flex; align-items: center; }
-#bar-logo img { height: 20px; width: auto; display: block; }
+#bar-logo img { height: 26px; width: auto; display: block; }
 #fs-btn {
   width: 28px; height: 28px; border-radius: 5px;
   background: rgba(30,42,56,0.85); border: 0.5px solid #7a9abf;
@@ -1185,9 +1190,11 @@ document.addEventListener('keydown', (e) => {
 });
 
 function scaleToFit() {
-  const d = document.querySelector('.dashboard');
+  const d   = document.querySelector('.dashboard');
+  const bar = document.getElementById('bottom-bar');
+  const barH = bar ? bar.offsetHeight : 50;
   d.style.width     = window.innerWidth  + 'px';
-  d.style.height    = window.innerHeight + 'px';
+  d.style.height    = (window.innerHeight - barH) + 'px';
   d.style.transform = 'scale(1)';
 }
 window.addEventListener('resize', scaleToFit);

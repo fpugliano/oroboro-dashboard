@@ -146,18 +146,8 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
       </div>
       <div class="stat-row">
         <div class="stat-cell">
-          <div class="stat-label">GPS Accuracy</div>
-          <div class="stat-value" id="val-accuracy">—</div>
-        </div>
-        <div class="stat-cell">
           <div class="stat-label">Anchor Distance</div>
           <div class="stat-value" id="val-distance">—</div>
-        </div>
-      </div>
-      <div class="stat-row">
-        <div class="stat-cell">
-          <div class="stat-label">Last GPS Update</div>
-          <div class="stat-value" id="val-gps-age">—</div>
         </div>
         <div class="stat-cell">
           <div class="stat-label">Anchor Bearing</div>
@@ -166,8 +156,8 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
       </div>
       <div class="stat-row">
         <div class="stat-cell">
-          <div class="stat-label">Battery</div>
-          <div class="stat-value" id="val-battery">—</div>
+          <div class="stat-label">Last GPS Update</div>
+          <div class="stat-value" id="val-gps-age">—</div>
         </div>
         <div class="stat-cell">
           <div class="stat-label">Allowed Distance</div>
@@ -189,7 +179,7 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
 
   <!-- ── History tab ── -->
   <div id="tab-history" class="tab">
-    <div style="font-size:20px;font-weight:700;text-align:center;padding:18px 0 12px;flex-shrink:0">Anchor history</div>
+    <div style="font-size:20px;font-weight:700;text-align:center;padding:18px 0 12px;flex-shrink:0">History</div>
     <div id="history-list" style="flex:1;overflow-y:auto"></div>
   </div>
 
@@ -198,10 +188,10 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
 
   <!-- ── Bottom nav ── -->
   <nav id="bottom-nav">
-    <button class="nav-btn active" data-tab="tab-main"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="4.5" r="2"/><line x1="10" y1="6.5" x2="10" y2="17"/><line x1="4" y1="10" x2="16" y2="10"/><path d="M4,10 C4,15.5 7,17 10,17 C13,17 16,15.5 16,10"/></svg>Main</button>
-    <button class="nav-btn" data-tab="tab-map"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10,2 C7.2,2 5,4.3 5,7 C5,11 10,18 10,18 C10,18 15,11 15,7 C15,4.3 12.8,2 10,2 Z"/><circle cx="10" cy="7" r="2"/></svg>Map</button>
-    <button class="nav-btn" data-tab="tab-history"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><polyline points="10,5.5 10,10 13.5,12.5"/></svg>Anchor history</button>
-    <button class="nav-btn" data-tab="tab-settings"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="3"/><line x1="10" y1="2" x2="10" y2="5.5"/><line x1="10" y1="14.5" x2="10" y2="18"/><line x1="2" y1="10" x2="5.5" y2="10"/><line x1="14.5" y1="10" x2="18" y2="10"/><line x1="4.35" y1="4.35" x2="6.76" y2="6.76"/><line x1="13.24" y1="13.24" x2="15.65" y2="15.65"/><line x1="4.35" y1="15.65" x2="6.76" y2="13.24"/><line x1="13.24" y1="6.76" x2="15.65" y2="4.35"/></svg>Settings</button>
+    <button class="nav-btn active" data-tab="tab-main"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm1 7h-2v2H5v2h3.27A7 7 0 0 0 11 19.9V22h2v-2.1A7 7 0 0 0 15.73 13H19v-2h-6V9z"/></svg>Main</button>
+    <button class="nav-btn" data-tab="tab-map"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>Map</button>
+    <button class="nav-btn" data-tab="tab-history"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm.5 11h-5v-2h3.5V7h2v6.5z"/></svg>History</button>
+    <button class="nav-btn" data-tab="tab-settings"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a6.98 6.98 0 0 0-1.62-.94l-.36-2.54A.484.484 0 0 0 14 2h-3.84c-.24 0-.43.17-.47.41l-.36 2.54a7.19 7.19 0 0 0-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.48.48 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.35 1.04.67 1.62.94l.36 2.54c.05.24.24.41.48.41H14c.24 0 .44-.17.47-.41l.36-2.54a7.19 7.19 0 0 0 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.09-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg>Settings</button>
   </nav>
 </div>
 
@@ -684,10 +674,10 @@ function openSetDistanceModal() {
   const sliderStyle = 'width:100%;accent-color:#22d3ee;margin-top:2px';
 
   openModal(`<div class="modal-card">
-    <button class="modal-close">&times;</button>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="modal-close" style="position:static;padding:2px 4px">&times;</button></div>
     <div class="tab-toggle">
-      <button class="tab-toggle-btn" id="dt-tab-normal">Normal distance</button>
-      <button class="tab-toggle-btn" id="dt-tab-advanced">Advanced distance</button>
+      <button class="tab-toggle-btn" id="dt-tab-normal">Normal</button>
+      <button class="tab-toggle-btn" id="dt-tab-advanced">Advanced</button>
     </div>
     <div id="dt-panel-normal" style="display:none;flex-direction:column;align-items:center;gap:12px">
       <div style="font-size:14px;color:#7a9abf">Maximum distance:</div>
@@ -700,12 +690,12 @@ function openSetDistanceModal() {
     </div>
     <div id="dt-panel-advanced" style="display:none;flex-direction:column;gap:8px">
       <div>
-        <div class="modal-row" style="margin-bottom:2px"><span class="modal-label">Small distance:</span>
+        <div class="modal-row" style="margin-bottom:2px"><span class="modal-label">Small circle:</span>
           <div class="modal-input-wrap"><input id="dt-small" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.small))}" min="1"/><span class="modal-unit">m</span></div></div>
         <input id="dt-small-slider" type="range" min="5" max="150" step="1" value="${esc(String(Math.max(5,Math.min(150,S.small))))}" style="${sliderStyle}"/>
       </div>
       <div>
-        <div class="modal-row" style="margin-bottom:2px"><span class="modal-label">Big distance:</span>
+        <div class="modal-row" style="margin-bottom:2px"><span class="modal-label">Big circle:</span>
           <div class="modal-input-wrap"><input id="dt-big" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.big))}" min="1"/><span class="modal-unit">m</span></div></div>
         <input id="dt-big-slider" type="range" min="10" max="200" step="1" value="${esc(String(Math.max(10,Math.min(200,S.big))))}" style="${sliderStyle}"/>
       </div>
@@ -864,30 +854,35 @@ function openSetAnchorModal() {
 }
 
 function openRelativeModal() {
+  const sliderStyle = 'width:100%;accent-color:#22d3ee;margin-top:4px';
   openModal(`<div class="modal-card">
     <button class="modal-close">&times;</button>
     <div class="modal-title">Relative location</div>
-    <div class="modal-row" style="margin-top:14px">
-      <span class="modal-label">Distance to anchor:</span>
-      <div class="modal-input-wrap"><input id="rel-dist" class="modal-input" type="number" inputmode="decimal" placeholder="18"/><span class="modal-unit">m</span></div>
+    <div style="margin-top:14px;margin-bottom:12px">
+      <div class="modal-row" style="margin-bottom:4px">
+        <span class="modal-label">How much chain did you pay out?</span>
+        <div class="modal-input-wrap"><input id="rel-dist" class="modal-input" type="number" inputmode="decimal" placeholder="18"/><span class="modal-unit">m</span></div>
+      </div>
+      <input id="rel-dist-slider" type="range" min="5" max="100" step="1" value="18" style="${sliderStyle}"/>
     </div>
-    <div class="modal-row">
-      <span class="modal-label">Bearing to anchor:</span>
-      <div class="modal-input-wrap"><input id="rel-bear" class="modal-input" type="number" inputmode="decimal" placeholder="0"/><span class="modal-unit">°</span></div>
+    <div style="margin-bottom:4px">
+      <div class="modal-row" style="margin-bottom:4px">
+        <span class="modal-label">What is the bearing to the anchor?</span>
+        <div class="modal-input-wrap"><input id="rel-bear" class="modal-input" type="number" inputmode="decimal" placeholder="0"/><span class="modal-unit">°</span></div>
+      </div>
+      <input id="rel-bear-slider" type="range" min="0" max="359" step="1" value="0" style="${sliderStyle}"/>
     </div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button id="rel-confirm" class="modal-btn-set" style="flex:1;background:#60a5fa;color:#e2e8f0">Set Anchor</button>
-      <button id="rel-compass" style="width:48px;background:#60a5fa;border:none;border-radius:8px;font-size:18px;cursor:pointer">🧭</button>
-    </div>
+    <button id="rel-confirm" class="modal-btn-set" style="background:#60a5fa;color:#e2e8f0">Set Anchor</button>
   </div>`, 'relative');
   requestAnimationFrame(() => {
-    document.getElementById('rel-compass')?.addEventListener('click', () => {
-      if (S.bearing !== null) {
-        const toAnchor = (S.bearing + 180) % 360;
-        const distEl = document.getElementById('rel-bear');
-        if (distEl) distEl.value = Math.round(toAnchor);
-      }
-    });
+    const distInput  = document.getElementById('rel-dist');
+    const distSlider = document.getElementById('rel-dist-slider');
+    const bearInput  = document.getElementById('rel-bear');
+    const bearSlider = document.getElementById('rel-bear-slider');
+    distInput?.addEventListener('input',  () => { if (distSlider) distSlider.value = Math.max(5,   Math.min(100, Number(distInput.value) || 5)); });
+    distSlider?.addEventListener('input', () => { if (distInput)  distInput.value  = distSlider.value; });
+    bearInput?.addEventListener('input',  () => { if (bearSlider) bearSlider.value = Math.max(0,   Math.min(359, Number(bearInput.value) || 0)); });
+    bearSlider?.addEventListener('input', () => { if (bearInput)  bearInput.value  = bearSlider.value; });
     document.getElementById('rel-confirm')?.addEventListener('click', () => {
       const dist = Number(document.getElementById('rel-dist')?.value);
       const bear = Number(document.getElementById('rel-bear')?.value);
@@ -991,7 +986,7 @@ function initMap() {
 
   if (S.anchorLat !== null) {
     _anchorMark = L.marker([S.anchorLat, S.anchorLon], {
-      icon: L.divIcon({ html: '<div style="font-size:28px;filter:drop-shadow(1px 2px 3px rgba(0,0,0,.5))">⚓</div>', className: '', iconSize: [32,32], iconAnchor: [16,28] })
+      icon: L.divIcon({ html: '<div style="width:26px;height:26px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.6)"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm1 7h-2v2H5v2h3.27A7 7 0 0 0 11 19.9V22h2v-2.1A7 7 0 0 0 15.73 13H19v-2h-6V9z"/></svg></div>', className: '', iconSize: [26,26], iconAnchor: [13,13] })
     }).addTo(_map);
     drawZone();
   }
@@ -1035,7 +1030,7 @@ function updateMap() {
   if (S.anchorLat !== null) {
     if (!_anchorMark) {
       _anchorMark = L.marker([S.anchorLat, S.anchorLon], {
-        icon: L.divIcon({ html:'<div style="font-size:28px;filter:drop-shadow(1px 2px 3px rgba(0,0,0,.5))">⚓</div>', className:'', iconSize:[32,32], iconAnchor:[16,28] })
+        icon: L.divIcon({ html: '<div style="width:26px;height:26px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.6)"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm1 7h-2v2H5v2h3.27A7 7 0 0 0 11 19.9V22h2v-2.1A7 7 0 0 0 15.73 13H19v-2h-6V9z"/></svg></div>', className:'', iconSize:[26,26], iconAnchor:[13,13] })
       }).addTo(_map);
     } else {
       _anchorMark.setLatLng([S.anchorLat, S.anchorLon]);

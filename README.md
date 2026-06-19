@@ -365,7 +365,7 @@ chromium-browser --incognito http://<pi-ip>:3000/oroboro.html &
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+Proprietary — all rights reserved. See [LICENSE](LICENSE).
 
 ---
 
