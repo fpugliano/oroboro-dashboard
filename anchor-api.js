@@ -63,6 +63,13 @@ function json(res, status, obj) {
 function readBody(req) {
   return new Promise(resolve => { let d = ''; req.on('data', c => { d += c; }); req.on('end', () => resolve(d)); });
 }
+function readState() {
+  try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch(e) { return {}; }
+}
+function writeState(obj) {
+  fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
+  fs.writeFileSync(STATE_FILE, JSON.stringify(obj, null, 2), 'utf8');
+}
 
 // ─── Server ───────────────────────────────────────────────────────────────────
 const SK_ANCHOR_PATH = '/signalk/v1/api/vessels/self/navigation/anchor/position';
@@ -87,8 +94,31 @@ http.createServer(async (req, res) => {
   if (method === 'POST' && url === '/api/anchor/config') {
     try {
       const body = JSON.parse(await readBody(req));
-      fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
-      fs.writeFileSync(STATE_FILE, JSON.stringify(body, null, 2), 'utf8');
+      // Preserve the trail field — config saves must not wipe accumulated trail points
+      const existing = readState();
+      writeState(Object.assign({}, body, { trail: existing.trail || [] }));
+      json(res, 200, { ok: true });
+    } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+    return;
+  }
+
+  if (method === 'GET' && url === '/api/anchor/trail') {
+    try {
+      const state = readState();
+      json(res, 200, { ok: true, trail: state.trail || [] });
+    } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+    return;
+  }
+
+  if (method === 'POST' && url === '/api/anchor/trail') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      if (body.lat == null || body.lon == null) { json(res, 400, { ok: false, error: 'lat and lon required' }); return; }
+      const state = readState();
+      const trail = state.trail || [];
+      trail.push({ lat: Number(body.lat), lon: Number(body.lon), t: Date.now() });
+      if (trail.length > 2000) trail.splice(0, trail.length - 2000);
+      writeState(Object.assign({}, state, { trail }));
       json(res, 200, { ok: true });
     } catch (e) { json(res, 500, { ok: false, error: e.message }); }
     return;
@@ -122,7 +152,13 @@ http.createServer(async (req, res) => {
   if (method === 'POST' && url === '/api/anchor/raise') {
     try {
       const r = await skPut(SK_ANCHOR_PATH, null);
-      r.status >= 200 && r.status < 300 ? json(res, 200, { ok: true }) : json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });
+      if (r.status >= 200 && r.status < 300) {
+        // Clear the swing trail on raise
+        try { writeState(Object.assign({}, readState(), { trail: [] })); } catch(e) {}
+        json(res, 200, { ok: true });
+      } else {
+        json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });
+      }
     } catch (e) { json(res, 500, { ok: false, error: e.message }); }
     return;
   }

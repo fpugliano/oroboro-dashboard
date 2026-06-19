@@ -264,9 +264,10 @@ const S = {
   },
 
   // map / trail
-  trail: [],
+  trail: [],         // loaded from proxy on page load; appended during poll
   maxDist: 0,
   watchStart: null,
+  lastTrailWrite: null, // throttle: server trail write every 60s
 
   // UI
   activeModal: null,   // null | 'setDistance' | 'setAnchor' | 'relative' | 'custom' | 'cancel'
@@ -412,6 +413,17 @@ async function initialLoad() {
       if (S.mode === 'advanced') S.big = maxR;
     }
   }
+
+  // Load persisted swing trail from proxy (only meaningful when anchor is set)
+  if (S.anchorSet) {
+    try {
+      const r = await fetch(PROXY_BASE + '/api/anchor/trail');
+      if (r.ok) {
+        const d = await r.json();
+        if (d.ok && Array.isArray(d.trail) && d.trail.length > 0) S.trail = d.trail;
+      }
+    } catch(e) {}
+  }
 }
 
 // ─── Pushover ─────────────────────────────────────────────────────────────
@@ -522,8 +534,21 @@ async function poll() {
     if (S.anchorSet && S.curLat !== null && S.anchorLat !== null) {
       S.distance = haversine(S.anchorLat, S.anchorLon, S.curLat, S.curLon);
       S.bearing  = bearingTo(S.anchorLat, S.anchorLon, S.curLat, S.curLon);
+
+      // Local trail accumulation: one point per 10s, add to polyline incrementally
       const now = Date.now(), last = S.trail[S.trail.length - 1];
-      if (!last || now - last.t > 10000) { S.trail.push({lat:S.curLat, lon:S.curLon, t:now}); if (S.trail.length > 500) S.trail.shift(); }
+      if (!last || now - last.t > 10000) {
+        S.trail.push({ lat: S.curLat, lon: S.curLon, t: now });
+        if (S.trail.length > 2000) S.trail.shift();
+        if (_trail) _trail.addLatLng([S.curLat, S.curLon]);
+      }
+
+      // Server trail write: throttled to once per 60s
+      if (!S.lastTrailWrite || now - S.lastTrailWrite > 60000) {
+        S.lastTrailWrite = now;
+        proxyPost('/api/anchor/trail', { lat: S.curLat, lon: S.curLon }).catch(() => {});
+      }
+
       if (S.distance > S.maxDist) S.maxDist = S.distance;
     }
 
@@ -836,7 +861,7 @@ async function doSetAnchor(type, relDist, relBear, customLat, customLon) {
     await proxyPost('/api/anchor/set', { latitude: lat, longitude: lon });
     // 3. Update local state
     S.anchorSet = true; S.anchorLat = lat; S.anchorLon = lon;
-    S.watchStart = Date.now(); S.trail = []; S.maxDist = 0;
+    S.watchStart = Date.now(); S.trail = []; S.maxDist = 0; S.lastTrailWrite = null;
     S.alarmAcknowledged = false;
     // 4. Add to history and persist
     S.history.unshift({ lat, lon, ts: Date.now() });
@@ -864,9 +889,10 @@ function openCancelModal() {
         await proxyPost('/api/anchor/raise', {});
         sendPushover('anchorRaised');
         S.anchorSet = false; S.anchorLat = null; S.anchorLon = null;
-        S.distance = null; S.bearing = null; S.trail = [];
+        S.distance = null; S.bearing = null; S.trail = []; S.lastTrailWrite = null;
         S.lastAlarmState = 'ok'; S.alarmAcknowledged = false; S.alarmSuppressed = false;
         _gpsLostNotified = false;
+        if (_trail) _trail.setLatLngs([]);
         hideAlarmOverlay(); updateUI(); updateMap();
       } catch (e) { showToast('Raise anchor failed: ' + e.message); }
     });
@@ -916,13 +942,6 @@ function initMap() {
     }).addTo(_map);
   }
   _trail = L.polyline(S.trail.map(p=>[p.lat,p.lon]), { color:'#3b82f6', weight:2, opacity:.8 }).addTo(_map);
-
-  // Seed trail from SK tracks plugin
-  fetch(SELF_URL + '/navigation/track?limit=500').then(r=>r.ok?r.json():null).then(geo=>{
-    if (!geo || !Array.isArray(geo.coordinates)) return;
-    const pts = geo.coordinates.map(c=>[c[1],c[0]]);
-    if (pts.length > 1 && _trail) _trail.setLatLngs(pts);
-  }).catch(()=>{});
 
   if (_zoneLyr) { const b = _zoneLyr.getBounds ? _zoneLyr.getBounds() : null; if (b && b.isValid()) _map.fitBounds(b, {padding:[30,30]}); }
   updateAIS();
@@ -976,7 +995,6 @@ function updateMap() {
       _boatMark.setLatLng([S.curLat, S.curLon]);
     }
   }
-  if (_trail) _trail.setLatLngs(S.trail.map(p=>[p.lat,p.lon]));
   _aisTick++; if (_aisTick % 30 === 0) updateAIS();
 }
 
