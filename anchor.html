@@ -631,82 +631,96 @@ function closeModal() {
 }
 
 // ─── Set Distance modal ───────────────────────────────────────────────────
+// Built once — inputs are never removed from DOM, so mobile keyboard stays open.
+// Only the arc SVG and validation state are updated on input events.
 function openSetDistanceModal() {
-  const t = S.mode, r = S.radius, sm = S.small, bg = S.big, sa = S.startAngle, ea = S.endAngle;
+  let tab = S.mode === 'advanced' ? 'advanced' : 'normal';
 
-  function render(tab, rv, sv, bv, sav, eav) {
-    const valid = tab === 'normal' || (Number(sv) < Number(bv));
-    const advPrev = buildArcPreviewSVG(sv, bv, sav, eav, 140);
-    return `<div class="modal-card">
-      <div class="tab-toggle">
-        <button class="tab-toggle-btn${tab==='normal'?' active':''}" id="dt-tab-normal">Normal distance</button>
-        <button class="tab-toggle-btn${tab==='advanced'?' active':''}" id="dt-tab-advanced">Advanced distance</button>
+  openModal(`<div class="modal-card">
+    <div class="tab-toggle">
+      <button class="tab-toggle-btn" id="dt-tab-normal">Normal distance</button>
+      <button class="tab-toggle-btn" id="dt-tab-advanced">Advanced distance</button>
+    </div>
+    <div id="dt-panel-normal" style="display:none;flex-direction:column;align-items:center;gap:14px">
+      <div style="font-size:14px;color:#7a9abf">Maximum distance:</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input id="dt-radius" class="modal-input large" type="number" inputmode="decimal" value="${esc(String(S.radius))}" min="1" max="500"/>
+        <span class="modal-unit">m</span>
       </div>
-      ${tab === 'normal' ? `
-        <div style="display:flex;flex-direction:column;align-items:center;gap:14px">
-          <div style="font-size:14px;color:#7a9abf">Maximum distance:</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <input id="dt-radius" class="modal-input large" type="number" inputmode="decimal" value="${esc(String(rv))}" min="1" max="500"/>
-            <span class="modal-unit">m</span>
-          </div>
-        </div>
-      ` : `
-        <div style="display:flex;flex-direction:column;gap:12px">
-          <div class="modal-row"><span class="modal-label">Small distance:</span>
-            <div class="modal-input-wrap"><input id="dt-small" class="modal-input${!valid?' invalid':''}" type="number" inputmode="decimal" value="${esc(String(sv))}" min="1"/><span class="modal-unit">m</span></div></div>
-          <div class="modal-row"><span class="modal-label">Big distance:</span>
-            <div class="modal-input-wrap"><input id="dt-big" class="modal-input${!valid?' invalid':''}" type="number" inputmode="decimal" value="${esc(String(bv))}" min="1"/><span class="modal-unit">m</span></div></div>
-          <div class="modal-row"><span class="modal-label">Start angle:</span>
-            <div class="modal-input-wrap"><input id="dt-start" class="modal-input" type="number" inputmode="decimal" value="${esc(String(sav))}" min="0" max="359"/><span class="modal-unit">°</span></div></div>
-          <div class="modal-row"><span class="modal-label">End angle:</span>
-            <div class="modal-input-wrap"><input id="dt-end" class="modal-input" type="number" inputmode="decimal" value="${esc(String(eav))}" min="0" max="359"/><span class="modal-unit">°</span></div></div>
-          ${!valid ? '<div class="modal-err">Small must be less than Big</div>' : ''}
-          <div style="display:flex;justify-content:center">${advPrev}</div>
-        </div>
-      `}
-      <button id="dt-confirm" class="modal-btn-set" style="background:${valid?'#60a5fa':'#2d3748'};color:#e2e8f0;opacity:${valid?1:.5};cursor:${valid?'pointer':'not-allowed'}" ${valid?'':' disabled'}>Set Distance</button>
-    </div>`;
+    </div>
+    <div id="dt-panel-advanced" style="display:none;flex-direction:column;gap:12px">
+      <div class="modal-row"><span class="modal-label">Small distance:</span>
+        <div class="modal-input-wrap"><input id="dt-small" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.small))}" min="1"/><span class="modal-unit">m</span></div></div>
+      <div class="modal-row"><span class="modal-label">Big distance:</span>
+        <div class="modal-input-wrap"><input id="dt-big" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.big))}" min="1"/><span class="modal-unit">m</span></div></div>
+      <div class="modal-row"><span class="modal-label">Start angle:</span>
+        <div class="modal-input-wrap"><input id="dt-start" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.startAngle))}" min="0" max="359"/><span class="modal-unit">°</span></div></div>
+      <div class="modal-row"><span class="modal-label">End angle:</span>
+        <div class="modal-input-wrap"><input id="dt-end" class="modal-input" type="number" inputmode="decimal" value="${esc(String(S.endAngle))}" min="0" max="359"/><span class="modal-unit">°</span></div></div>
+      <div id="dt-adv-err" class="modal-err" style="display:none">Small must be less than Big</div>
+      <div style="display:flex;justify-content:center"><div id="dt-arc-preview"></div></div>
+    </div>
+    <button id="dt-confirm" class="modal-btn-set" style="background:#60a5fa;color:#e2e8f0">Set Distance</button>
+  </div>`, 'setDistance');
+
+  function switchTab(newTab) {
+    tab = newTab;
+    document.getElementById('dt-panel-normal').style.display   = tab === 'normal'   ? 'flex' : 'none';
+    document.getElementById('dt-panel-advanced').style.display = tab === 'advanced' ? 'flex' : 'none';
+    document.getElementById('dt-tab-normal').classList.toggle('active', tab === 'normal');
+    document.getElementById('dt-tab-advanced').classList.toggle('active', tab === 'advanced');
+    validate();
   }
 
-  function mount(tab, rv, sv, bv, sav, eav) {
-    openModal(render(tab, rv, sv, bv, sav, eav), 'setDistance');
-    function attach() {
-      document.getElementById('dt-tab-normal')  ?.addEventListener('click', () => { closeModal(); openSetDistanceModal._state = {tab:'normal',rv,sv,bv,sav,eav}; mount('normal',rv,sv,bv,sav,eav); });
-      document.getElementById('dt-tab-advanced')?.addEventListener('click', () => { mount('advanced',rv,sv,bv,sav,eav); });
-      const rerender = () => {
-        const curRv  = document.getElementById('dt-radius')?.value ?? rv;
-        const curSv  = document.getElementById('dt-small')?.value  ?? sv;
-        const curBv  = document.getElementById('dt-big')?.value    ?? bv;
-        const curSav = document.getElementById('dt-start')?.value  ?? sav;
-        const curEav = document.getElementById('dt-end')?.value    ?? eav;
-        mount(tab, curRv, curSv, curBv, curSav, curEav);
-      };
-      ['dt-small','dt-big','dt-start','dt-end','dt-radius'].forEach(id => {
-        document.getElementById(id)?.addEventListener('input', rerender);
-      });
-      document.getElementById('dt-confirm')?.addEventListener('click', async () => {
-        const curRv  = Number(document.getElementById('dt-radius')?.value || rv);
-        const curSv  = Number(document.getElementById('dt-small')?.value  || sv);
-        const curBv  = Number(document.getElementById('dt-big')?.value    || bv);
-        const curSav = Number(document.getElementById('dt-start')?.value  ?? sav);
-        const curEav = Number(document.getElementById('dt-end')?.value    ?? eav);
-        if (tab === 'normal') {
-          S.mode = 'normal'; S.radius = curRv;
-        } else {
-          if (curSv >= curBv) return;
-          S.mode = 'advanced'; S.small = curSv; S.big = curBv; S.startAngle = curSav; S.endAngle = curEav;
-          S.radius = curBv;
-        }
-        try {
-          await saveProxyConfig();
-          if (S.anchorSet) await proxyPost('/api/anchor/radius', { value: S.radius });
-        } catch (e) { showToast(e.message); }
-        closeModal(); updateUI(); updateMap();
-      });
+  function validate() {
+    const btn = document.getElementById('dt-confirm');
+    if (tab === 'advanced') {
+      const sv  = Number(document.getElementById('dt-small')?.value);
+      const bv  = Number(document.getElementById('dt-big')?.value);
+      const sav = Number(document.getElementById('dt-start')?.value ?? S.startAngle);
+      const eav = Number(document.getElementById('dt-end')?.value   ?? S.endAngle);
+      const valid = sv < bv && sv > 0 && bv > 0;
+      document.getElementById('dt-small').classList.toggle('invalid', !valid);
+      document.getElementById('dt-big').classList.toggle('invalid', !valid);
+      document.getElementById('dt-adv-err').style.display = valid ? 'none' : 'block';
+      btn.disabled = !valid;
+      btn.style.background = valid ? '#60a5fa' : '#2d3748';
+      btn.style.opacity    = valid ? '1' : '0.5';
+      btn.style.cursor     = valid ? 'pointer' : 'not-allowed';
+      // Update only the arc SVG — no DOM rebuild
+      document.getElementById('dt-arc-preview').innerHTML = buildArcPreviewSVG(sv, bv, sav, eav, 140);
+    } else {
+      btn.disabled = false; btn.style.background = '#60a5fa'; btn.style.opacity = '1'; btn.style.cursor = 'pointer';
     }
-    requestAnimationFrame(attach);
   }
-  mount(t, r, sm, bg, sa, ea);
+
+  requestAnimationFrame(() => {
+    document.getElementById('dt-tab-normal')  ?.addEventListener('click', () => switchTab('normal'));
+    document.getElementById('dt-tab-advanced')?.addEventListener('click', () => switchTab('advanced'));
+    ['dt-small','dt-big','dt-start','dt-end'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', validate);
+    });
+    document.getElementById('dt-confirm')?.addEventListener('click', async () => {
+      if (tab === 'normal') {
+        const rv = Number(document.getElementById('dt-radius')?.value || S.radius);
+        S.mode = 'normal'; S.radius = rv;
+      } else {
+        const sv  = Number(document.getElementById('dt-small')?.value  || S.small);
+        const bv  = Number(document.getElementById('dt-big')?.value    || S.big);
+        if (sv >= bv) return;
+        const sav = Number(document.getElementById('dt-start')?.value  ?? S.startAngle);
+        const eav = Number(document.getElementById('dt-end')?.value    ?? S.endAngle);
+        S.mode = 'advanced'; S.small = sv; S.big = bv; S.startAngle = sav; S.endAngle = eav;
+        S.radius = bv;
+      }
+      try {
+        await saveProxyConfig();
+        if (S.anchorSet) await proxyPost('/api/anchor/radius', { value: S.radius });
+      } catch (e) { showToast(e.message); }
+      closeModal(); updateUI(); drawZone();
+    });
+    switchTab(tab);
+  });
 }
 
 function buildArcPreviewSVG(sv, bv, sav, eav, size) {
@@ -868,7 +882,7 @@ document.getElementById('btn-ack-alarm').addEventListener('click', hideAlarmOver
 
 // ─── Map ──────────────────────────────────────────────────────────────────
 let _map = null, _anchorMark = null, _zoneLyr = null, _boatMark = null, _trail = null, _aisLyrs = [];
-let _aisTick = 0;
+let _aisTick = 0, _zoneKey = null;
 
 function makeTileLayer() {
   return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -925,7 +939,10 @@ function boatIconHtml() {
 
 function drawZone() {
   if (!_map) return;
+  const key = S.mode + ':' + S.radius + ':' + S.small + ':' + S.big + ':' + S.startAngle + ':' + S.endAngle + ':' + S.anchorLat + ':' + S.anchorLon;
+  if (_zoneLyr && key === _zoneKey) return;
   if (_zoneLyr) { _map.removeLayer(_zoneLyr); _zoneLyr = null; }
+  _zoneKey = key;
   if (!S.anchorLat) return;
   if (S.mode === 'advanced') {
     const pts = geoSectorPoints(S.anchorLat, S.anchorLon, S.small, S.big, S.startAngle, S.endAngle);
@@ -942,14 +959,13 @@ function updateMap() {
       _anchorMark = L.marker([S.anchorLat, S.anchorLon], {
         icon: L.divIcon({ html:'<div style="font-size:28px;filter:drop-shadow(1px 2px 3px rgba(0,0,0,.5))">⚓</div>', className:'', iconSize:[32,32], iconAnchor:[16,28] })
       }).addTo(_map);
-      drawZone();
     } else {
       _anchorMark.setLatLng([S.anchorLat, S.anchorLon]);
     }
-    if (!_zoneLyr) drawZone();
+    drawZone();
   } else {
     if (_anchorMark) { _map.removeLayer(_anchorMark); _anchorMark = null; }
-    if (_zoneLyr)    { _map.removeLayer(_zoneLyr);    _zoneLyr = null; }
+    if (_zoneLyr)    { _map.removeLayer(_zoneLyr); _zoneLyr = null; _zoneKey = null; }
   }
   if (S.curLat !== null) {
     if (!_boatMark) {
