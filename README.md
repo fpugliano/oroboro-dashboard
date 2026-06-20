@@ -283,6 +283,65 @@ Tap the **⚙** icon in the bottom bar to view and edit the dashboard configurat
 
 ---
 
+## Remote Access via Tailscale
+
+You can access the dashboard from anywhere in the world — not just when connected to the boat's WiFi — using Tailscale, a free VPN service that creates a private, encrypted connection between your devices and the Pi.
+
+### How it works
+
+Tailscale gives each device a private IP address (like `100.x.x.x`) that only your devices can see. When you're at a café, airport, or onshore, you access the dashboard at `http://100.x.x.x:3000/oroboro.html` — exactly like being on the boat's WiFi, but over an encrypted tunnel through the internet. Nobody else can see or reach the Pi.
+
+### Setting it up
+
+**On the Pi:**
+
+```bash
+# Remove any broken apt sources that might interfere
+sudo rm -f /etc/apt/sources.list.d/nodesource* /etc/apt/sources.list.d/openplotterNodejs.list /etc/apt/preferences.d/99nodesource
+
+# Install Tailscale
+sudo apt-get update && sudo apt-get install -y tailscale
+
+# Start Tailscale — this prints a URL to open in your browser
+sudo tailscale up
+```
+
+Open the URL it prints, sign in (you can use Google, GitHub, or create a Tailscale account), and approve the device.
+
+Get the Pi's Tailscale IP:
+```bash
+tailscale ip -4
+```
+
+**On your phone/tablet:**
+
+1. Install the **Tailscale** app from the App Store (iOS) or Play Store (Android)
+2. Sign in with the same account you used for the Pi
+3. Allow the VPN configuration when prompted (this is normal — Tailscale IS a VPN)
+
+**Accessing the dashboard remotely:**
+
+From anywhere in the world, open these URLs on your phone:
+- Dashboard: `http://<tailscale-ip>:3000/oroboro.html`
+- Anchor Watch: `http://<tailscale-ip>:3000/anchor.html`
+- Settings: `http://<tailscale-ip>:3000/settings.html`
+
+Replace `<tailscale-ip>` with the IP from `tailscale ip -4` (e.g. `100.77.158.12`).
+
+### Preventing key expiry
+
+By default, Tailscale keys expire after 180 days, which would require re-authenticating the Pi. To prevent this:
+
+1. Go to [login.tailscale.com/admin/machines](https://login.tailscale.com/admin/machines)
+2. Find your Pi (shown as "openplotter")
+3. Click the three-dot menu → **Disable key expiry**
+
+### Anchor alarms work independently
+
+Pushover anchor alarm notifications are sent directly from the Pi to Pushover's cloud servers — they work regardless of whether you have Tailscale connected or not. As long as the Pi has internet via the router's SIM card, you'll receive alarm notifications on your phone even without Tailscale active. Tailscale is only needed for viewing the dashboard and managing anchor settings remotely.
+
+---
+
 ## Updating the Dashboard
 
 When a new version is available, run these commands on the Pi:
@@ -365,7 +424,7 @@ chromium-browser --incognito http://<pi-ip>:3000/oroboro.html &
 
 ## License
 
-Proprietary — all rights reserved. See [LICENSE](LICENSE).
+Copyright © 2024-2026 S/V Oroboro. All rights reserved. See [LICENSE](LICENSE) for details.
 
 ---
 
