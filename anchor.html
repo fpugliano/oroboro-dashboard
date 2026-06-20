@@ -13,6 +13,10 @@
 html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',system-ui,sans-serif;overflow:hidden}
 #app{height:100%;display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:relative;overflow:hidden}
 
+/* ── Top bar ── */
+#top-bar{display:flex;align-items:center;padding:8px 14px;background:#0a0e14;border-bottom:0.5px solid #1e2a38;flex-shrink:0}
+.dash-link{background:#111820;border:1px solid #1e2a38;color:#22d3ee;font-size:11px;font-weight:700;border-radius:6px;padding:5px 10px;text-decoration:none;font-family:inherit}
+
 /* ── Bottom nav ── */
 #bottom-nav{display:flex;background:#151c28;border-top:.5px solid #1e2a38;flex-shrink:0;padding:6px 0 10px}
 .nav-btn{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:inherit;font-size:9px;font-weight:700;letter-spacing:.03em;cursor:pointer;padding:4px 0;color:#7a9abf;text-transform:uppercase}
@@ -129,6 +133,7 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
 </div>
 
 <div id="app" style="display:none">
+  <div id="top-bar"><a href="oroboro.html" class="dash-link">← Dashboard</a></div>
   <div id="status-banner"></div>
 
   <!-- ── Main tab ── -->
