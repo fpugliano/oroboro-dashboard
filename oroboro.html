@@ -493,7 +493,10 @@ html, body {
 
 const CFG = DASHBOARD_CONFIG;
 const SK_HOST = CFG.signalk.host;
-const POLL_URL = `http://${SK_HOST}:${CFG.signalk.port}/signalk/v1/api/vessels/self`;
+const SK_BASE = window.location.protocol === 'https:'
+  ? `${window.location.protocol}//${window.location.host}`
+  : `http://${SK_HOST}:${CFG.signalk.port}`;
+const POLL_URL = `${SK_BASE}/signalk/v1/api/vessels/self`;
 const R2D = 180 / Math.PI;
 
 const twsSamples = [];
@@ -991,7 +994,7 @@ function updateAlarmPopup() {
 }
 
 function silenceAlarm(path) {
-  fetch(`http://${CFG.signalk.host}:${CFG.signalk.port}/signalk/v1/api/vessels/self/${path.replace(/\./g, '/')}`, {
+  fetch(`${SK_BASE}/signalk/v1/api/vessels/self/${path.replace(/\./g, '/')}`, {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ value: { state: 'normal', method: [] } })
@@ -1227,9 +1230,11 @@ window.addEventListener('load', () => {
 </script>
   <script>
   (function() {
-    var SK_ANCHOR_URL = (window.DASHBOARD_CONFIG && window.DASHBOARD_CONFIG.signalkUrl
-      ? window.DASHBOARD_CONFIG.signalkUrl
-      : location.protocol+"//"+location.hostname+":3000")
+    var SK_ANCHOR_URL = (location.protocol === 'https:'
+      ? location.protocol + '//' + location.host
+      : (window.DASHBOARD_CONFIG && window.DASHBOARD_CONFIG.signalkUrl
+          ? window.DASHBOARD_CONFIG.signalkUrl
+          : location.protocol + '//' + location.hostname + ':' + (window.DASHBOARD_CONFIG && window.DASHBOARD_CONFIG.signalk && window.DASHBOARD_CONFIG.signalk.port ? window.DASHBOARD_CONFIG.signalk.port : '3000')))
       + "/signalk/v1/api/vessels/self/navigation/anchor";
     function updateAnchorBtn(set) {
       var btn = document.getElementById("anchor-btn");
