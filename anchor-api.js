@@ -1,8 +1,9 @@
 'use strict';
-const http = require('http');
-const fs   = require('fs');
-const path = require('path');
-const vm   = require('vm');
+const http  = require('http');
+const https = require('https');
+const fs    = require('fs');
+const path  = require('path');
+const vm    = require('vm');
 
 const STATE_FILE      = '/home/pi/anchor-api/anchor-state.json';
 const CONFIG_JS_PATH  = '/usr/lib/node_modules/signalk-server/public/config.js';
@@ -16,7 +17,183 @@ const PORT     = cfg.proxyPort   || 3001;
 
 let skToken = null;
 
-// ─── Signal K helpers ─────────────────────────────────────────────────────────
+// ─── Monitoring state ─────────────────────────────────────────────────────
+const _mon = {
+  running:        false,
+  alarmState:     'ok',   // 'ok' | 'dragging' | 'gpsLost'
+  distance:       null,
+  bearing:        null,
+  lastCheck:      null,
+  anchorLat:      null,
+  anchorLon:      null,
+  curLat:         null,
+  curLon:         null,
+  radius:         null,
+  lastPosTime:    null,
+  lastTrailWrite: null,
+  trailPoints:    0,
+  lastDragPush:   0,
+  armingUntil:    0,
+  _loop:          null,
+  _trail:         null,
+};
+
+// ─── Math ─────────────────────────────────────────────────────────────────
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000, p1 = lat1*Math.PI/180, p2 = lat2*Math.PI/180;
+  const dp = (lat2-lat1)*Math.PI/180, dl = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dp/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function bearingTo(lat1, lon1, lat2, lon2) {
+  const p1=lat1*Math.PI/180, p2=lat2*Math.PI/180, dl=(lon2-lon1)*Math.PI/180;
+  return (Math.atan2(Math.sin(dl)*Math.cos(p2), Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl))*180/Math.PI+360)%360;
+}
+function bearingInArc(b, start, end) {
+  let span = end - start; if (span < 0) span += 360; if (span === 0) return true;
+  return ((b - start + 360) % 360) <= span;
+}
+function isOutsideBound(dist, bear, state) {
+  if (state.mode === 'advanced') {
+    return !(dist >= (state.small||20) && dist <= (state.big||40) &&
+             bearingInArc(bear, state.startAngle||0, state.endAngle||90));
+  }
+  return dist > (state.radius || 30);
+}
+
+// ─── Pushover ────────────────────────────────────────────────────────────
+function sendPushover(pvCfg, eventKey, detail) {
+  if (!pvCfg || !pvCfg.apiToken || !pvCfg.userKey) return;
+  const ev = (pvCfg.events || {})[eventKey];
+  if (!ev || !ev.enabled) return;
+  const msg = detail ? ev.message + ' ' + detail : ev.message;
+  const payload = {
+    token: pvCfg.apiToken, user: pvCfg.userKey,
+    title: ev.title, message: msg, priority: ev.priority,
+  };
+  if (ev.priority === 2) { payload.retry = 30; payload.expire = 300; payload.sound = 'siren'; }
+  const body = JSON.stringify(payload);
+  const req = https.request({
+    hostname: 'api.pushover.net', port: 443, path: '/1/messages.json',
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+  }, r => r.resume());
+  req.on('error', e => console.error('[anchor-api] Pushover error:', e.message));
+  req.write(body); req.end();
+}
+
+// ─── Monitoring loop ──────────────────────────────────────────────────────
+async function monitorTick() {
+  try {
+    // 1. Current position from SK
+    const posR = await skRequest('GET', '/signalk/v1/api/vessels/self/navigation/position', null, null);
+    if (posR.status === 200) {
+      const p = JSON.parse(posR.body)?.value;
+      if (p && p.latitude != null && p.longitude != null) {
+        _mon.curLat = p.latitude; _mon.curLon = p.longitude; _mon.lastPosTime = Date.now();
+      }
+    }
+
+    // 2. Anchor state from SK
+    const ancR = await skRequest('GET', SK_ANCHOR_READ, null, null);
+    if (ancR.status !== 200) throw new Error('SK anchor HTTP ' + ancR.status);
+    const anc = JSON.parse(ancR.body);
+    const aPos = anc?.position?.value;
+    if (!aPos || aPos.latitude == null) {
+      console.log('[anchor-api] Anchor no longer set in SK — stopping monitoring');
+      stopMonitoring(); return;
+    }
+    _mon.anchorLat = aPos.latitude; _mon.anchorLon = aPos.longitude;
+
+    // 3. maxRadius from SK
+    const radR = await skRequest('GET', '/signalk/v1/api/vessels/self/navigation/anchor/maxRadius', null, null);
+    if (radR.status === 200) {
+      const rv = JSON.parse(radR.body)?.value;
+      if (typeof rv === 'number' && rv > 0) _mon.radius = rv;
+    }
+
+    _mon.lastCheck = Date.now();
+
+    // 4. GPS lost (>120s with no position update)
+    if (!_mon.lastPosTime || Date.now() - _mon.lastPosTime > 120000) {
+      if (_mon.alarmState !== 'gpsLost') {
+        _mon.alarmState = 'gpsLost';
+        console.log('[anchor-api] GPS lost — no position update for 120s');
+        sendPushover(readState().pushover, 'gpsLost');
+      }
+      return;
+    }
+    if (_mon.curLat == null) return;
+
+    // 5. Distance and bearing
+    _mon.distance = haversine(_mon.anchorLat, _mon.anchorLon, _mon.curLat, _mon.curLon);
+    _mon.bearing  = bearingTo(_mon.anchorLat, _mon.anchorLon, _mon.curLat, _mon.curLon);
+
+    // 6. Alarm check
+    const state   = readState();
+    const outside = isOutsideBound(_mon.distance, _mon.bearing, state);
+
+    if (Date.now() < _mon.armingUntil) {
+      _mon.alarmState = outside ? 'dragging' : 'ok';
+      return; // suppress during arming window
+    }
+
+    const now = Date.now();
+    if (outside) {
+      const limit  = state.mode === 'advanced' ? state.big : state.radius;
+      const detail = Math.round(_mon.distance) + 'm from anchor (allowed: ' + limit + 'm)';
+      if (_mon.alarmState !== 'dragging') {
+        _mon.alarmState = 'dragging'; _mon.lastDragPush = now;
+        console.log('[anchor-api] ALARM: Boat is ' + detail + ' — Pushover sent');
+        sendPushover(state.pushover, 'dragging', detail);
+      } else if (now - _mon.lastDragPush > 60000) {
+        _mon.lastDragPush = now;
+        console.log('[anchor-api] ALARM (repeat): Boat is ' + detail + ' — Pushover sent');
+        sendPushover(state.pushover, 'dragging', detail);
+      }
+    } else {
+      if (_mon.alarmState !== 'ok') console.log('[anchor-api] Alarm cleared — boat back within bounds');
+      _mon.alarmState = 'ok';
+    }
+
+  } catch(e) {
+    console.error('[anchor-api] Poll error:', e.message);
+  }
+}
+
+async function trailTick() {
+  if (!_mon.running || _mon.curLat == null) return;
+  try {
+    const state = readState();
+    const trail = state.trail || [];
+    trail.push({ lat: _mon.curLat, lon: _mon.curLon, t: Date.now() });
+    if (trail.length > 10000) trail.splice(0, trail.length - 10000);
+    writeState(Object.assign({}, state, { trail }));
+    _mon.lastTrailWrite = Date.now(); _mon.trailPoints = trail.length;
+    console.log('[anchor-api] Trail point recorded (' + trail.length + ' total)');
+  } catch(e) {
+    console.error('[anchor-api] Trail write error:', e.message);
+  }
+}
+
+function startMonitoring(armMs) {
+  if (_mon.running) { clearInterval(_mon._loop); clearInterval(_mon._trail); }
+  _mon.running     = true;
+  _mon.alarmState  = 'ok';
+  _mon.armingUntil = Date.now() + (armMs || 0);
+  _mon._loop  = setInterval(monitorTick, 5000);
+  _mon._trail = setInterval(trailTick,  60000);
+  monitorTick(); // immediate first tick
+}
+
+function stopMonitoring() {
+  clearInterval(_mon._loop); clearInterval(_mon._trail);
+  _mon.running    = false;  _mon.alarmState = 'ok';
+  _mon.distance   = null;   _mon.bearing    = null;
+  _mon._loop      = null;   _mon._trail     = null;
+}
+
+// ─── Signal K helpers ─────────────────────────────────────────────────────
 function skRequest(method, skPath, body, token) {
   return new Promise((resolve, reject) => {
     const payload = body ? JSON.stringify(body) : null;
@@ -53,7 +230,7 @@ async function skPut(skPath, value) {
   return res;
 }
 
-// ─── HTTP helpers ─────────────────────────────────────────────────────────────
+// ─── HTTP helpers ─────────────────────────────────────────────────────────
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -73,7 +250,7 @@ function writeState(obj) {
   fs.writeFileSync(STATE_FILE, JSON.stringify(obj, null, 2), 'utf8');
 }
 
-// ─── Server ───────────────────────────────────────────────────────────────────
+// ─── Server ───────────────────────────────────────────────────────────────
 const SK_ANCHOR_PATH = '/signalk/v1/api/vessels/self/navigation/anchor/position';
 const SK_ANCHOR_READ = '/signalk/v1/api/vessels/self/navigation/anchor';
 
@@ -88,7 +265,7 @@ http.createServer(async (req, res) => {
       const raw = fs.readFileSync(STATE_FILE, 'utf8');
       json(res, 200, { ok: true, config: JSON.parse(raw) });
     } catch (e) {
-      json(res, 200, { ok: true, config: null }); // file doesn't exist yet — not an error
+      json(res, 200, { ok: true, config: null });
     }
     return;
   }
@@ -96,7 +273,6 @@ http.createServer(async (req, res) => {
   if (method === 'POST' && url === '/api/anchor/config') {
     try {
       const body = JSON.parse(await readBody(req));
-      // Preserve the trail field — config saves must not wipe accumulated trail points
       const existing = readState();
       writeState(Object.assign({}, body, { trail: existing.trail || [] }));
       json(res, 200, { ok: true });
@@ -112,30 +288,20 @@ http.createServer(async (req, res) => {
     return;
   }
 
-  if (method === 'POST' && url === '/api/anchor/trail') {
-    try {
-      const body = JSON.parse(await readBody(req));
-      if (body.lat == null || body.lon == null) { json(res, 400, { ok: false, error: 'lat and lon required' }); return; }
-      const state = readState();
-      const trail = state.trail || [];
-      trail.push({ lat: Number(body.lat), lon: Number(body.lon), t: Date.now() });
-      if (trail.length > 2000) trail.splice(0, trail.length - 2000);
-      writeState(Object.assign({}, state, { trail }));
-      json(res, 200, { ok: true });
-    } catch (e) { json(res, 500, { ok: false, error: e.message }); }
-    return;
-  }
-
   if (method === 'POST' && url === '/api/anchor/radius') {
     try {
       const body = JSON.parse(await readBody(req));
       if (body.value == null || isNaN(Number(body.value))) {
         json(res, 400, { ok: false, error: 'value (meters) required' }); return;
       }
-      const r = await skPut('/signalk/v1/api/vessels/self/navigation/anchor/maxRadius', Number(body.value));
-      r.status >= 200 && r.status < 300
-        ? json(res, 200, { ok: true })
-        : json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });
+      const newRadius = Number(body.value);
+      const r = await skPut('/signalk/v1/api/vessels/self/navigation/anchor/maxRadius', newRadius);
+      if (r.status >= 200 && r.status < 300) {
+        _mon.radius = newRadius;
+        json(res, 200, { ok: true });
+      } else {
+        json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });
+      }
     } catch (e) { json(res, 500, { ok: false, error: e.message }); }
     return;
   }
@@ -144,9 +310,22 @@ http.createServer(async (req, res) => {
     try {
       const body = JSON.parse(await readBody(req));
       const { latitude, longitude } = body;
-      if (latitude == null || longitude == null) { json(res, 400, { ok: false, error: 'latitude and longitude required' }); return; }
+      if (latitude == null || longitude == null) {
+        json(res, 400, { ok: false, error: 'latitude and longitude required' }); return;
+      }
       const r = await skPut(SK_ANCHOR_PATH, { latitude, longitude });
-      r.status >= 200 && r.status < 300 ? json(res, 200, { ok: true }) : json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });
+      if (r.status >= 200 && r.status < 300) {
+        // Clear trail, update known anchor position, start monitoring with 30s arming window
+        try { writeState(Object.assign({}, readState(), { trail: [] })); } catch(e) {}
+        _mon.anchorLat = latitude; _mon.anchorLon = longitude;
+        _mon.trailPoints = 0; _mon.lastTrailWrite = null;
+        stopMonitoring();
+        startMonitoring(30000);
+        console.log(`[anchor-api] Anchor monitoring started — position: ${latitude},${longitude}, arming 30s`);
+        json(res, 200, { ok: true });
+      } else {
+        json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });
+      }
     } catch (e) { json(res, 500, { ok: false, error: e.message }); }
     return;
   }
@@ -155,8 +334,10 @@ http.createServer(async (req, res) => {
     try {
       const r = await skPut(SK_ANCHOR_PATH, null);
       if (r.status >= 200 && r.status < 300) {
-        // Clear the swing trail on raise
+        stopMonitoring();
         try { writeState(Object.assign({}, readState(), { trail: [] })); } catch(e) {}
+        _mon.trailPoints = 0; _mon.lastTrailWrite = null;
+        console.log('[anchor-api] Anchor monitoring stopped — anchor raised');
         json(res, 200, { ok: true });
       } else {
         json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });
@@ -166,10 +347,21 @@ http.createServer(async (req, res) => {
   }
 
   if (method === 'GET' && url === '/api/anchor/status') {
-    try {
-      const r = await skRequest('GET', SK_ANCHOR_READ, null, null);
-      cors(res); res.writeHead(r.status, { 'Content-Type': 'application/json' }); res.end(r.body);
-    } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+    json(res, 200, {
+      ok:             true,
+      monitoring:     _mon.running,
+      alarmState:     _mon.alarmState,
+      distance:       _mon.distance,
+      bearing:        _mon.bearing,
+      lastCheck:      _mon.lastCheck,
+      lastTrailWrite: _mon.lastTrailWrite,
+      trailPoints:    _mon.trailPoints,
+      anchorLat:      _mon.anchorLat,
+      anchorLon:      _mon.anchorLon,
+      curLat:         _mon.curLat,
+      curLon:         _mon.curLon,
+      radius:         _mon.radius,
+    });
     return;
   }
 
@@ -248,8 +440,28 @@ http.createServer(async (req, res) => {
 }).listen(PORT, async () => {
   console.log('[anchor-api] Listening on port ' + PORT);
   if (!USERNAME || !PASSWORD) {
-    console.warn('[anchor-api] WARNING: username/password not set in anchor-api-config.json — PUT calls will fail');
+    console.warn('[anchor-api] WARNING: username/password not set — PUT calls will fail');
   } else {
     try { await authenticate(); } catch (e) { console.error('[anchor-api] Auth error:', e.message); }
+  }
+
+  // Resume monitoring if an anchor is already set in Signal K
+  try {
+    const r = await skRequest('GET', SK_ANCHOR_READ, null, null);
+    if (r.status === 200) {
+      const data = JSON.parse(r.body);
+      const pos  = data?.position?.value;
+      if (pos && pos.latitude != null && pos.longitude != null) {
+        _mon.anchorLat = pos.latitude; _mon.anchorLon = pos.longitude;
+        const maxR = data?.maxRadius?.value;
+        if (typeof maxR === 'number' && maxR > 0) _mon.radius = maxR;
+        const state = readState();
+        _mon.trailPoints = (state.trail || []).length;
+        startMonitoring(0); // no arming window on resume
+        console.log('[anchor-api] Anchor detected on startup — monitoring resumed');
+      }
+    }
+  } catch(e) {
+    console.error('[anchor-api] Startup anchor check error:', e.message);
   }
 });

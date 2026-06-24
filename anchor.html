@@ -169,6 +169,12 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
           <div class="stat-value cyan" id="val-allowed">—</div>
         </div>
       </div>
+      <div class="stat-row" id="server-monitor-row">
+        <div class="stat-cell" style="flex:1">
+          <div class="stat-label">Server Monitoring</div>
+          <div class="stat-value" id="val-server-monitor">—</div>
+        </div>
+      </div>
     </div>
     <div class="flex-grow"></div>
     <div class="main-btns">
@@ -242,11 +248,10 @@ const S = {
   distance: null, bearing: null,
   battery: null,
 
-  // alarm state
+  // alarm state (display only — actual monitoring runs server-side)
   alarmAcknowledged: false,
-  lastAlarmState: 'ok',   // 'ok' | 'dragging' | 'gps-lost'
-  alarmSuppressed: false, // true during Set Anchor flow until first confirmed SK poll
-  lastPushover: {},
+  serverAlarmState: 'ok',   // 'ok' | 'dragging' | 'gpsLost' — from /api/anchor/status
+  serverMonitoring: false,
 
   // pushover config
   pushover: {
@@ -264,7 +269,6 @@ const S = {
   trail: [],         // loaded from proxy on page load; appended during poll
   maxDist: 0,
   watchStart: null,
-  lastTrailWrite: null, // throttle: server trail write every 60s
 
   // UI
   activeModal: null,   // null | 'setDistance' | 'setAnchor' | 'relative' | 'custom' | 'cancel'
@@ -293,13 +297,6 @@ function destinationPoint(lat, lon, distM, bearingDeg) {
 function bearingInArc(b, start, end) {
   let span = end - start; if (span < 0) span += 360; if (span === 0) return true;
   return ((b - start + 360) % 360) <= span;
-}
-function isOutsideBound() {
-  if (!S.anchorSet || S.distance === null) return false;
-  if (S.mode === 'advanced') {
-    return !(S.distance >= S.small && S.distance <= S.big && bearingInArc(S.bearing, S.startAngle, S.endAngle));
-  }
-  return S.distance > S.radius;
 }
 function geoSectorPoints(ancLat, ancLon, rSmall, rBig, startAngle, endAngle) {
   let span = endAngle - startAngle; if (span < 0) span += 360; if (span === 0) span = 360;
@@ -423,44 +420,6 @@ async function initialLoad() {
   }
 }
 
-// ─── Pushover ─────────────────────────────────────────────────────────────
-function sendPushover(eventKey) {
-  if ((eventKey === 'dragging' || eventKey === 'gpsLost') && (!S.anchorSet || S.alarmSuppressed)) return;
-  const cfg = S.pushover;
-  if (!cfg.userKey || !cfg.apiToken) return;
-  const ev = cfg.events[eventKey];
-  if (!ev || !ev.enabled) return;
-  const now = Date.now();
-  if (S.lastPushover[eventKey] && now - S.lastPushover[eventKey] < 60000) return;
-  S.lastPushover[eventKey] = now;
-  const params = new URLSearchParams({
-    token: cfg.apiToken, user: cfg.userKey, title: ev.title, message: ev.message, priority: String(ev.priority)
-  });
-  if (ev.priority === 2) { params.set('retry','60'); params.set('expire','3600'); }
-  fetch('https://api.pushover.net/1/messages.json', {
-    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params.toString()
-  }).catch(() => {});
-}
-
-// ─── Alarm logic ──────────────────────────────────────────────────────────
-let _gpsLostNotified = false;
-
-function checkAlarms() {
-  if (!S.anchorSet) return;
-  if (S.lastGpsFix && Date.now() - S.lastGpsFix > 30000) {
-    if (!_gpsLostNotified) { _gpsLostNotified = true; sendPushover('gpsLost'); showAlarmOverlay('gps'); }
-    S.lastAlarmState = 'gps-lost'; return;
-  }
-  if (S.alarmSuppressed) { S.lastAlarmState = isOutsideBound() ? 'dragging' : 'ok'; return; }
-  if (isOutsideBound()) {
-    if (S.lastAlarmState !== 'dragging') { sendPushover('dragging'); }
-    S.lastAlarmState = 'dragging';
-    if (!S.alarmAcknowledged) showAlarmOverlay('dragging');
-  } else {
-    if (S.lastAlarmState === 'dragging' && S.alarmAcknowledged) S.alarmAcknowledged = false;
-    S.lastAlarmState = 'ok';
-  }
-}
 
 function showAlarmOverlay(type) {
   const overlay = document.getElementById('alarm-overlay');
@@ -498,8 +457,8 @@ async function poll() {
       } else {
         if (wasSet) {
           S.anchorSet = false; S.anchorLat = null; S.anchorLon = null;
-          S.lastAlarmState = 'ok'; S.alarmAcknowledged = false;
-          hideAlarmOverlay(); _gpsLostNotified = false;
+          S.serverAlarmState = 'ok'; S.alarmAcknowledged = false;
+          hideAlarmOverlay();
         }
       }
     }
@@ -513,7 +472,7 @@ async function poll() {
         const pos = nav.position.value;
         if (pos.latitude !== undefined && pos.longitude !== undefined) {
           S.curLat = pos.latitude; S.curLon = pos.longitude;
-          S.lastGpsFix = Date.now(); _gpsLostNotified = false;
+          S.lastGpsFix = Date.now();
         }
       }
       if (nav && nav.gnss && nav.gnss.methodQuality) {
@@ -532,7 +491,7 @@ async function poll() {
       S.distance = haversine(S.anchorLat, S.anchorLon, S.curLat, S.curLon);
       S.bearing  = bearingTo(S.anchorLat, S.anchorLon, S.curLat, S.curLon);
 
-      // Local trail accumulation: one point per 10s, add to polyline incrementally
+      // Local trail accumulation: one point per 10s, for map display
       const now = Date.now(), last = S.trail[S.trail.length - 1];
       if (!last || now - last.t > 10000) {
         S.trail.push({ lat: S.curLat, lon: S.curLon, t: now });
@@ -540,17 +499,9 @@ async function poll() {
         if (_trail) _trail.addLatLng([S.curLat, S.curLon]);
       }
 
-      // Server trail write: throttled to once per 60s
-      if (!S.lastTrailWrite || now - S.lastTrailWrite > 60000) {
-        S.lastTrailWrite = now;
-        proxyPost('/api/anchor/trail', { lat: S.curLat, lon: S.curLon }).catch(() => {});
-      }
-
       if (S.distance > S.maxDist) S.maxDist = S.distance;
     }
 
-    checkAlarms();
-    if (S.alarmSuppressed && S.anchorSet) S.alarmSuppressed = false;
     updateUI();
   } catch (e) { /* network error */ }
 
@@ -604,11 +555,11 @@ function updateUI() {
     }
   }
 
-  // Status banner
+  // Status banner (driven by server alarm state)
   const banner = document.getElementById('status-banner');
-  if (S.anchorSet && S.lastAlarmState === 'dragging') {
+  if (S.anchorSet && S.serverAlarmState === 'dragging') {
     banner.textContent = '⚠ ANCHOR DRAGGING'; banner.className = 'alarm';
-  } else if (S.lastAlarmState === 'gps-lost') {
+  } else if (S.serverAlarmState === 'gpsLost') {
     banner.textContent = 'GPS SIGNAL LOST'; banner.className = 'warning';
   } else {
     banner.className = '';
@@ -911,25 +862,22 @@ async function doSetAnchor(type, relDist, relBear, customLat, customLon) {
   }
 
   closeModal();
-  S.alarmSuppressed = true; S.lastAlarmState = 'ok';
 
   try {
     // 1. Write radius BEFORE position
     await proxyPost('/api/anchor/radius', { value: S.radius });
-    // 2. Write position
+    // 2. Write position (server starts monitoring with 30s arming window)
     await proxyPost('/api/anchor/set', { latitude: lat, longitude: lon });
     // 3. Update local state
     S.anchorSet = true; S.anchorLat = lat; S.anchorLon = lon;
-    S.watchStart = Date.now(); S.trail = []; S.maxDist = 0; S.lastTrailWrite = null;
+    S.watchStart = Date.now(); S.trail = []; S.maxDist = 0;
     S.alarmAcknowledged = false;
     // 4. Add to history and persist
     S.history.unshift({ lat, lon, ts: Date.now() });
     if (S.history.length > 50) S.history.pop();
     await saveProxyConfig();
-    sendPushover('anchorSet');
     updateUI(); initMap();
   } catch (e) {
-    S.alarmSuppressed = false;
     showToast('Set anchor failed: ' + e.message);
   }
 }
@@ -946,11 +894,9 @@ function openCancelModal() {
       closeModal();
       try {
         await proxyPost('/api/anchor/raise', {});
-        sendPushover('anchorRaised');
         S.anchorSet = false; S.anchorLat = null; S.anchorLon = null;
-        S.distance = null; S.bearing = null; S.trail = []; S.lastTrailWrite = null;
-        S.lastAlarmState = 'ok'; S.alarmAcknowledged = false; S.alarmSuppressed = false;
-        _gpsLostNotified = false;
+        S.distance = null; S.bearing = null; S.trail = [];
+        S.serverAlarmState = 'ok'; S.alarmAcknowledged = false;
         if (_trail) _trail.setLatLngs([]);
         hideAlarmOverlay(); updateUI(); updateMap();
       } catch (e) { showToast('Raise anchor failed: ' + e.message); }
@@ -1237,6 +1183,32 @@ window.addEventListener('load', async () => {
   }
 
   _pollTimer = setTimeout(poll, 500);
+
+  // Poll server monitoring status every 5s
+  setInterval(async () => {
+    try {
+      const r = await fetch(PROXY_BASE + '/api/anchor/status');
+      if (r.ok) {
+        const d = await r.json();
+        S.serverMonitoring = d.monitoring;
+        S.serverAlarmState = d.alarmState || 'ok';
+        const el = document.getElementById('val-server-monitor');
+        if (el) {
+          if (d.monitoring) {
+            el.innerHTML = '<span style="color:#22d3ee">&#9679; Active</span>';
+          } else {
+            el.innerHTML = '<span style="color:#7a9abf">&#9679; Inactive</span>';
+          }
+        }
+        // Show alarm overlay if server says dragging and not yet acknowledged
+        if (d.alarmState === 'dragging' && !S.alarmAcknowledged) {
+          showAlarmOverlay('dragging');
+        } else if (d.alarmState === 'gpsLost') {
+          showAlarmOverlay('gps');
+        }
+      }
+    } catch(e) {}
+  }, 5000);
 });
 </script>
 </body>
