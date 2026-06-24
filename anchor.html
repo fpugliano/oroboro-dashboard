@@ -247,6 +247,7 @@ const S = {
   gpsAccuracy: null, lastGpsFix: null,
   distance: null, bearing: null,
   battery: null,
+  selfMmsi: null, selfName: null,
 
   // alarm state (display only — actual monitoring runs server-side)
   alarmAcknowledged: false,
@@ -368,10 +369,17 @@ async function saveProxyConfig() {
 
 // ─── Page load: fetch all state from server ───────────────────────────────
 async function initialLoad() {
-  // Parallel: SK anchor state + proxy config
+  // Parallel: SK anchor state + proxy config + own vessel identity
   const [skData, proxyCfg] = await Promise.all([
     loadSkAnchorState().catch(() => null),
     loadProxyConfig(),
+    fetch(SELF_URL).then(r => r.ok ? r.json() : null).then(d => {
+      if (!d) return;
+      const mmsi = d.mmsi && d.mmsi.value;
+      const name = d.name && d.name.value;
+      if (mmsi) S.selfMmsi = String(mmsi);
+      if (name) S.selfName = name;
+    }).catch(() => {}),
   ]);
 
   // Apply proxy config (mode, zone params, history, pushover)
@@ -937,7 +945,7 @@ function initMap() {
 
   if (S.anchorLat !== null) {
     _anchorMark = L.marker([S.anchorLat, S.anchorLon], {
-      icon: L.divIcon({ html: '<div style="width:26px;height:26px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.6)"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm1 7h-2v2H5v2h3.27A7 7 0 0 0 11 19.9V22h2v-2.1A7 7 0 0 0 15.73 13H19v-2h-6V9z"/></svg></div>', className: '', iconSize: [26,26], iconAnchor: [13,13] })
+      icon: L.divIcon({ html: anchorIconHtml(), className: '', iconSize: [40,40], iconAnchor: [20,20] })
     }).addTo(_map);
     drawZone();
   }
@@ -950,6 +958,10 @@ function initMap() {
 
   if (_zoneLyr) { const b = _zoneLyr.getBounds ? _zoneLyr.getBounds() : null; if (b && b.isValid()) _map.fitBounds(b, {padding:[30,30]}); }
   updateAIS();
+}
+
+function anchorIconHtml() {
+  return `<div style="width:40px;height:40px;background:#000;border-radius:50%;border:2px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.7)"><svg width="28" height="28" viewBox="-14 -16 28 30" fill="none" stroke="white" stroke-linecap="round"><circle cx="0" cy="-10" r="3.5" stroke-width="2"/><line x1="0" y1="-6" x2="0" y2="10" stroke-width="2.5"/><line x1="-8" y1="-3" x2="8" y2="-3" stroke-width="2"/><path d="M0 10 Q-4 12 -9 6" stroke-width="2.5"/><path d="M-9 6 L-10 3" stroke-width="2"/><path d="M0 10 Q4 12 9 6" stroke-width="2.5"/><path d="M9 6 L10 3" stroke-width="2"/></svg></div>`;
 }
 
 function boatIconHtml() {
@@ -981,7 +993,7 @@ function updateMap() {
   if (S.anchorLat !== null) {
     if (!_anchorMark) {
       _anchorMark = L.marker([S.anchorLat, S.anchorLon], {
-        icon: L.divIcon({ html: '<div style="width:26px;height:26px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.6)"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm1 7h-2v2H5v2h3.27A7 7 0 0 0 11 19.9V22h2v-2.1A7 7 0 0 0 15.73 13H19v-2h-6V9z"/></svg></div>', className:'', iconSize:[26,26], iconAnchor:[13,13] })
+        icon: L.divIcon({ html: anchorIconHtml(), className: '', iconSize: [40,40], iconAnchor: [20,20] })
       }).addTo(_map);
     } else {
       _anchorMark.setLatLng([S.anchorLat, S.anchorLon]);
@@ -1012,17 +1024,43 @@ async function updateAIS() {
     if (!r.ok) return;
     const vessels = await r.json();
     Object.entries(vessels).forEach(([id, v]) => {
-      if (id === 'self') return;
       const pos = v.navigation && v.navigation.position && v.navigation.position.value;
       if (!pos || pos.latitude == null) return;
-      const name = (v.name && v.name.value) || (v.mmsi && v.mmsi.value) || id.slice(-6);
-      const dist = S.curLat !== null ? Math.round(haversine(S.curLat, S.curLon, pos.latitude, pos.longitude)) : null;
-      const icon = L.divIcon({
-        html: `<div style="color:#f59e0b;font-size:20px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">▲</div>`,
-        className: '', iconSize:[20,20], iconAnchor:[10,10]
+      const mmsi = (v.mmsi && v.mmsi.value) ? String(v.mmsi.value) : null;
+      const name = (v.name && v.name.value) || null;
+      const isSelf = id === 'self' || (S.selfMmsi && mmsi === S.selfMmsi);
+
+      if (isSelf) {
+        // Own vessel: dashed amber ring centred on the AIS-reported position
+        const selfName = S.selfName || name || 'Own Vessel';
+        const selfMmsi = S.selfMmsi || mmsi || '';
+        const labelHtml = `<div style="text-align:center;margin-top:2px;line-height:1.3"><div style="font-weight:700;font-size:9px;color:#f59e0b;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.8)">${selfName}</div>${selfMmsi ? `<div style="font-size:8px;color:#fbbf24;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.8)">${selfMmsi}</div>` : ''}</div>`;
+        const html = `<div style="display:flex;flex-direction:column;align-items:center">
+          <div style="position:relative;width:28px;height:28px">
+            <svg width="28" height="28" viewBox="-14 -14 28 28"><circle cx="0" cy="0" r="12" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="3 2"/></svg>
+            <div style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:700;color:#f59e0b;text-shadow:0 1px 2px rgba(0,0,0,.8)">AIS</div>
+          </div>
+          ${labelHtml}
+        </div>`;
+        const mk = L.marker([pos.latitude, pos.longitude], {
+          icon: L.divIcon({ html, className: '', iconSize: [28, 48], iconAnchor: [14, 14] })
+        });
+        mk.addTo(_map);
+        _aisLyrs.push(mk);
+        return;
+      }
+
+      // Other vessels: amber triangle + name + full MMSI below
+      const line1 = name ? name : (mmsi ? 'MMSI ' + mmsi : id.slice(-9));
+      const line2 = mmsi || '';
+      const labelHtml = `<div style="text-align:center;margin-top:2px;line-height:1.3"><div style="font-weight:700;font-size:9px;color:#f59e0b;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.8)">${line1}</div>${line2 ? `<div style="font-size:8px;color:#fbbf24;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.8)">${line2}</div>` : ''}</div>`;
+      const html = `<div style="display:flex;flex-direction:column;align-items:center">
+        <div style="color:#f59e0b;font-size:20px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">▲</div>
+        ${labelHtml}
+      </div>`;
+      const mk = L.marker([pos.latitude, pos.longitude], {
+        icon: L.divIcon({ html, className: '', iconSize: [80, 50], iconAnchor: [40, 10] })
       });
-      const mk = L.marker([pos.latitude, pos.longitude], { icon })
-        .bindTooltip(name + (dist !== null ? ' · ' + dist + ' m' : ''), { permanent:false, direction:'right', className:'leaflet-tooltip' });
       mk.addTo(_map);
       _aisLyrs.push(mk);
     });
