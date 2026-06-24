@@ -255,7 +255,8 @@ const SK_ANCHOR_PATH = '/signalk/v1/api/vessels/self/navigation/anchor/position'
 const SK_ANCHOR_READ = '/signalk/v1/api/vessels/self/navigation/anchor';
 
 http.createServer(async (req, res) => {
-  const { method, url } = req;
+  const method = req.method;
+  const url    = req.url.split('?')[0]; // strip query strings for routing
   console.log('[anchor-api]', method, url);
 
   if (method === 'OPTIONS') { cors(res); res.writeHead(204); res.end(); return; }
@@ -446,20 +447,36 @@ http.createServer(async (req, res) => {
   }
 
   // Resume monitoring if an anchor is already set in Signal K
+  console.log('[anchor-api] Startup: checking SK for existing anchor at', SK_ANCHOR_READ);
   try {
     const r = await skRequest('GET', SK_ANCHOR_READ, null, null);
+    console.log('[anchor-api] Startup: SK responded HTTP', r.status);
     if (r.status === 200) {
-      const data = JSON.parse(r.body);
-      const pos  = data?.position?.value;
+      let data;
+      try {
+        data = JSON.parse(r.body);
+      } catch(pe) {
+        console.error('[anchor-api] Startup: JSON parse error:', pe.message);
+        console.error('[anchor-api] Startup: raw body (first 300):', r.body.slice(0, 300));
+        return;
+      }
+      console.log('[anchor-api] Startup: anchor data keys:', Object.keys(data));
+      const pos = data?.position?.value;
+      console.log('[anchor-api] Startup: position.value =', JSON.stringify(pos));
       if (pos && pos.latitude != null && pos.longitude != null) {
         _mon.anchorLat = pos.latitude; _mon.anchorLon = pos.longitude;
         const maxR = data?.maxRadius?.value;
+        console.log('[anchor-api] Startup: maxRadius.value =', maxR);
         if (typeof maxR === 'number' && maxR > 0) _mon.radius = maxR;
         const state = readState();
         _mon.trailPoints = (state.trail || []).length;
         startMonitoring(0); // no arming window on resume
-        console.log('[anchor-api] Anchor detected on startup — monitoring resumed');
+        console.log('[anchor-api] Anchor detected on startup — monitoring resumed (lat=' + pos.latitude + ', lon=' + pos.longitude + ', radius=' + _mon.radius + 'm)');
+      } else {
+        console.log('[anchor-api] Startup: no anchor position found in SK — monitoring not started');
       }
+    } else {
+      console.log('[anchor-api] Startup: SK returned non-200 — monitoring not started. Body:', r.body.slice(0, 200));
     }
   } catch(e) {
     console.error('[anchor-api] Startup anchor check error:', e.message);
