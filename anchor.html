@@ -922,6 +922,7 @@ document.getElementById('btn-ack-alarm').addEventListener('click', hideAlarmOver
 // ─── Map ──────────────────────────────────────────────────────────────────
 let _map = null, _anchorMark = null, _zoneLyr = null, _boatMark = null, _trail = null, _aisLyrs = [];
 let _aisTick = 0, _zoneKey = null;
+const _vesselNameCache = {}; // keyed by vessel id; fetched once, reused on subsequent updateAIS calls
 
 function makeTileLayer() {
   return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1015,6 +1016,10 @@ function updateMap() {
   _aisTick++; if (_aisTick % 30 === 0) updateAIS();
 }
 
+function _aisPill(text, bold) {
+  return `<span style="display:inline-block;background:rgba(0,0,0,0.6);padding:2px 5px;border-radius:3px;color:white;font-size:11px;font-weight:${bold ? '700' : '600'};font-family:'Rajdhani',sans-serif;white-space:nowrap">${text}</span>`;
+}
+
 async function updateAIS() {
   if (!_map) return;
   _aisLyrs.forEach(m => { try { _map.removeLayer(m); } catch(e){} });
@@ -1023,47 +1028,78 @@ async function updateAIS() {
     const r = await fetch(SK_BASE + '/signalk/v1/api/vessels');
     if (!r.ok) return;
     const vessels = await r.json();
-    Object.entries(vessels).forEach(([id, v]) => {
+
+    await Promise.all(Object.entries(vessels).map(async ([id, v]) => {
       const pos = v.navigation && v.navigation.position && v.navigation.position.value;
       if (!pos || pos.latitude == null) return;
-      const mmsi = (v.mmsi && v.mmsi.value) ? String(v.mmsi.value) : null;
-      const name = (v.name && v.name.value) || null;
+
+      // MMSI: handle plain string or SK object format
+      const mmsi = typeof v.mmsi === 'string' ? v.mmsi
+                 : (v.mmsi && v.mmsi.value) ? String(v.mmsi.value)
+                 : null;
+
+      // Name: handle plain string or SK object format
+      let name = typeof v.name === 'string' ? v.name
+               : (v.name && v.name.value) ? String(v.name.value)
+               : null;
+
+      // Per-vessel name fetch (cached — only fires once per id)
+      if (!name) {
+        if (id in _vesselNameCache) {
+          name = _vesselNameCache[id];
+        } else {
+          try {
+            const nr = await fetch(SK_BASE + '/signalk/v1/api/vessels/' + encodeURIComponent(id) + '/name');
+            if (nr.ok) {
+              const nd = await nr.json();
+              name = typeof nd === 'string' ? nd : (nd && nd.value) ? String(nd.value) : null;
+            }
+          } catch(e) {}
+          _vesselNameCache[id] = name;
+        }
+      } else {
+        _vesselNameCache[id] = name;
+      }
+
       const isSelf = id === 'self' || (S.selfMmsi && mmsi === S.selfMmsi);
 
       if (isSelf) {
-        // Own vessel: dashed amber ring centred on the AIS-reported position
         const selfName = S.selfName || name || 'Own Vessel';
         const selfMmsi = S.selfMmsi || mmsi || '';
-        const labelHtml = `<div style="text-align:center;margin-top:2px;line-height:1.3"><div style="font-weight:700;font-size:9px;color:#f59e0b;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.8)">${selfName}</div>${selfMmsi ? `<div style="font-size:8px;color:#fbbf24;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.8)">${selfMmsi}</div>` : ''}</div>`;
-        const html = `<div style="display:flex;flex-direction:column;align-items:center">
+        const html = `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
           <div style="position:relative;width:28px;height:28px">
             <svg width="28" height="28" viewBox="-14 -14 28 28"><circle cx="0" cy="0" r="12" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="3 2"/></svg>
-            <div style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:700;color:#f59e0b;text-shadow:0 1px 2px rgba(0,0,0,.8)">AIS</div>
+            <div style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:700;color:#f59e0b">AIS</div>
           </div>
-          ${labelHtml}
+          <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+            ${_aisPill(selfName, true)}
+            ${selfMmsi ? _aisPill(selfMmsi, false) : ''}
+          </div>
         </div>`;
         const mk = L.marker([pos.latitude, pos.longitude], {
-          icon: L.divIcon({ html, className: '', iconSize: [28, 48], iconAnchor: [14, 14] })
+          icon: L.divIcon({ html, className: '', iconSize: [100, 60], iconAnchor: [50, 14] })
         });
         mk.addTo(_map);
         _aisLyrs.push(mk);
         return;
       }
 
-      // Other vessels: amber triangle + name + full MMSI below
-      const line1 = name ? name : (mmsi ? 'MMSI ' + mmsi : id.slice(-9));
+      // Other vessels: amber triangle + name (bold) + full MMSI below
+      const line1 = name || 'Unknown';
       const line2 = mmsi || '';
-      const labelHtml = `<div style="text-align:center;margin-top:2px;line-height:1.3"><div style="font-weight:700;font-size:9px;color:#f59e0b;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.8)">${line1}</div>${line2 ? `<div style="font-size:8px;color:#fbbf24;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.8)">${line2}</div>` : ''}</div>`;
-      const html = `<div style="display:flex;flex-direction:column;align-items:center">
+      const html = `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
         <div style="color:#f59e0b;font-size:20px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">▲</div>
-        ${labelHtml}
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+          ${_aisPill(line1, true)}
+          ${line2 ? _aisPill(line2, false) : ''}
+        </div>
       </div>`;
       const mk = L.marker([pos.latitude, pos.longitude], {
-        icon: L.divIcon({ html, className: '', iconSize: [80, 50], iconAnchor: [40, 10] })
+        icon: L.divIcon({ html, className: '', iconSize: [120, 60], iconAnchor: [60, 10] })
       });
       mk.addTo(_map);
       _aisLyrs.push(mk);
-    });
+    }));
   } catch(e) {}
 }
 
