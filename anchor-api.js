@@ -323,6 +323,7 @@ http.createServer(async (req, res) => {
         stopMonitoring();
         startMonitoring(30000);
         console.log(`[anchor-api] Anchor monitoring started — position: ${latitude},${longitude}, arming 30s`);
+        sendPushover(readState().pushover, 'anchorSet');
         json(res, 200, { ok: true });
       } else {
         json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });
@@ -339,6 +340,7 @@ http.createServer(async (req, res) => {
         try { writeState(Object.assign({}, readState(), { trail: [] })); } catch(e) {}
         _mon.trailPoints = 0; _mon.lastTrailWrite = null;
         console.log('[anchor-api] Anchor monitoring stopped — anchor raised');
+        sendPushover(readState().pushover, 'anchorRaised');
         json(res, 200, { ok: true });
       } else {
         json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });

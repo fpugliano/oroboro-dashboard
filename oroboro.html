@@ -82,7 +82,7 @@ html, body {
     position: absolute;
     top: 0; left: 0;
     grid-template-columns: 1fr 1.4fr 1fr;
-    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
     overflow: hidden;
   }
   .card    { overflow: hidden; }
@@ -91,6 +91,11 @@ html, body {
   #card-wind   { grid-column: 2; grid-row: 1 / 3; overflow: hidden; }
   #card-battery{ grid-column: 3; grid-row: 1; }
   #card-solar  { grid-column: 3; grid-row: 2; }
+  /* Compress House Bank card so Solar In/Voltage labels aren't clipped */
+  #card-battery .soc-bar  { margin: 2px 0 3px; }
+  #soc                    { font-size: 38px !important; }
+  #card-battery .stat-v   { font-size: 20px !important; }
+  #card-battery .stat-cell { padding: 4px 6px; }
 }
 
 /* ── Portrait: phone / narrow screen ────────────────────────── */
@@ -1229,13 +1234,24 @@ function scaleToFit() {
     d.style.width = ''; d.style.height = ''; d.style.transform = '';
     return;
   }
-  // Landscape ≥800px (Pi, tablet): fill viewport minus bottom bar
-  // Use Math.max to guard against barH=0 if called before first layout paint
-  const bar  = document.getElementById('bottom-bar');
-  const barH = Math.max(bar ? bar.offsetHeight : 56, 48);
-  d.style.width     = window.innerWidth + 'px';
-  d.style.height    = (window.innerHeight - barH) + 'px';
-  d.style.transform = 'scale(1)';
+  // Landscape ≥800px (Pi, tablet): measure grid's natural height then scale to fit
+  const bar   = document.getElementById('bottom-bar');
+  const barH  = Math.max(bar ? bar.offsetHeight : 56, 48);
+  const availW = window.innerWidth;
+  const availH = window.innerHeight - barH;
+
+  // Reset transform and height so the grid sizes to its content (auto rows)
+  d.style.transform = '';
+  d.style.width     = availW + 'px';
+  d.style.height    = 'auto';
+
+  // Reading scrollHeight forces a synchronous reflow — gives us the natural content height
+  const naturalH = d.scrollHeight;
+
+  // Scale down only if the natural grid is taller than the available space
+  const scale = naturalH > availH ? availH / naturalH : 1;
+  d.style.height    = naturalH + 'px';
+  d.style.transform = 'scale(' + scale.toFixed(4) + ')';
 }
 window.addEventListener('resize', scaleToFit);
 
