@@ -312,7 +312,7 @@ html, body {
   width: 28px; height: 28px; border-radius: 5px;
   background: rgba(122,154,191,0.08); border: 1.5px solid #1e2a38;
   display: flex; align-items: center; justify-content: center;
-  text-decoration: none; flex-shrink: 0;
+  cursor: pointer; flex-shrink: 0;
 }
 #history-btn svg { width: 14px; height: 14px; }
 @media (max-width: 500px) {
@@ -529,13 +529,13 @@ html, body {
   </div>
   <span id="bar-logo"><img src="oroboro-logo-16.jpg" alt="Oroboro"></span>
   <div id="bar-right">
-    <a id="history-btn" href="http://localhost:3002/d/ajccmj/s-v-oroboro" title="History">
+    <button id="history-btn" title="History" onclick="window.location.href='http://'+window.location.hostname+':3002/d/ajccmj/s-v-oroboro'">
       <svg viewBox="0 0 24 24" fill="none" stroke="#7a9abf" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="6" y1="20" x2="6" y2="14"/>
         <line x1="12" y1="20" x2="12" y2="4"/>
         <line x1="18" y1="20" x2="18" y2="10"/>
       </svg>
-    </a>
+    </button>
     <div id="conn-status">
       <span class="dot" id="status-dot" style="background:#f87171"></span>
       <span id="status-txt" style="color:#f87171">Offline</span>
