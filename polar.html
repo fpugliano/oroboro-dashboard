@@ -596,24 +596,32 @@ function drawPolar() {
   ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
 
   const cx = size / 2;
-  const cy = size * 0.08; // origin near top (half-polar, 0° at top)
-  const maxSpeed = 16;
-  const radius = size * 0.85;
+  const cy = size / 2; // center of canvas for full polar
+  const maxSpeed = 12;
+  const radius = size * 0.42;
   const scale = radius / maxSpeed;
 
   // Clear
   ctx.fillStyle = '#111820';
   ctx.fillRect(0, 0, size, size);
 
-  // Draw speed rings
+  // Helper: convert AWA + boat speed to canvas x,y (0° = wind from top)
+  // Positive AWA = starboard (right), negative = port (left)
+  function toXY(awa, bs) {
+    const x = cx + Math.sin(awa * Math.PI / 180) * bs * scale;
+    const y = cy - Math.cos(awa * Math.PI / 180) * bs * scale;
+    return { x, y };
+  }
+
+  // Draw speed rings (full circles)
   ctx.strokeStyle = '#1a2332';
   ctx.lineWidth = 0.5;
   ctx.setLineDash([2, 4]);
   for (let spd = 2; spd <= maxSpeed; spd += 2) {
     ctx.beginPath();
-    ctx.arc(cx, cy, spd * scale, 0, Math.PI);
+    ctx.arc(cx, cy, spd * scale, 0, Math.PI * 2);
     ctx.stroke();
-    // Speed label
+    // Speed label on left side
     ctx.fillStyle = '#3a4a5a';
     ctx.font = '10px Rajdhani, sans-serif';
     ctx.textAlign = 'right';
@@ -621,79 +629,47 @@ function drawPolar() {
   }
   ctx.setLineDash([]);
 
-  // Draw angle lines (AWA range roughly 30° to 180°)
+  // Draw angle lines on both sides
   ctx.strokeStyle = '#1a2332';
   ctx.lineWidth = 0.5;
   for (let angle = 30; angle <= 180; angle += 10) {
-    const rad = (angle - 90) * Math.PI / 180;
+    // Right side (starboard)
+    ctx.setLineDash([1, 6]);
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    const x = cx + Math.sin(angle * Math.PI / 180) * maxSpeed * scale;
-    const y = cy + Math.cos(angle * Math.PI / 180) * maxSpeed * scale;
-    ctx.setLineDash([1, 6]);
-    ctx.lineTo(x, y);
+    let pt = toXY(angle, maxSpeed);
+    ctx.lineTo(pt.x, pt.y);
+    ctx.stroke();
+    // Left side (port) — mirror
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    pt = toXY(-angle, maxSpeed);
+    ctx.lineTo(pt.x, pt.y);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Angle labels
+    // Angle labels on right side only
     if (angle % 30 === 0 || angle === 30) {
       ctx.fillStyle = '#3a4a5a';
       ctx.font = '11px Rajdhani, sans-serif';
+      const rpt = toXY(angle, maxSpeed + 0.8);
       ctx.textAlign = 'center';
-      const lx = cx + Math.sin(angle * Math.PI / 180) * (maxSpeed * scale + 14);
-      const ly = cy + Math.cos(angle * Math.PI / 180) * (maxSpeed * scale + 14);
-      ctx.fillText(angle + '°', lx, ly + 4);
+      ctx.fillText(angle + '°', rpt.x, rpt.y + 4);
+      // Mirror label on left
+      const lpt = toXY(-angle, maxSpeed + 0.8);
+      ctx.fillText(angle + '°', lpt.x, lpt.y + 4);
     }
   }
 
-  // Draw official polar curves in AWA space
-  const officialTWS = [4, 6, 8, 10, 12, 14, 16];
-  const officialColors = ['#333', '#3a3a3a', '#444', '#4a4a4a', '#555', '#5a5a5a', '#666'];
-
-  officialTWS.forEach((tws, i) => {
-    const points = AWS_POLAR_CURVES[tws];
-
-    ctx.strokeStyle = officialColors[i];
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 3]);
-    ctx.beginPath();
-    let first = true;
-    points.forEach(p => {
-      const x = cx + Math.sin(p.awa * Math.PI / 180) * p.bs * scale;
-      const y = cy + Math.cos(p.awa * Math.PI / 180) * p.bs * scale;
-      if (first) { ctx.moveTo(x, y); first = false; }
-      else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // TWS label at the end of each curve
-    const lastP = points[points.length - 2]; // use second-to-last for better label position
-    const lx = cx + Math.sin(lastP.awa * Math.PI / 180) * lastP.bs * scale;
-    const ly = cy + Math.cos(lastP.awa * Math.PI / 180) * lastP.bs * scale;
-    ctx.fillStyle = officialColors[i];
-    ctx.font = '9px Rajdhani, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(tws + 'kt TWS', lx + 4, ly);
-  });
-
-  // Draw actual sailing data points
-  sailingData.forEach(d => {
-    const bucket = getTWSBucket(d.aws);
-    if (!bucket) return;
-    const color = TWS_COLORS[bucket];
-    const x = cx + Math.sin(d.awa * Math.PI / 180) * d.stw * scale;
-    const y = cy + Math.cos(d.awa * Math.PI / 180) * d.stw * scale;
-
-    ctx.beginPath();
-    ctx.arc(x, y, 2, 0, Math.PI * 2);
-    ctx.fillStyle = color + '80'; // semi-transparent
-    ctx.fill();
-  });
-
-  // Draw center line (0° / wind direction)
+  // Draw wind direction line (0° = top)
   ctx.strokeStyle = '#5a6a7a';
   ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx, cy - maxSpeed * scale);
+  ctx.stroke();
+  // And the dead downwind line (180°)
+  ctx.strokeStyle = '#2a3342';
   ctx.beginPath();
   ctx.moveTo(cx, cy);
   ctx.lineTo(cx, cy + maxSpeed * scale);
@@ -703,49 +679,128 @@ function drawPolar() {
   ctx.fillStyle = '#5a6a7a';
   ctx.font = '12px Rajdhani, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('▼ APPARENT WIND', cx, cy - 4);
+  ctx.fillText('▼ APPARENT WIND', cx, cy - maxSpeed * scale - 8);
 
-  // Draw optimal VMG angles for 10kt TWS as reference (in AWA space)
-  // At 10kt TWS, optimal upwind TWA is 51.3° which corresponds to AWA ~34°
-  // and optimal downwind TWA is 147.5° which corresponds to AWA ~121°
-  const vmgUpAWA = OFFICIAL_AWA[10][52]; // closest to 51.3° TWA
-  const vmgDnAWA = OFFICIAL_AWA[10][150]; // closest to 147.5° TWA
-  const vmgUpBS = OPTIMAL_VMG.upwind[10].speed;
-  const vmgDnBS = OPTIMAL_VMG.downwind[10].speed;
+  // Draw official polar curves in AWA space — both sides
+  const officialTWS = [4, 6, 8, 10, 12, 14, 16];
+  const officialColors = ['#333', '#3a3a3a', '#444', '#4a4a4a', '#555', '#5a5a5a', '#666'];
 
+  officialTWS.forEach((tws, i) => {
+    const points = AWS_POLAR_CURVES[tws];
+
+    ctx.strokeStyle = officialColors[i];
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+
+    // Right side (starboard)
+    ctx.beginPath();
+    let first = true;
+    points.forEach(p => {
+      const pt = toXY(p.awa, p.bs);
+      if (first) { ctx.moveTo(pt.x, pt.y); first = false; }
+      else ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.stroke();
+
+    // Left side (port) — mirror
+    ctx.beginPath();
+    first = true;
+    points.forEach(p => {
+      const pt = toXY(-p.awa, p.bs);
+      if (first) { ctx.moveTo(pt.x, pt.y); first = false; }
+      else ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // TWS label on right side
+    const lastP = points[points.length - 2];
+    const lpt = toXY(lastP.awa, lastP.bs);
+    ctx.fillStyle = officialColors[i];
+    ctx.font = '9px Rajdhani, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(tws + 'kt TWS', lpt.x + 4, lpt.y);
+  });
+
+  // Draw actual sailing data points — both sides (mirrored)
+  sailingData.forEach(d => {
+    const bucket = getTWSBucket(d.aws);
+    if (!bucket) return;
+    const color = TWS_COLORS[bucket];
+
+    // Right side
+    let pt = toXY(d.awa, d.stw);
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = color + '80';
+    ctx.fill();
+
+    // Left side (mirror)
+    pt = toXY(-d.awa, d.stw);
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = color + '40'; // slightly dimmer on mirror side
+    ctx.fill();
+  });
+
+  // Draw optimal VMG angles — both sides
+  const vmgUpAWA = OFFICIAL_AWA[10][52];
+  const vmgDnAWA = OFFICIAL_AWA[10][150];
+
+  // VMG upwind — right
   ctx.strokeStyle = '#22c55e40';
   ctx.lineWidth = 1;
   ctx.setLineDash([6, 4]);
   ctx.beginPath();
   ctx.moveTo(cx, cy);
-  let vx = cx + Math.sin(vmgUpAWA * Math.PI / 180) * maxSpeed * scale;
-  let vy = cy + Math.cos(vmgUpAWA * Math.PI / 180) * maxSpeed * scale;
-  ctx.lineTo(vx, vy);
+  let vpt = toXY(vmgUpAWA, maxSpeed);
+  ctx.lineTo(vpt.x, vpt.y);
   ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = '#22c55e80';
-  ctx.font = '9px Rajdhani, sans-serif';
-  ctx.fillText('VMG↑ ' + vmgUpAWA.toFixed(0) + '° AWA', vx + 8, vy);
-
-  ctx.strokeStyle = '#22c55e40';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([6, 4]);
+  // VMG upwind — left
   ctx.beginPath();
   ctx.moveTo(cx, cy);
-  vx = cx + Math.sin(vmgDnAWA * Math.PI / 180) * maxSpeed * scale;
-  vy = cy + Math.cos(vmgDnAWA * Math.PI / 180) * maxSpeed * scale;
-  ctx.lineTo(vx, vy);
+  vpt = toXY(-vmgUpAWA, maxSpeed);
+  ctx.lineTo(vpt.x, vpt.y);
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle = '#22c55e80';
   ctx.font = '9px Rajdhani, sans-serif';
-  ctx.fillText('VMG↓ ' + vmgDnAWA.toFixed(0) + '° AWA', vx + 8, vy);
+  ctx.textAlign = 'left';
+  vpt = toXY(vmgUpAWA, maxSpeed);
+  ctx.fillText('VMG↑ ' + vmgUpAWA.toFixed(0) + '°', vpt.x + 6, vpt.y);
+
+  // VMG downwind — right
+  ctx.setLineDash([6, 4]);
+  ctx.strokeStyle = '#22c55e40';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  vpt = toXY(vmgDnAWA, maxSpeed);
+  ctx.lineTo(vpt.x, vpt.y);
+  ctx.stroke();
+  // VMG downwind — left
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  vpt = toXY(-vmgDnAWA, maxSpeed);
+  ctx.lineTo(vpt.x, vpt.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#22c55e80';
+  vpt = toXY(vmgDnAWA, maxSpeed);
+  ctx.fillText('VMG↓ ' + vmgDnAWA.toFixed(0) + '°', vpt.x + 6, vpt.y);
+
+  // Port / Starboard labels
+  ctx.fillStyle = '#2a3a4a';
+  ctx.font = '11px Rajdhani, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('PORT', cx - maxSpeed * scale - 4, cy - 4);
+  ctx.textAlign = 'left';
+  ctx.fillText('STARBOARD', cx + maxSpeed * scale + 4, cy - 4);
 
   // Title
   ctx.fillStyle = '#c8d6e5';
   ctx.font = 'bold 14px Rajdhani, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('S/V OROBORO — POLAR DIAGRAM', 10, size - 8);
+  ctx.fillText('S/V OROBORO — POLAR DIAGRAM (AWS)', 10, size - 8);
 }
 
 // ═══════════════════════════════════════════════════════════
