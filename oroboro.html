@@ -308,18 +308,18 @@ html, body {
   font-size: 10px; font-weight: 500;
   pointer-events: none;
 }
-#history-btn {
+#history-btn, #polar-btn {
   width: 28px; height: 28px; border-radius: 5px;
   background: rgba(122,154,191,0.08); border: 1.5px solid #1e2a38;
   display: flex; align-items: center; justify-content: center;
   text-decoration: none; cursor: pointer; flex-shrink: 0;
 }
-#history-btn svg { width: 14px; height: 14px; }
+#history-btn svg, #polar-btn svg { width: 14px; height: 14px; }
 @media (max-width: 500px) {
-  #fs-btn, #anchor-btn, #settings-btn, #history-btn { width: 36px; height: 36px; }
+  #fs-btn, #anchor-btn, #settings-btn, #history-btn, #polar-btn { width: 36px; height: 36px; }
   #fs-btn { font-size: 18px; }
   #anchor-btn { font-size: 18px; }
-  #settings-btn svg, #history-btn svg { width: 18px; height: 18px; }
+  #settings-btn svg, #history-btn svg, #polar-btn svg { width: 18px; height: 18px; }
 }
 
 .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
@@ -529,6 +529,13 @@ html, body {
   </div>
   <span id="bar-logo"><img src="oroboro-logo-16.jpg" alt="Oroboro"></span>
   <div id="bar-right">
+    <a id="polar-btn" href="polar.html" title="Polar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#7a9abf" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <line x1="12" y1="12" x2="12" y2="3"/>
+        <line x1="12" y1="12" x2="19.5" y2="16.5"/>
+      </svg>
+    </a>
     <a id="history-btn" title="History" target="_blank" onclick="event.preventDefault();var url='http://'+window.location.hostname+':3002/d/ajccmj/s-v-oroboro';var w=window.open(url,'_blank');if(!w)window.location.href=url;">
       <svg viewBox="0 0 24 24" fill="none" stroke="#7a9abf" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="6" y1="20" x2="6" y2="14"/>

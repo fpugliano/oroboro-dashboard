@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>S/V Oroboro — Polar Performance</title>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --card-bg: #111820;
+    --border: #1a2332;
+    --text: #c8d6e5;
+    --text-dim: #5a6a7a;
+    --cyan: #00d4ff;
+    --orange: #ff8c00;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --purple: #a855f7;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0) 0;
+  }
+
+  #top-bar {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+  }
+  #top-bar a {
+    color: var(--cyan);
+    text-decoration: none;
+    font-size: 14px;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  #top-bar h1 {
+    flex: 1;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .controls {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .controls label {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .controls select, .controls button {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .controls button {
+    cursor: pointer;
+    background: var(--cyan);
+    color: var(--bg);
+    font-weight: 600;
+    border: none;
+    padding: 6px 16px;
+  }
+  .controls button:hover { opacity: 0.9; }
+  .controls button.secondary {
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  #polar-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+  }
+
+  canvas#polarCanvas {
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+  }
+  .stat-card .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .stat-card .value {
+    font-size: 20px;
+    font-weight: 600;
+  }
+  .stat-card .value.green { color: var(--green); }
+  .stat-card .value.orange { color: var(--orange); }
+  .stat-card .value.red { color: var(--red); }
+  .stat-card .value.cyan { color: var(--cyan); }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    padding: 8px 12px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  #status {
+    text-align: center;
+    padding: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  @media (max-width: 600px) {
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <a href="oroboro.html">← Dashboard</a>
+  <h1>Polar Performance</h1>
+  <div style="width:90px"></div>
+</div>
+
+<div class="controls">
+  <label>Time range:</label>
+  <select id="timeRange">
+    <option value="1h">Last 1 hour</option>
+    <option value="3h">Last 3 hours</option>
+    <option value="6h">Last 6 hours</option>
+    <option value="12h">Last 12 hours</option>
+    <option value="24h" selected>Last 24 hours</option>
+    <option value="7d">Last 7 days</option>
+    <option value="30d">Last 30 days</option>
+    <option value="all">All data</option>
+  </select>
+  <label>Min STW:</label>
+  <select id="minSOG">
+    <option value="0.5">0.5 kt</option>
+    <option value="1" selected>1 kt</option>
+    <option value="2">2 kt</option>
+    <option value="3">3 kt</option>
+  </select>
+  <button onclick="loadData()">Load Data</button>
+  <button class="secondary" onclick="clearData()">Clear</button>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#ff8c00"></div> 4-6 kt AWS</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> 6-8 kt AWS</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> 8-12 kt AWS</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#00d4ff"></div> 12-16 kt AWS</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div> 16-20 kt AWS</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> 20+ kt AWS</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,255,0.15); border:1px solid #555"></div> Official polar (AWS)</div>
+</div>
+
+<div id="polar-container">
+  <canvas id="polarCanvas"></canvas>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-card"><div class="label">Data Points</div><div class="value cyan" id="statPoints">0</div></div>
+  <div class="stat-card"><div class="label">Max Boat Speed (STW)</div><div class="value green" id="statMaxBS">—</div></div>
+  <div class="stat-card"><div class="label">Avg Performance</div><div class="value orange" id="statAvgPerf">—</div></div>
+  <div class="stat-card"><div class="label">Best VMG Upwind</div><div class="value cyan" id="statVMGUp">—</div></div>
+  <div class="stat-card"><div class="label">Best VMG Downwind</div><div class="value cyan" id="statVMGDn">—</div></div>
+  <div class="stat-card"><div class="label">Sailing Hours</div><div class="value orange" id="statHours">—</div></div>
+</div>
+
+<div id="status">No data loaded — go sailing and come back! Uses Speed Through Water (STW) for accurate comparison with VPP data.</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// Official Leopard 40 polar data (digitized from the PDF)
+// Format: { tws: { twa: boatSpeed } }
+// TWA in degrees, boat speed in knots
+// These are approximate values read from the polar curves
+// ═══════════════════════════════════════════════════════════
+// Exact VPP data from Robertson & Caine design file 224-F02.VPP
+// All data indexed by TWS for reference, but we plot in AWS/AWA space
+
+// BOATSPEEDS at BEST (knots) — TWA rows, TWS columns
+const OFFICIAL_POLAR_TWS = {
+  4:  { 52:2.40, 60:2.79, 70:3.07, 75:3.14, 80:3.61, 90:3.77, 100:3.74, 110:3.53, 120:3.21, 130:2.86, 135:2.68, 140:2.50, 150:2.21, 160:2.04, 165:1.97, 170:1.91, 180:1.82 },
+  6:  { 52:3.52, 60:4.02, 70:4.36, 75:4.44, 80:5.09, 90:5.25, 100:5.17, 110:4.90, 120:4.53, 130:4.11, 135:3.88, 140:3.65, 150:3.26, 160:3.01, 165:2.92, 170:2.83, 180:2.69 },
+  8:  { 52:4.48, 60:5.05, 70:5.43, 75:5.52, 80:6.39, 90:6.55, 100:6.43, 110:6.09, 120:5.67, 130:5.18, 135:4.92, 140:4.67, 150:4.23, 160:3.94, 165:3.83, 170:3.72, 180:3.54 },
+  10: { 52:5.33, 60:5.98, 70:6.42, 75:6.52, 80:7.52, 90:7.65, 100:7.50, 110:7.17, 120:6.73, 130:6.17, 135:5.88, 140:5.59, 150:5.11, 160:4.79, 165:4.66, 170:4.54, 180:4.34 },
+  12: { 52:6.13, 60:6.86, 70:7.30, 75:7.39, 80:8.48, 90:8.59, 100:8.40, 110:8.07, 120:7.64, 130:7.09, 135:6.79, 140:6.48, 150:5.94, 160:5.60, 165:5.45, 170:5.31, 180:5.08 },
+  14: { 52:6.88, 60:7.61, 70:8.04, 75:8.13, 80:9.46, 90:9.57, 100:9.32, 110:8.92, 120:8.44, 130:7.89, 135:7.59, 140:7.28, 150:6.75, 160:6.38, 165:6.21, 170:6.06, 180:5.80 },
+  16: { 52:7.53, 60:8.27, 70:8.73, 75:8.84, 80:10.67, 90:10.82, 100:10.43, 110:9.87, 120:9.26, 130:8.62, 135:8.31, 140:8.00, 150:7.48, 160:7.11, 165:6.95, 170:6.78, 180:6.49 }
+};
+
+// AWA at BEST (degrees) — what the instruments show at each TWA/TWS combination
+const OFFICIAL_AWA = {
+  4:  { 52:32.6, 60:35.4, 70:39.7, 75:42.2, 80:42.3, 90:46.6, 100:52.2, 110:60.1, 120:70.8, 130:84.8, 135:93.3, 140:102.5, 150:122.1, 160:141.5, 165:151.2, 170:161.0, 180:180.0 },
+  6:  { 52:32.9, 60:36.1, 70:40.8, 75:43.5, 80:43.9, 90:48.8, 100:55.0, 110:63.2, 120:73.6, 130:87.0, 135:95.1, 140:103.9, 150:123.0, 160:142.0, 165:151.6, 170:161.2, 180:180.0 },
+  8:  { 52:33.5, 60:37.0, 70:42.1, 75:44.9, 80:45.3, 90:50.6, 100:57.4, 110:66.0, 120:76.5, 130:89.8, 135:97.5, 140:106.0, 150:124.1, 160:142.6, 165:152.0, 170:161.5, 180:180.0 },
+  10: { 52:34.1, 60:37.8, 70:43.1, 75:46.1, 80:46.6, 90:52.5, 100:59.6, 110:68.2, 120:78.8, 130:92.0, 135:99.7, 140:108.0, 150:125.4, 160:143.4, 165:152.6, 170:161.8, 180:180.0 },
+  12: { 52:34.6, 60:38.5, 70:44.1, 75:47.2, 80:48.1, 90:54.3, 100:61.8, 110:70.6, 120:81.1, 130:94.0, 135:101.4, 140:109.5, 150:126.6, 160:144.1, 165:153.1, 170:162.2, 180:180.0 },
+  14: { 52:35.0, 60:39.2, 70:45.2, 75:48.4, 80:49.1, 90:55.5, 100:63.4, 110:72.6, 120:83.3, 130:96.0, 135:103.3, 140:111.0, 150:127.6, 160:144.7, 165:153.6, 170:162.5, 180:180.0 },
+  16: { 52:35.5, 60:39.9, 70:46.1, 75:49.4, 80:49.3, 90:55.8, 100:64.0, 110:73.7, 120:84.9, 130:97.8, 135:105.0, 140:112.6, 150:128.6, 160:145.3, 165:154.0, 170:162.7, 180:180.0 }
+};
+
+// AWS at BEST (knots) — apparent wind speed the instruments show
+const OFFICIAL_AWS = {
+  4:  { 52:5.7, 60:5.8, 70:5.7, 75:5.6, 80:5.8, 90:5.5, 100:5.0, 110:4.3, 120:3.7, 130:3.1, 135:2.8, 140:2.6, 150:2.4, 160:2.2, 165:2.1, 170:2.1, 180:2.2 },
+  6:  { 52:8.5, 60:8.6, 70:8.4, 75:8.2, 80:8.5, 90:8.0, 100:7.2, 110:6.3, 120:5.4, 130:4.6, 135:4.3, 140:4.0, 150:3.6, 160:3.3, 165:3.3, 170:3.2, 180:3.3 },
+  8:  { 52:11.1, 60:11.2, 70:10.9, 75:10.6, 80:11.0, 90:10.3, 100:9.3, 110:8.2, 120:7.1, 130:6.1, 135:5.7, 140:5.4, 150:4.8, 160:4.5, 165:4.4, 170:4.4, 180:4.4 },
+  10: { 52:13.7, 60:13.7, 70:13.4, 75:13.0, 80:13.5, 90:12.6, 100:11.4, 110:10.1, 120:8.8, 130:7.7, 135:7.2, 140:6.8, 150:6.1, 160:5.7, 165:5.6, 170:5.5, 180:5.6 },
+  12: { 52:16.2, 60:16.2, 70:15.7, 75:15.3, 80:15.8, 90:14.7, 100:13.4, 110:11.9, 120:10.5, 130:9.2, 135:8.7, 140:8.2, 150:7.5, 160:7.0, 165:6.8, 170:6.8, 180:6.8 },
+  14: { 52:18.6, 60:18.6, 70:18.0, 75:17.6, 80:18.1, 90:16.9, 100:15.4, 110:13.8, 120:12.2, 130:10.8, 135:10.2, 140:9.7, 150:8.8, 160:8.3, 165:8.1, 170:8.0, 180:8.1 },
+  16: { 52:21.0, 60:20.9, 70:20.3, 75:19.8, 80:20.6, 90:19.2, 100:17.5, 110:15.6, 120:13.9, 130:12.4, 135:11.7, 140:11.2, 150:10.2, 160:9.6, 165:9.4, 170:9.3, 180:9.4 }
+};
+
+// Build AWS-based polar curves: for each TWS, create pairs of (AWA, boatSpeed)
+// This is what we plot — the official curves in apparent wind space
+function buildAWSPolarCurves() {
+  const curves = {};
+  const twsSpeeds = [4, 6, 8, 10, 12, 14, 16];
+  twsSpeeds.forEach(tws => {
+    const points = [];
+    const twas = Object.keys(OFFICIAL_POLAR_TWS[tws]).map(Number).sort((a, b) => a - b);
+    twas.forEach(twa => {
+      const bs = OFFICIAL_POLAR_TWS[tws][twa];
+      const awa = OFFICIAL_AWA[tws][twa];
+      const aws = OFFICIAL_AWS[tws][twa];
+      points.push({ twa, awa, aws, bs });
+    });
+    curves[tws] = points;
+  });
+  return curves;
+}
+const AWS_POLAR_CURVES = buildAWSPolarCurves();
+
+// Optimal VMG data from VPP
+const OPTIMAL_VMG = {
+  upwind:  { 4: {angle:53.3, speed:2.48, vmg:1.48}, 6: {angle:52.6, speed:3.56, vmg:2.17}, 8: {angle:51.6, speed:4.45, vmg:2.76}, 10: {angle:51.3, speed:5.25, vmg:3.28}, 12: {angle:51.4, speed:6.04, vmg:3.77}, 14: {angle:51.0, speed:6.74, vmg:4.24}, 16: {angle:50.3, speed:7.30, vmg:4.66} },
+  downwind:{ 4: {angle:143.6, speed:2.38, vmg:1.92}, 6: {angle:147.5, speed:3.34, vmg:2.82}, 8: {angle:147.5, speed:4.32, vmg:3.65}, 10: {angle:147.5, speed:5.21, vmg:4.40}, 12: {angle:147.5, speed:6.06, vmg:5.11}, 14: {angle:147.5, speed:6.87, vmg:5.79}, 16: {angle:147.5, speed:7.60, vmg:6.41} }
+};
+
+const TWS_COLORS = {
+  '4-6':  '#ff8c00',
+  '6-8':  '#f59e0b',
+  '8-12': '#22c55e',
+  '12-16':'#00d4ff',
+  '16-20':'#a855f7',
+  '20+':  '#ef4444'
+};
+
+function getTWSBucket(aws) {
+  if (aws < 4) return null;
+  if (aws < 6) return '4-6';
+  if (aws < 8) return '6-8';
+  if (aws < 12) return '8-12';
+  if (aws < 16) return '12-16';
+  if (aws < 20) return '16-20';
+  return '20+';
+}
+
+let sailingData = [];
+const SK_BASE = window.location.protocol === 'https:'
+  ? `https://${window.location.host}`
+  : `http://${window.location.hostname}:3000`;
+const INFLUX_BASE = `http://${window.location.hostname}:8086`;
+const INFLUX_ORG = 'Oroboro';
+const INFLUX_BUCKET = 'signalk';
+const INFLUX_TOKEN = '_ehS1A3X3dmlkDKZNNfZaOfrC2r1zD24HhMNiozyLd_t1Br9DX6T4QqebV4nBEEgtSQlUkTBsSylA3_-xtY5PA==';
+
+async function loadData() {
+  const range = document.getElementById('timeRange').value;
+  const minSOG = parseFloat(document.getElementById('minSOG').value);
+  const rangeStr = range === 'all' ? '-365d' : `-${range}`;
+
+  document.getElementById('status').textContent = 'Loading data from InfluxDB...';
+
+  // Query: get AWS, AWA, SOG aligned by time
+  // We need to join wind speed, wind angle, and boat speed
+  const query = `
+    windSpeed = from(bucket: "${INFLUX_BUCKET}")
+      |> range(start: ${rangeStr})
+      |> filter(fn: (r) => r._measurement == "environment.wind.speedApparent")
+      |> filter(fn: (r) => r._field == "value")
+      |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)
+      |> map(fn: (r) => ({r with _value: r._value * 1.94384}))
+
+    windAngle = from(bucket: "${INFLUX_BUCKET}")
+      |> range(start: ${rangeStr})
+      |> filter(fn: (r) => r._measurement == "environment.wind.angleApparent")
+      |> filter(fn: (r) => r._field == "value")
+      |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)
+      |> map(fn: (r) => ({r with _value: r._value * 180.0 / 3.14159265}))
+
+    boatSpeed = from(bucket: "${INFLUX_BUCKET}")
+      |> range(start: ${rangeStr})
+      |> filter(fn: (r) => r._measurement == "navigation.speedOverGround")
+      |> filter(fn: (r) => r._field == "value")
+      |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)
+      |> map(fn: (r) => ({r with _value: r._value * 1.94384}))
+
+    join(tables: {ws: windSpeed, wa: windAngle}, on: ["_time"])
+      |> join(tables: {combined: _, bs: boatSpeed}, on: ["_time"])
+      |> filter(fn: (r) => r._value_bs > ${minSOG / 1.94384})
+      |> map(fn: (r) => ({_time: r._time, aws: r._value_ws, awa: r._value_wa, sog: r._value_bs}))
+      |> yield(name: "polar")
+  `;
+
+  // Try direct InfluxDB query first, fall back to proxy
+  try {
+    // Use a simpler approach: fetch each measurement separately and merge client-side
+    const [wsData, waData, bsData] = await Promise.all([
+      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(start: ${rangeStr}) |> filter(fn: (r) => r._measurement == "environment.wind.speedApparent") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
+      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(start: ${rangeStr}) |> filter(fn: (r) => r._measurement == "environment.wind.angleApparent") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
+      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(start: ${rangeStr}) |> filter(fn: (r) => r._measurement == "navigation.speedThroughWater") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`)
+    ]);
+
+    // Parse CSV responses and merge by timestamp
+    const ws = parseInfluxCSV(wsData);
+    const wa = parseInfluxCSV(waData);
+    const bs = parseInfluxCSV(bsData);
+
+    // Index by time (rounded to 30s)
+    const wsMap = {};
+    ws.forEach(r => { wsMap[r.time] = r.value * 1.94384; }); // m/s to knots
+    const waMap = {};
+    wa.forEach(r => { waMap[r.time] = r.value * (180 / Math.PI); }); // rad to deg
+
+    let newPoints = [];
+    bs.forEach(r => {
+      const t = r.time;
+      const stw = r.value * 1.94384; // m/s to knots
+      if (wsMap[t] !== undefined && waMap[t] !== undefined && stw > minSOG) {
+        const aws = wsMap[t];
+        let awa = Math.abs(waMap[t]); // use absolute angle (symmetric)
+        if (awa > 180) awa = 360 - awa;
+        if (awa >= 20 && awa <= 180 && aws > 2) {
+          newPoints.push({ awa, aws, stw, time: t });
+        }
+      }
+    });
+
+    sailingData = sailingData.concat(newPoints);
+    document.getElementById('status').textContent = `Loaded ${newPoints.length} new data points (${sailingData.length} total)`;
+    updateStats();
+    drawPolar();
+
+  } catch (err) {
+    document.getElementById('status').textContent = `Error: ${err.message}. Go sailing first — data is recorded automatically.`;
+    drawPolar(); // Still draw the official polar
+  }
+}
+
+async function fetchInflux(query) {
+  const resp = await fetch(`${INFLUX_BASE}/api/v2/query?org=${encodeURIComponent(INFLUX_ORG)}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Token ${INFLUX_TOKEN}`,
+      'Content-Type': 'application/vnd.flux',
+      'Accept': 'text/csv'
+    },
+    body: query
+  });
+  if (!resp.ok) throw new Error(`InfluxDB returned ${resp.status}`);
+  return await resp.text();
+}
+
+function parseInfluxCSV(csv) {
+  const rows = csv.trim().split('\n');
+  const results = [];
+  if (rows.length < 2) return results;
+
+  // Find column indices
+  let headers = null;
+  for (const row of rows) {
+    if (row.startsWith('#') || row.startsWith(',result')) continue;
+    if (row.includes('_time') && row.includes('_value')) {
+      headers = row.split(',');
+      continue;
+    }
+    if (!headers) {
+      // Try to detect header row
+      const cols = row.split(',');
+      if (cols.includes('_time') || cols.includes('_value')) {
+        headers = cols;
+        continue;
+      }
+    }
+    if (headers) {
+      const cols = row.split(',');
+      const timeIdx = headers.indexOf('_time');
+      const valueIdx = headers.indexOf('_value');
+      if (timeIdx >= 0 && valueIdx >= 0 && cols[timeIdx] && cols[valueIdx]) {
+        const time = cols[timeIdx].substring(0, 19); // truncate to seconds for matching
+        const value = parseFloat(cols[valueIdx]);
+        if (!isNaN(value)) {
+          results.push({ time, value });
+        }
+      }
+    }
+  }
+  return results;
+}
+
+function clearData() {
+  sailingData = [];
+  document.getElementById('status').textContent = 'Data cleared';
+  document.getElementById('statPoints').textContent = '0';
+  document.getElementById('statMaxBS').textContent = '—';
+  document.getElementById('statAvgPerf').textContent = '—';
+  document.getElementById('statVMGUp').textContent = '—';
+  document.getElementById('statVMGDn').textContent = '—';
+  document.getElementById('statHours').textContent = '—';
+  drawPolar();
+}
+
+function updateStats() {
+  const n = sailingData.length;
+  document.getElementById('statPoints').textContent = n.toLocaleString();
+
+  if (n === 0) return;
+
+  const maxBS = Math.max(...sailingData.map(d => d.stw));
+  document.getElementById('statMaxBS').textContent = maxBS.toFixed(1) + ' kt';
+
+  // Average performance vs official polar
+  let perfSum = 0, perfCount = 0;
+  sailingData.forEach(d => {
+    const official = getOfficialSpeed(d.aws, d.awa);
+    if (official > 0) {
+      perfSum += (d.stw / official) * 100;
+      perfCount++;
+    }
+  });
+  if (perfCount > 0) {
+    const avgPerf = perfSum / perfCount;
+    const el = document.getElementById('statAvgPerf');
+    el.textContent = avgPerf.toFixed(0) + '%';
+    el.className = 'value ' + (avgPerf >= 100 ? 'green' : avgPerf >= 80 ? 'orange' : 'red');
+  }
+
+  // Best VMG upwind (TWA < 90)
+  let bestVMGUp = 0;
+  sailingData.filter(d => d.awa < 90).forEach(d => {
+    const vmg = d.stw * Math.cos(d.awa * Math.PI / 180);
+    if (vmg > bestVMGUp) bestVMGUp = vmg;
+  });
+  document.getElementById('statVMGUp').textContent = bestVMGUp > 0 ? bestVMGUp.toFixed(1) + ' kt' : '—';
+
+  // Best VMG downwind (TWA > 90)
+  let bestVMGDn = 0;
+  sailingData.filter(d => d.awa > 90).forEach(d => {
+    const vmg = d.stw * Math.cos((180 - d.awa) * Math.PI / 180);
+    if (vmg > bestVMGDn) bestVMGDn = vmg;
+  });
+  document.getElementById('statVMGDn').textContent = bestVMGDn > 0 ? bestVMGDn.toFixed(1) + ' kt' : '—';
+
+  // Sailing hours (30s intervals)
+  document.getElementById('statHours').textContent = (n * 30 / 3600).toFixed(1) + ' hr';
+}
+
+function getOfficialSpeed(aws, awa) {
+  // Find the expected boat speed for a given AWA and AWS
+  // by interpolating across the AWS polar curves
+  // For each TWS curve, find the two AWA points that bracket our AWA,
+  // interpolate the boat speed, then interpolate between TWS curves by AWS
+
+  const twsSpeeds = [4, 6, 8, 10, 12, 14, 16];
+  let bestMatch = 0;
+  let closestAWSdiff = Infinity;
+
+  // For each TWS curve, find the point closest to our AWA and check if AWS matches
+  for (const tws of twsSpeeds) {
+    const points = AWS_POLAR_CURVES[tws];
+    for (let i = 0; i < points.length - 1; i++) {
+      const p1 = points[i], p2 = points[i + 1];
+      if (awa >= p1.awa && awa <= p2.awa) {
+        // Interpolate boat speed at this AWA
+        const frac = (awa - p1.awa) / (p2.awa - p1.awa);
+        const bs = p1.bs + (p2.bs - p1.bs) * frac;
+        const curveAWS = p1.aws + (p2.aws - p1.aws) * frac;
+        const awsDiff = Math.abs(curveAWS - aws);
+        if (awsDiff < closestAWSdiff) {
+          closestAWSdiff = awsDiff;
+          bestMatch = bs;
+        }
+      }
+    }
+  }
+
+  // Also try interpolating between two TWS curves
+  for (let ti = 0; ti < twsSpeeds.length - 1; ti++) {
+    const tws1 = twsSpeeds[ti], tws2 = twsSpeeds[ti + 1];
+    const pts1 = AWS_POLAR_CURVES[tws1], pts2 = AWS_POLAR_CURVES[tws2];
+
+    // Find matching AWA in both curves
+    let bs1 = 0, aws1 = 0, bs2 = 0, aws2 = 0;
+    let found1 = false, found2 = false;
+
+    for (let i = 0; i < pts1.length - 1; i++) {
+      if (awa >= pts1[i].awa && awa <= pts1[i + 1].awa) {
+        const f = (awa - pts1[i].awa) / (pts1[i + 1].awa - pts1[i].awa);
+        bs1 = pts1[i].bs + (pts1[i + 1].bs - pts1[i].bs) * f;
+        aws1 = pts1[i].aws + (pts1[i + 1].aws - pts1[i].aws) * f;
+        found1 = true;
+        break;
+      }
+    }
+    for (let i = 0; i < pts2.length - 1; i++) {
+      if (awa >= pts2[i].awa && awa <= pts2[i + 1].awa) {
+        const f = (awa - pts2[i].awa) / (pts2[i + 1].awa - pts2[i].awa);
+        bs2 = pts2[i].bs + (pts2[i + 1].bs - pts2[i].bs) * f;
+        aws2 = pts2[i].aws + (pts2[i + 1].aws - pts2[i].aws) * f;
+        found2 = true;
+        break;
+      }
+    }
+
+    if (found1 && found2 && aws >= aws1 && aws <= aws2 && aws2 !== aws1) {
+      const f = (aws - aws1) / (aws2 - aws1);
+      const interpolatedBS = bs1 + (bs2 - bs1) * f;
+      return interpolatedBS;
+    }
+  }
+
+  return bestMatch > 0 ? bestMatch : 0;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Polar diagram drawing
+// ═══════════════════════════════════════════════════════════
+
+function drawPolar() {
+  const canvas = document.getElementById('polarCanvas');
+  const container = document.getElementById('polar-container');
+  const size = Math.min(container.clientWidth - 20, window.innerHeight - 340, 700);
+  canvas.width = size * (window.devicePixelRatio || 1);
+  canvas.height = size * (window.devicePixelRatio || 1);
+  canvas.style.width = size + 'px';
+  canvas.style.height = size + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+
+  const cx = size / 2;
+  const cy = size * 0.08; // origin near top (half-polar, 0° at top)
+  const maxSpeed = 16;
+  const radius = size * 0.85;
+  const scale = radius / maxSpeed;
+
+  // Clear
+  ctx.fillStyle = '#111820';
+  ctx.fillRect(0, 0, size, size);
+
+  // Draw speed rings
+  ctx.strokeStyle = '#1a2332';
+  ctx.lineWidth = 0.5;
+  ctx.setLineDash([2, 4]);
+  for (let spd = 2; spd <= maxSpeed; spd += 2) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, spd * scale, 0, Math.PI);
+    ctx.stroke();
+    // Speed label
+    ctx.fillStyle = '#3a4a5a';
+    ctx.font = '10px Rajdhani, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(spd + ' kt', cx - spd * scale - 4, cy + 4);
+  }
+  ctx.setLineDash([]);
+
+  // Draw angle lines (AWA range roughly 30° to 180°)
+  ctx.strokeStyle = '#1a2332';
+  ctx.lineWidth = 0.5;
+  for (let angle = 30; angle <= 180; angle += 10) {
+    const rad = (angle - 90) * Math.PI / 180;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    const x = cx + Math.sin(angle * Math.PI / 180) * maxSpeed * scale;
+    const y = cy + Math.cos(angle * Math.PI / 180) * maxSpeed * scale;
+    ctx.setLineDash([1, 6]);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Angle labels
+    if (angle % 30 === 0 || angle === 30) {
+      ctx.fillStyle = '#3a4a5a';
+      ctx.font = '11px Rajdhani, sans-serif';
+      ctx.textAlign = 'center';
+      const lx = cx + Math.sin(angle * Math.PI / 180) * (maxSpeed * scale + 14);
+      const ly = cy + Math.cos(angle * Math.PI / 180) * (maxSpeed * scale + 14);
+      ctx.fillText(angle + '°', lx, ly + 4);
+    }
+  }
+
+  // Draw official polar curves in AWA space
+  const officialTWS = [4, 6, 8, 10, 12, 14, 16];
+  const officialColors = ['#333', '#3a3a3a', '#444', '#4a4a4a', '#555', '#5a5a5a', '#666'];
+
+  officialTWS.forEach((tws, i) => {
+    const points = AWS_POLAR_CURVES[tws];
+
+    ctx.strokeStyle = officialColors[i];
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    let first = true;
+    points.forEach(p => {
+      const x = cx + Math.sin(p.awa * Math.PI / 180) * p.bs * scale;
+      const y = cy + Math.cos(p.awa * Math.PI / 180) * p.bs * scale;
+      if (first) { ctx.moveTo(x, y); first = false; }
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // TWS label at the end of each curve
+    const lastP = points[points.length - 2]; // use second-to-last for better label position
+    const lx = cx + Math.sin(lastP.awa * Math.PI / 180) * lastP.bs * scale;
+    const ly = cy + Math.cos(lastP.awa * Math.PI / 180) * lastP.bs * scale;
+    ctx.fillStyle = officialColors[i];
+    ctx.font = '9px Rajdhani, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(tws + 'kt TWS', lx + 4, ly);
+  });
+
+  // Draw actual sailing data points
+  sailingData.forEach(d => {
+    const bucket = getTWSBucket(d.aws);
+    if (!bucket) return;
+    const color = TWS_COLORS[bucket];
+    const x = cx + Math.sin(d.awa * Math.PI / 180) * d.stw * scale;
+    const y = cy + Math.cos(d.awa * Math.PI / 180) * d.stw * scale;
+
+    ctx.beginPath();
+    ctx.arc(x, y, 2, 0, Math.PI * 2);
+    ctx.fillStyle = color + '80'; // semi-transparent
+    ctx.fill();
+  });
+
+  // Draw center line (0° / wind direction)
+  ctx.strokeStyle = '#5a6a7a';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx, cy + maxSpeed * scale);
+  ctx.stroke();
+
+  // Wind arrow at top
+  ctx.fillStyle = '#5a6a7a';
+  ctx.font = '12px Rajdhani, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('▼ APPARENT WIND', cx, cy - 4);
+
+  // Draw optimal VMG angles for 10kt TWS as reference (in AWA space)
+  // At 10kt TWS, optimal upwind TWA is 51.3° which corresponds to AWA ~34°
+  // and optimal downwind TWA is 147.5° which corresponds to AWA ~121°
+  const vmgUpAWA = OFFICIAL_AWA[10][52]; // closest to 51.3° TWA
+  const vmgDnAWA = OFFICIAL_AWA[10][150]; // closest to 147.5° TWA
+  const vmgUpBS = OPTIMAL_VMG.upwind[10].speed;
+  const vmgDnBS = OPTIMAL_VMG.downwind[10].speed;
+
+  ctx.strokeStyle = '#22c55e40';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  let vx = cx + Math.sin(vmgUpAWA * Math.PI / 180) * maxSpeed * scale;
+  let vy = cy + Math.cos(vmgUpAWA * Math.PI / 180) * maxSpeed * scale;
+  ctx.lineTo(vx, vy);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#22c55e80';
+  ctx.font = '9px Rajdhani, sans-serif';
+  ctx.fillText('VMG↑ ' + vmgUpAWA.toFixed(0) + '° AWA', vx + 8, vy);
+
+  ctx.strokeStyle = '#22c55e40';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  vx = cx + Math.sin(vmgDnAWA * Math.PI / 180) * maxSpeed * scale;
+  vy = cy + Math.cos(vmgDnAWA * Math.PI / 180) * maxSpeed * scale;
+  ctx.lineTo(vx, vy);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#22c55e80';
+  ctx.font = '9px Rajdhani, sans-serif';
+  ctx.fillText('VMG↓ ' + vmgDnAWA.toFixed(0) + '° AWA', vx + 8, vy);
+
+  // Title
+  ctx.fillStyle = '#c8d6e5';
+  ctx.font = 'bold 14px Rajdhani, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('S/V OROBORO — POLAR DIAGRAM', 10, size - 8);
+}
+
+// ═══════════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('resize', drawPolar);
+drawPolar();
+</script>
+</body>
+</html>
