@@ -201,13 +201,13 @@
 </div>
 
 <div class="legend">
-  <div class="legend-item"><div class="legend-dot" style="background:#ff8c00"></div> 4-6 kt AWS</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> 6-8 kt AWS</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> 8-12 kt AWS</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#00d4ff"></div> 12-16 kt AWS</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div> 16-20 kt AWS</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> 20+ kt AWS</div>
-  <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,255,0.15); border:1px solid #555"></div> Official polar (AWS)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ff8c00"></div> 4-6 kt TWS</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> 6-8 kt TWS</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> 8-12 kt TWS</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#00d4ff"></div> 12-16 kt TWS</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div> 16-20 kt TWS</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> 20+ kt TWS</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,255,0.15); border:1px solid #555"></div> Official polar (TWS)</div>
 </div>
 
 <div id="polar-container">
@@ -223,7 +223,7 @@
   <div class="stat-card"><div class="label">Sailing Hours</div><div class="value orange" id="statHours">—</div></div>
 </div>
 
-<div id="status">No data loaded — go sailing and come back! Uses Speed Through Water (STW) for accurate comparison with VPP data.</div>
+<div id="status">No data loaded — go sailing and come back! Uses True Wind Speed/Angle (TWS/TWA) and Speed Through Water (STW).</div>
 
 <script>
 // ═══════════════════════════════════════════════════════════
@@ -246,47 +246,6 @@ const OFFICIAL_POLAR_TWS = {
   16: { 52:7.53, 60:8.27, 70:8.73, 75:8.84, 80:10.67, 90:10.82, 100:10.43, 110:9.87, 120:9.26, 130:8.62, 135:8.31, 140:8.00, 150:7.48, 160:7.11, 165:6.95, 170:6.78, 180:6.49 }
 };
 
-// AWA at BEST (degrees) — what the instruments show at each TWA/TWS combination
-const OFFICIAL_AWA = {
-  4:  { 52:32.6, 60:35.4, 70:39.7, 75:42.2, 80:42.3, 90:46.6, 100:52.2, 110:60.1, 120:70.8, 130:84.8, 135:93.3, 140:102.5, 150:122.1, 160:141.5, 165:151.2, 170:161.0, 180:180.0 },
-  6:  { 52:32.9, 60:36.1, 70:40.8, 75:43.5, 80:43.9, 90:48.8, 100:55.0, 110:63.2, 120:73.6, 130:87.0, 135:95.1, 140:103.9, 150:123.0, 160:142.0, 165:151.6, 170:161.2, 180:180.0 },
-  8:  { 52:33.5, 60:37.0, 70:42.1, 75:44.9, 80:45.3, 90:50.6, 100:57.4, 110:66.0, 120:76.5, 130:89.8, 135:97.5, 140:106.0, 150:124.1, 160:142.6, 165:152.0, 170:161.5, 180:180.0 },
-  10: { 52:34.1, 60:37.8, 70:43.1, 75:46.1, 80:46.6, 90:52.5, 100:59.6, 110:68.2, 120:78.8, 130:92.0, 135:99.7, 140:108.0, 150:125.4, 160:143.4, 165:152.6, 170:161.8, 180:180.0 },
-  12: { 52:34.6, 60:38.5, 70:44.1, 75:47.2, 80:48.1, 90:54.3, 100:61.8, 110:70.6, 120:81.1, 130:94.0, 135:101.4, 140:109.5, 150:126.6, 160:144.1, 165:153.1, 170:162.2, 180:180.0 },
-  14: { 52:35.0, 60:39.2, 70:45.2, 75:48.4, 80:49.1, 90:55.5, 100:63.4, 110:72.6, 120:83.3, 130:96.0, 135:103.3, 140:111.0, 150:127.6, 160:144.7, 165:153.6, 170:162.5, 180:180.0 },
-  16: { 52:35.5, 60:39.9, 70:46.1, 75:49.4, 80:49.3, 90:55.8, 100:64.0, 110:73.7, 120:84.9, 130:97.8, 135:105.0, 140:112.6, 150:128.6, 160:145.3, 165:154.0, 170:162.7, 180:180.0 }
-};
-
-// AWS at BEST (knots) — apparent wind speed the instruments show
-const OFFICIAL_AWS = {
-  4:  { 52:5.7, 60:5.8, 70:5.7, 75:5.6, 80:5.8, 90:5.5, 100:5.0, 110:4.3, 120:3.7, 130:3.1, 135:2.8, 140:2.6, 150:2.4, 160:2.2, 165:2.1, 170:2.1, 180:2.2 },
-  6:  { 52:8.5, 60:8.6, 70:8.4, 75:8.2, 80:8.5, 90:8.0, 100:7.2, 110:6.3, 120:5.4, 130:4.6, 135:4.3, 140:4.0, 150:3.6, 160:3.3, 165:3.3, 170:3.2, 180:3.3 },
-  8:  { 52:11.1, 60:11.2, 70:10.9, 75:10.6, 80:11.0, 90:10.3, 100:9.3, 110:8.2, 120:7.1, 130:6.1, 135:5.7, 140:5.4, 150:4.8, 160:4.5, 165:4.4, 170:4.4, 180:4.4 },
-  10: { 52:13.7, 60:13.7, 70:13.4, 75:13.0, 80:13.5, 90:12.6, 100:11.4, 110:10.1, 120:8.8, 130:7.7, 135:7.2, 140:6.8, 150:6.1, 160:5.7, 165:5.6, 170:5.5, 180:5.6 },
-  12: { 52:16.2, 60:16.2, 70:15.7, 75:15.3, 80:15.8, 90:14.7, 100:13.4, 110:11.9, 120:10.5, 130:9.2, 135:8.7, 140:8.2, 150:7.5, 160:7.0, 165:6.8, 170:6.8, 180:6.8 },
-  14: { 52:18.6, 60:18.6, 70:18.0, 75:17.6, 80:18.1, 90:16.9, 100:15.4, 110:13.8, 120:12.2, 130:10.8, 135:10.2, 140:9.7, 150:8.8, 160:8.3, 165:8.1, 170:8.0, 180:8.1 },
-  16: { 52:21.0, 60:20.9, 70:20.3, 75:19.8, 80:20.6, 90:19.2, 100:17.5, 110:15.6, 120:13.9, 130:12.4, 135:11.7, 140:11.2, 150:10.2, 160:9.6, 165:9.4, 170:9.3, 180:9.4 }
-};
-
-// Build AWS-based polar curves: for each TWS, create pairs of (AWA, boatSpeed)
-// This is what we plot — the official curves in apparent wind space
-function buildAWSPolarCurves() {
-  const curves = {};
-  const twsSpeeds = [4, 6, 8, 10, 12, 14, 16];
-  twsSpeeds.forEach(tws => {
-    const points = [];
-    const twas = Object.keys(OFFICIAL_POLAR_TWS[tws]).map(Number).sort((a, b) => a - b);
-    twas.forEach(twa => {
-      const bs = OFFICIAL_POLAR_TWS[tws][twa];
-      const awa = OFFICIAL_AWA[tws][twa];
-      const aws = OFFICIAL_AWS[tws][twa];
-      points.push({ twa, awa, aws, bs });
-    });
-    curves[tws] = points;
-  });
-  return curves;
-}
-const AWS_POLAR_CURVES = buildAWSPolarCurves();
 
 // Optimal VMG data from VPP
 const OPTIMAL_VMG = {
@@ -303,13 +262,13 @@ const TWS_COLORS = {
   '20+':  '#ef4444'
 };
 
-function getTWSBucket(aws) {
-  if (aws < 4) return null;
-  if (aws < 6) return '4-6';
-  if (aws < 8) return '6-8';
-  if (aws < 12) return '8-12';
-  if (aws < 16) return '12-16';
-  if (aws < 20) return '16-20';
+function getTWSBucket(tws) {
+  if (tws < 4) return null;
+  if (tws < 6) return '4-6';
+  if (tws < 8) return '6-8';
+  if (tws < 12) return '8-12';
+  if (tws < 16) return '12-16';
+  if (tws < 20) return '16-20';
   return '20+';
 }
 
@@ -329,67 +288,33 @@ async function loadData() {
 
   document.getElementById('status').textContent = 'Loading data from InfluxDB...';
 
-  // Query: get AWS, AWA, SOG aligned by time
-  // We need to join wind speed, wind angle, and boat speed
-  const query = `
-    windSpeed = from(bucket: "${INFLUX_BUCKET}")
-      |> range(start: ${rangeStr})
-      |> filter(fn: (r) => r._measurement == "environment.wind.speedApparent")
-      |> filter(fn: (r) => r._field == "value")
-      |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)
-      |> map(fn: (r) => ({r with _value: r._value * 1.94384}))
-
-    windAngle = from(bucket: "${INFLUX_BUCKET}")
-      |> range(start: ${rangeStr})
-      |> filter(fn: (r) => r._measurement == "environment.wind.angleApparent")
-      |> filter(fn: (r) => r._field == "value")
-      |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)
-      |> map(fn: (r) => ({r with _value: r._value * 180.0 / 3.14159265}))
-
-    boatSpeed = from(bucket: "${INFLUX_BUCKET}")
-      |> range(start: ${rangeStr})
-      |> filter(fn: (r) => r._measurement == "navigation.speedOverGround")
-      |> filter(fn: (r) => r._field == "value")
-      |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)
-      |> map(fn: (r) => ({r with _value: r._value * 1.94384}))
-
-    join(tables: {ws: windSpeed, wa: windAngle}, on: ["_time"])
-      |> join(tables: {combined: _, bs: boatSpeed}, on: ["_time"])
-      |> filter(fn: (r) => r._value_bs > ${minSOG / 1.94384})
-      |> map(fn: (r) => ({_time: r._time, aws: r._value_ws, awa: r._value_wa, sog: r._value_bs}))
-      |> yield(name: "polar")
-  `;
-
-  // Try direct InfluxDB query first, fall back to proxy
+  // Fetch TWS, TWA, STW separately and merge client-side by timestamp
   try {
-    // Use a simpler approach: fetch each measurement separately and merge client-side
     const [wsData, waData, bsData] = await Promise.all([
-      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(start: ${rangeStr}) |> filter(fn: (r) => r._measurement == "environment.wind.speedApparent") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
-      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(start: ${rangeStr}) |> filter(fn: (r) => r._measurement == "environment.wind.angleApparent") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
+      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(start: ${rangeStr}) |> filter(fn: (r) => r._measurement == "environment.wind.speedTrue") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
+      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(start: ${rangeStr}) |> filter(fn: (r) => r._measurement == "environment.wind.angleTrueWater") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
       fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(start: ${rangeStr}) |> filter(fn: (r) => r._measurement == "navigation.speedThroughWater") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`)
     ]);
 
-    // Parse CSV responses and merge by timestamp
     const ws = parseInfluxCSV(wsData);
     const wa = parseInfluxCSV(waData);
     const bs = parseInfluxCSV(bsData);
 
-    // Index by time (rounded to 30s)
-    const wsMap = {};
-    ws.forEach(r => { wsMap[r.time] = r.value * 1.94384; }); // m/s to knots
-    const waMap = {};
-    wa.forEach(r => { waMap[r.time] = r.value * (180 / Math.PI); }); // rad to deg
+    const twsMap = {};
+    ws.forEach(r => { twsMap[r.time] = r.value * 1.94384; }); // m/s to knots
+    const twaMap = {};
+    wa.forEach(r => { twaMap[r.time] = Math.abs(r.value * (180 / Math.PI)); }); // rad to deg, absolute value
 
     let newPoints = [];
     bs.forEach(r => {
       const t = r.time;
       const stw = r.value * 1.94384; // m/s to knots
-      if (wsMap[t] !== undefined && waMap[t] !== undefined && stw > minSOG) {
-        const aws = wsMap[t];
-        let awa = Math.abs(waMap[t]); // use absolute angle (symmetric)
-        if (awa > 180) awa = 360 - awa;
-        if (awa >= 20 && awa <= 180 && aws > 2) {
-          newPoints.push({ awa, aws, stw, time: t });
+      if (twsMap[t] !== undefined && twaMap[t] !== undefined && stw > minSOG) {
+        const tws = twsMap[t];
+        let twa = twaMap[t];
+        if (twa > 180) twa = 360 - twa;
+        if (twa >= 20 && twa <= 180 && tws > 2) {
+          newPoints.push({ twa, tws, stw, time: t });
         }
       }
     });
@@ -480,7 +405,7 @@ function updateStats() {
   // Average performance vs official polar
   let perfSum = 0, perfCount = 0;
   sailingData.forEach(d => {
-    const official = getOfficialSpeed(d.aws, d.awa);
+    const official = getOfficialSpeed(d.tws, d.twa);
     if (official > 0) {
       perfSum += (d.stw / official) * 100;
       perfCount++;
@@ -495,16 +420,16 @@ function updateStats() {
 
   // Best VMG upwind (TWA < 90)
   let bestVMGUp = 0;
-  sailingData.filter(d => d.awa < 90).forEach(d => {
-    const vmg = d.stw * Math.cos(d.awa * Math.PI / 180);
+  sailingData.filter(d => d.twa < 90).forEach(d => {
+    const vmg = d.stw * Math.cos(d.twa * Math.PI / 180);
     if (vmg > bestVMGUp) bestVMGUp = vmg;
   });
   document.getElementById('statVMGUp').textContent = bestVMGUp > 0 ? bestVMGUp.toFixed(1) + ' kt' : '—';
 
   // Best VMG downwind (TWA > 90)
   let bestVMGDn = 0;
-  sailingData.filter(d => d.awa > 90).forEach(d => {
-    const vmg = d.stw * Math.cos((180 - d.awa) * Math.PI / 180);
+  sailingData.filter(d => d.twa > 90).forEach(d => {
+    const vmg = d.stw * Math.cos((180 - d.twa) * Math.PI / 180);
     if (vmg > bestVMGDn) bestVMGDn = vmg;
   });
   document.getElementById('statVMGDn').textContent = bestVMGDn > 0 ? bestVMGDn.toFixed(1) + ' kt' : '—';
@@ -513,71 +438,36 @@ function updateStats() {
   document.getElementById('statHours').textContent = (n * 30 / 3600).toFixed(1) + ' hr';
 }
 
-function getOfficialSpeed(aws, awa) {
-  // Find the expected boat speed for a given AWA and AWS
-  // by interpolating across the AWS polar curves
-  // For each TWS curve, find the two AWA points that bracket our AWA,
-  // interpolate the boat speed, then interpolate between TWS curves by AWS
-
+function getOfficialSpeed(tws, twa) {
+  // Bilinear interpolation directly on OFFICIAL_POLAR_TWS table
   const twsSpeeds = [4, 6, 8, 10, 12, 14, 16];
-  let bestMatch = 0;
-  let closestAWSdiff = Infinity;
+  const twas = [52, 60, 70, 75, 80, 90, 100, 110, 120, 130, 135, 140, 150, 160, 165, 170, 180];
 
-  // For each TWS curve, find the point closest to our AWA and check if AWS matches
-  for (const tws of twsSpeeds) {
-    const points = AWS_POLAR_CURVES[tws];
-    for (let i = 0; i < points.length - 1; i++) {
-      const p1 = points[i], p2 = points[i + 1];
-      if (awa >= p1.awa && awa <= p2.awa) {
-        // Interpolate boat speed at this AWA
-        const frac = (awa - p1.awa) / (p2.awa - p1.awa);
-        const bs = p1.bs + (p2.bs - p1.bs) * frac;
-        const curveAWS = p1.aws + (p2.aws - p1.aws) * frac;
-        const awsDiff = Math.abs(curveAWS - aws);
-        if (awsDiff < closestAWSdiff) {
-          closestAWSdiff = awsDiff;
-          bestMatch = bs;
-        }
-      }
-    }
+  // Clamp to table range
+  tws = Math.max(twsSpeeds[0], Math.min(twsSpeeds[twsSpeeds.length - 1], tws));
+  twa = Math.max(twas[0], Math.min(twas[twas.length - 1], twa));
+
+  // Find bracketing TWS
+  let tws1 = twsSpeeds[0], tws2 = twsSpeeds[1];
+  for (let i = 0; i < twsSpeeds.length - 1; i++) {
+    if (tws >= twsSpeeds[i] && tws <= twsSpeeds[i + 1]) { tws1 = twsSpeeds[i]; tws2 = twsSpeeds[i + 1]; break; }
   }
 
-  // Also try interpolating between two TWS curves
-  for (let ti = 0; ti < twsSpeeds.length - 1; ti++) {
-    const tws1 = twsSpeeds[ti], tws2 = twsSpeeds[ti + 1];
-    const pts1 = AWS_POLAR_CURVES[tws1], pts2 = AWS_POLAR_CURVES[tws2];
-
-    // Find matching AWA in both curves
-    let bs1 = 0, aws1 = 0, bs2 = 0, aws2 = 0;
-    let found1 = false, found2 = false;
-
-    for (let i = 0; i < pts1.length - 1; i++) {
-      if (awa >= pts1[i].awa && awa <= pts1[i + 1].awa) {
-        const f = (awa - pts1[i].awa) / (pts1[i + 1].awa - pts1[i].awa);
-        bs1 = pts1[i].bs + (pts1[i + 1].bs - pts1[i].bs) * f;
-        aws1 = pts1[i].aws + (pts1[i + 1].aws - pts1[i].aws) * f;
-        found1 = true;
-        break;
-      }
-    }
-    for (let i = 0; i < pts2.length - 1; i++) {
-      if (awa >= pts2[i].awa && awa <= pts2[i + 1].awa) {
-        const f = (awa - pts2[i].awa) / (pts2[i + 1].awa - pts2[i].awa);
-        bs2 = pts2[i].bs + (pts2[i + 1].bs - pts2[i].bs) * f;
-        aws2 = pts2[i].aws + (pts2[i + 1].aws - pts2[i].aws) * f;
-        found2 = true;
-        break;
-      }
-    }
-
-    if (found1 && found2 && aws >= aws1 && aws <= aws2 && aws2 !== aws1) {
-      const f = (aws - aws1) / (aws2 - aws1);
-      const interpolatedBS = bs1 + (bs2 - bs1) * f;
-      return interpolatedBS;
-    }
+  // Find bracketing TWA
+  let twa1 = twas[0], twa2 = twas[1];
+  for (let i = 0; i < twas.length - 1; i++) {
+    if (twa >= twas[i] && twa <= twas[i + 1]) { twa1 = twas[i]; twa2 = twas[i + 1]; break; }
   }
 
-  return bestMatch > 0 ? bestMatch : 0;
+  const fTWS = tws1 === tws2 ? 0 : (tws - tws1) / (tws2 - tws1);
+  const fTWA = twa1 === twa2 ? 0 : (twa - twa1) / (twa2 - twa1);
+
+  const bs11 = OFFICIAL_POLAR_TWS[tws1][twa1];
+  const bs12 = OFFICIAL_POLAR_TWS[tws1][twa2];
+  const bs21 = OFFICIAL_POLAR_TWS[tws2][twa1];
+  const bs22 = OFFICIAL_POLAR_TWS[tws2][twa2];
+
+  return (bs11 + (bs12 - bs11) * fTWA) * (1 - fTWS) + (bs21 + (bs22 - bs21) * fTWA) * fTWS;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -605,11 +495,10 @@ function drawPolar() {
   ctx.fillStyle = '#111820';
   ctx.fillRect(0, 0, size, size);
 
-  // Helper: convert AWA + boat speed to canvas x,y (0° = wind from top)
-  // Positive AWA = starboard (right), negative = port (left)
-  function toXY(awa, bs) {
-    const x = cx + Math.sin(awa * Math.PI / 180) * bs * scale;
-    const y = cy - Math.cos(awa * Math.PI / 180) * bs * scale;
+  // Convert angle (TWA, 0° = upwind) + boat speed to canvas x,y
+  function toXY(twa, bs) {
+    const x = cx + Math.sin(twa * Math.PI / 180) * bs * scale;
+    const y = cy - Math.cos(twa * Math.PI / 180) * bs * scale;
     return { x, y };
   }
 
@@ -679,14 +568,14 @@ function drawPolar() {
   ctx.fillStyle = '#5a6a7a';
   ctx.font = '12px Rajdhani, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('▼ APPARENT WIND', cx, cy - maxSpeed * scale - 8);
+  ctx.fillText('▼ TRUE WIND', cx, cy - maxSpeed * scale - 8);
 
-  // Draw official polar curves in AWA space — both sides
+  // Draw official polar curves directly in TWA space — both sides
   const officialTWS = [4, 6, 8, 10, 12, 14, 16];
   const officialColors = ['#333', '#3a3a3a', '#444', '#4a4a4a', '#555', '#5a5a5a', '#666'];
 
   officialTWS.forEach((tws, i) => {
-    const points = AWS_POLAR_CURVES[tws];
+    const twas = Object.keys(OFFICIAL_POLAR_TWS[tws]).map(Number).sort((a, b) => a - b);
 
     ctx.strokeStyle = officialColors[i];
     ctx.lineWidth = 1.5;
@@ -695,8 +584,9 @@ function drawPolar() {
     // Right side (starboard)
     ctx.beginPath();
     let first = true;
-    points.forEach(p => {
-      const pt = toXY(p.awa, p.bs);
+    twas.forEach(twa => {
+      const bs = OFFICIAL_POLAR_TWS[tws][twa];
+      const pt = toXY(twa, bs);
       if (first) { ctx.moveTo(pt.x, pt.y); first = false; }
       else ctx.lineTo(pt.x, pt.y);
     });
@@ -705,17 +595,18 @@ function drawPolar() {
     // Left side (port) — mirror
     ctx.beginPath();
     first = true;
-    points.forEach(p => {
-      const pt = toXY(-p.awa, p.bs);
+    twas.forEach(twa => {
+      const bs = OFFICIAL_POLAR_TWS[tws][twa];
+      const pt = toXY(-twa, bs);
       if (first) { ctx.moveTo(pt.x, pt.y); first = false; }
       else ctx.lineTo(pt.x, pt.y);
     });
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // TWS label on right side
-    const lastP = points[points.length - 2];
-    const lpt = toXY(lastP.awa, lastP.bs);
+    // TWS label on right side near the downwind end
+    const lastTWA = twas[twas.length - 2];
+    const lpt = toXY(lastTWA, OFFICIAL_POLAR_TWS[tws][lastTWA]);
     ctx.fillStyle = officialColors[i];
     ctx.font = '9px Rajdhani, sans-serif';
     ctx.textAlign = 'left';
@@ -724,69 +615,53 @@ function drawPolar() {
 
   // Draw actual sailing data points — both sides (mirrored)
   sailingData.forEach(d => {
-    const bucket = getTWSBucket(d.aws);
+    const bucket = getTWSBucket(d.tws);
     if (!bucket) return;
     const color = TWS_COLORS[bucket];
 
-    // Right side
-    let pt = toXY(d.awa, d.stw);
+    // Right side (starboard)
+    let pt = toXY(d.twa, d.stw);
     ctx.beginPath();
     ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
     ctx.fillStyle = color + '80';
     ctx.fill();
 
-    // Left side (mirror)
-    pt = toXY(-d.awa, d.stw);
+    // Left side (port) — mirror
+    pt = toXY(-d.twa, d.stw);
     ctx.beginPath();
     ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
-    ctx.fillStyle = color + '40'; // slightly dimmer on mirror side
+    ctx.fillStyle = color + '40';
     ctx.fill();
   });
 
-  // Draw optimal VMG angles — both sides
-  const vmgUpAWA = OFFICIAL_AWA[10][52];
-  const vmgDnAWA = OFFICIAL_AWA[10][150];
+  // Draw optimal VMG angles (TWA from VPP) — both sides
+  const vmgUpTWA = 51;    // ~51° TWA upwind optimal
+  const vmgDnTWA = 147.5; // ~147.5° TWA downwind optimal
 
-  // VMG upwind — right
   ctx.strokeStyle = '#22c55e40';
   ctx.lineWidth = 1;
   ctx.setLineDash([6, 4]);
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  let vpt = toXY(vmgUpAWA, maxSpeed);
-  ctx.lineTo(vpt.x, vpt.y);
-  ctx.stroke();
-  // VMG upwind — left
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  vpt = toXY(-vmgUpAWA, maxSpeed);
-  ctx.lineTo(vpt.x, vpt.y);
-  ctx.stroke();
+
+  // VMG upwind — right and left
+  ctx.beginPath(); ctx.moveTo(cx, cy);
+  let vpt = toXY(vmgUpTWA, maxSpeed); ctx.lineTo(vpt.x, vpt.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy);
+  vpt = toXY(-vmgUpTWA, maxSpeed); ctx.lineTo(vpt.x, vpt.y); ctx.stroke();
+
+  // VMG downwind — right and left
+  ctx.beginPath(); ctx.moveTo(cx, cy);
+  vpt = toXY(vmgDnTWA, maxSpeed); ctx.lineTo(vpt.x, vpt.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy);
+  vpt = toXY(-vmgDnTWA, maxSpeed); ctx.lineTo(vpt.x, vpt.y); ctx.stroke();
+
   ctx.setLineDash([]);
   ctx.fillStyle = '#22c55e80';
   ctx.font = '9px Rajdhani, sans-serif';
   ctx.textAlign = 'left';
-  vpt = toXY(vmgUpAWA, maxSpeed);
-  ctx.fillText('VMG↑ ' + vmgUpAWA.toFixed(0) + '°', vpt.x + 6, vpt.y);
-
-  // VMG downwind — right
-  ctx.setLineDash([6, 4]);
-  ctx.strokeStyle = '#22c55e40';
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  vpt = toXY(vmgDnAWA, maxSpeed);
-  ctx.lineTo(vpt.x, vpt.y);
-  ctx.stroke();
-  // VMG downwind — left
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  vpt = toXY(-vmgDnAWA, maxSpeed);
-  ctx.lineTo(vpt.x, vpt.y);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = '#22c55e80';
-  vpt = toXY(vmgDnAWA, maxSpeed);
-  ctx.fillText('VMG↓ ' + vmgDnAWA.toFixed(0) + '°', vpt.x + 6, vpt.y);
+  vpt = toXY(vmgUpTWA, maxSpeed);
+  ctx.fillText('VMG↑ ' + vmgUpTWA + '°', vpt.x + 6, vpt.y);
+  vpt = toXY(vmgDnTWA, maxSpeed);
+  ctx.fillText('VMG↓ ' + vmgDnTWA + '°', vpt.x + 6, vpt.y);
 
   // Port / Starboard labels
   ctx.fillStyle = '#2a3a4a';
@@ -800,7 +675,7 @@ function drawPolar() {
   ctx.fillStyle = '#c8d6e5';
   ctx.font = 'bold 14px Rajdhani, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('S/V OROBORO — POLAR DIAGRAM (AWS)', 10, size - 8);
+  ctx.fillText('S/V OROBORO — POLAR DIAGRAM (TWS/TWA)', 10, size - 8);
 }
 
 // ═══════════════════════════════════════════════════════════
