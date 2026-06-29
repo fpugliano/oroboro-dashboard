@@ -203,6 +203,7 @@
   </select>
   <button onclick="loadData()">Load Data</button>
   <button class="secondary" onclick="clearData()">Clear</button>
+  <button class="secondary" onclick="exportCSV()">Export CSV</button>
 </div>
 
 <div class="legend">
@@ -678,6 +679,45 @@ function drawPolar() {
   ctx.font = 'bold 14px Rajdhani, sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText('S/V OROBORO — POLAR DIAGRAM (TWS/TWA)', 10, size - 8);
+}
+
+// ═══════════════════════════════════════════════════════════
+// Export
+// ═══════════════════════════════════════════════════════════
+function exportCSV() {
+  if (sailingData.length === 0) {
+    document.getElementById('status').textContent = 'No data to export — load data first.';
+    return;
+  }
+
+  const rows = [
+    ['timestamp_unix_30s', 'twa_deg', 'tws_kt', 'stw_kt', 'tws_bucket', 'official_polar_kt', 'performance_pct']
+  ];
+
+  sailingData.forEach(d => {
+    const official = getOfficialSpeed(d.tws, d.twa);
+    const perf = official > 0 ? ((d.stw / official) * 100).toFixed(1) : '';
+    rows.push([
+      d.time,
+      d.twa.toFixed(1),
+      d.tws.toFixed(2),
+      d.stw.toFixed(2),
+      getTWSBucket(d.tws) || '',
+      official > 0 ? official.toFixed(2) : '',
+      perf
+    ]);
+  });
+
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', 'h').replace(':', 'm');
+  a.href = url;
+  a.download = `oroboro_polar_${now}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  document.getElementById('status').textContent = `Exported ${sailingData.length} rows to CSV.`;
 }
 
 // ═══════════════════════════════════════════════════════════
