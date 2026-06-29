@@ -71,7 +71,7 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
-  .controls select, .controls button {
+  .controls select, .controls button, .controls input[type="datetime-local"] {
     background: var(--bg);
     color: var(--text);
     border: 1px solid var(--border);
@@ -80,6 +80,7 @@
     font-size: 13px;
     font-family: inherit;
   }
+  .controls input[type="datetime-local"] { color-scheme: dark; }
   .controls button {
     cursor: pointer;
     background: var(--cyan);
@@ -189,6 +190,10 @@
     <option value="30d">Last 30 days</option>
     <option value="all">All data</option>
   </select>
+  <label>From:</label>
+  <input type="datetime-local" id="fromTime">
+  <label>To:</label>
+  <input type="datetime-local" id="toTime">
   <label>Min STW:</label>
   <select id="minSOG">
     <option value="0.5">0.5 kt</option>
@@ -282,18 +287,29 @@ const INFLUX_BUCKET = 'signalk';
 const INFLUX_TOKEN = '_ehS1A3X3dmlkDKZNNfZaOfrC2r1zD24HhMNiozyLd_t1Br9DX6T4QqebV4nBEEgtSQlUkTBsSylA3_-xtY5PA==';
 
 async function loadData() {
-  const range = document.getElementById('timeRange').value;
   const minSOG = parseFloat(document.getElementById('minSOG').value);
-  const rangeStr = range === 'all' ? '-365d' : `-${range}`;
+  const fromVal = document.getElementById('fromTime').value;
+  const toVal   = document.getElementById('toTime').value;
+
+  let rangeArg;
+  if (fromVal) {
+    const startISO = new Date(fromVal).toISOString();
+    rangeArg = toVal
+      ? `start: ${startISO}, stop: ${new Date(toVal).toISOString()}`
+      : `start: ${startISO}`;
+  } else {
+    const range = document.getElementById('timeRange').value;
+    rangeArg = `start: ${range === 'all' ? '-365d' : `-${range}`}`;
+  }
 
   document.getElementById('status').textContent = 'Loading data from InfluxDB...';
 
   // Fetch TWS, TWA, STW separately and merge client-side by timestamp
   try {
     const [wsData, waData, bsData] = await Promise.all([
-      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(start: ${rangeStr}) |> filter(fn: (r) => r._measurement == "environment.wind.speedTrue") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
-      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(start: ${rangeStr}) |> filter(fn: (r) => r._measurement == "environment.wind.angleTrueWater") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
-      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(start: ${rangeStr}) |> filter(fn: (r) => r._measurement == "navigation.speedThroughWater") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`)
+      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(${rangeArg}) |> filter(fn: (r) => r._measurement == "environment.wind.speedTrue") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
+      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(${rangeArg}) |> filter(fn: (r) => r._measurement == "environment.wind.angleTrueWater") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
+      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(${rangeArg}) |> filter(fn: (r) => r._measurement == "navigation.speedThroughWater") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`)
     ]);
 
     const ws = parseInfluxCSV(wsData);
