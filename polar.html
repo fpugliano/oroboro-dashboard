@@ -307,8 +307,8 @@ async function loadData() {
   // Fetch TWS, TWA, STW separately and merge client-side by timestamp
   try {
     const [wsData, waData, bsData] = await Promise.all([
-      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(${rangeArg}) |> filter(fn: (r) => r._measurement == "environment.wind.speedTrue") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
-      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(${rangeArg}) |> filter(fn: (r) => r._measurement == "environment.wind.angleTrueWater") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
+      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(${rangeArg}) |> filter(fn: (r) => r._measurement == "environment.wind.speedApparent") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
+      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(${rangeArg}) |> filter(fn: (r) => r._measurement == "environment.wind.angleApparent") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
       fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(${rangeArg}) |> filter(fn: (r) => r._measurement == "navigation.speedThroughWater") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`)
     ]);
 
@@ -365,34 +365,20 @@ function parseInfluxCSV(csv) {
   const results = [];
   if (rows.length < 2) return results;
 
-  // Find column indices
-  let headers = null;
-  for (const row of rows) {
-    if (row.startsWith('#') || row.startsWith(',result')) continue;
-    if (row.includes('_time') && row.includes('_value')) {
-      headers = row.split(',');
-      continue;
-    }
-    if (!headers) {
-      // Try to detect header row
-      const cols = row.split(',');
-      if (cols.includes('_time') || cols.includes('_value')) {
-        headers = cols;
-        continue;
-      }
-    }
-    if (headers) {
-      const cols = row.split(',');
-      const timeIdx = headers.indexOf('_time');
-      const valueIdx = headers.indexOf('_value');
-      if (timeIdx >= 0 && valueIdx >= 0 && cols[timeIdx] && cols[valueIdx]) {
-        const time = cols[timeIdx].substring(0, 19); // truncate to seconds for matching
-        const value = parseFloat(cols[valueIdx]);
-        if (!isNaN(value)) {
-          results.push({ time, value });
-        }
-      }
-    }
+  // First row is the header (starts with a leading comma)
+  const headers = rows[0].split(',');
+  const timeIdx  = headers.indexOf('_time');
+  const valueIdx = headers.indexOf('_value');
+  if (timeIdx < 0 || valueIdx < 0) return results;
+
+  for (let i = 1; i < rows.length; i++) {
+    const cols = rows[i].split(',');
+    const timeStr = cols[timeIdx];
+    const value   = parseFloat(cols[valueIdx]);
+    if (!timeStr || isNaN(value)) continue;
+    // Round to 30-second epoch bucket to align the three streams
+    const time = String(Math.round(new Date(timeStr).getTime() / 30000));
+    results.push({ time, value });
   }
   return results;
 }
