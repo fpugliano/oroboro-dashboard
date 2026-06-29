@@ -319,19 +319,29 @@ async function loadData() {
 
     const twsMap = {};
     ws.forEach(r => { twsMap[r.time] = r.value * 1.94384; }); // m/s to knots
-    const twaMap = {};
-    wa.forEach(r => { twaMap[r.time] = Math.abs(r.value * (180 / Math.PI)); }); // rad to deg, absolute value
+    const awaMap = {}; // apparent wind angle in degrees (absolute)
+    wa.forEach(r => { awaMap[r.time] = Math.abs(r.value * (180 / Math.PI)); });
 
     let newPoints = [];
     bs.forEach(r => {
       const t = r.time;
       const stw = r.value * 1.94384; // m/s to knots
-      if (twsMap[t] !== undefined && twaMap[t] !== undefined && stw > minSOG) {
+      if (twsMap[t] !== undefined && awaMap[t] !== undefined && stw > minSOG) {
         const tws = twsMap[t];
-        let twa = twaMap[t];
-        if (twa > 180) twa = 360 - twa;
-        if (twa >= 20 && twa <= 180 && tws > 2) {
-          newPoints.push({ twa, tws, stw, time: t });
+        let awa = awaMap[t];
+        if (awa > 180) awa = 360 - awa;
+        // Compute TWS/TWA from AWS/AWA/STW
+        const awsMs = ws.find ? null : null; // AWS already in twsMap as apparent speed
+        // Use client-side true wind calc: same as dashboard
+        const awaRad = awa * Math.PI / 180;
+        const awsKt = twsMap[t]; // note: twsMap stores AWS (apparent wind speed) — rename for clarity
+        const twx = awsKt * Math.cos(awaRad) - stw;
+        const twy = awsKt * Math.sin(awaRad);
+        const twsCalc = Math.sqrt(twx * twx + twy * twy);
+        let twa = Math.atan2(twy, twx) * 180 / Math.PI;
+        if (twa < 0) twa = -twa; // absolute value
+        if (twa >= 20 && twa <= 180 && twsCalc > 2) {
+          newPoints.push({ twa: twa, tws: twsCalc, awa: awa, aws: awsKt, stw, time: t });
         }
       }
     });
@@ -691,7 +701,7 @@ function exportCSV() {
   }
 
   const rows = [
-    ['timestamp_unix_30s', 'twa_deg', 'tws_kt', 'stw_kt', 'tws_bucket', 'official_polar_kt', 'performance_pct']
+    ['timestamp_unix_30s', 'awa_deg', 'aws_kt', 'twa_deg', 'tws_kt', 'stw_kt', 'tws_bucket', 'official_polar_kt', 'performance_pct']
   ];
 
   sailingData.forEach(d => {
@@ -699,6 +709,8 @@ function exportCSV() {
     const perf = official > 0 ? ((d.stw / official) * 100).toFixed(1) : '';
     rows.push([
       d.time,
+      d.awa != null ? d.awa.toFixed(1) : '',
+      d.aws != null ? d.aws.toFixed(2) : '',
       d.twa.toFixed(1),
       d.tws.toFixed(2),
       d.stw.toFixed(2),
