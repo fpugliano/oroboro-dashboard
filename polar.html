@@ -561,15 +561,30 @@ async function fetchInflux(query) {
 
 function parseInfluxCSV(csv) {
   const rows=[], lines=csv.split('\n');
-  let headers=[];
+  let headers=[], timeIdx=-1, valueIdx=-1;
   for (const line of lines) {
     if (!line.trim()||line.startsWith('#')) continue;
     const cols=line.split(',');
-    if (cols[0]==='') { headers=cols; continue; }
-    if (!headers.length) continue;
-    const obj={};
-    headers.forEach((h,i)=>obj[h.trim()]=cols[i]?.trim());
-    if (obj._value) rows.push({time:obj._time, value:parseFloat(obj._value)});
+    // Header row: first col empty, second col is "result"
+    if (cols[0]==='' && cols[1]==='result') {
+      headers=cols.map(h=>h.trim());
+      timeIdx=headers.indexOf('_time');
+      valueIdx=headers.indexOf('_value');
+      continue;
+    }
+    // Header row variant: annotation row starting with empty
+    if (cols[0]==='' && !cols[1].startsWith('_result') && headers.length===0) {
+      headers=cols.map(h=>h.trim());
+      timeIdx=headers.indexOf('_time');
+      valueIdx=headers.indexOf('_value');
+      continue;
+    }
+    // Data row: first col empty, second col starts with "_result"
+    if (cols[0]==='' && timeIdx>=0 && valueIdx>=0) {
+      const t=cols[timeIdx]?.trim();
+      const v=cols[valueIdx]?.trim();
+      if (t && v && v!=='') rows.push({time:t, value:parseFloat(v)});
+    }
   }
   return rows;
 }
@@ -595,13 +610,9 @@ async function loadData() {
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.speedThroughWater")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`)
     ]);
 
-    console.log('wsData length:', wsData.length, 'first 200:', wsData.substring(0,200));
-    console.log('waData length:', waData.length);
-    console.log('bsData length:', bsData.length, 'first 200:', bsData.substring(0,200));
     const awsRaw=parseInfluxCSV(wsData);
     const awaRaw=parseInfluxCSV(waData);
     const bsRaw =parseInfluxCSV(bsData);
-    console.log('parsed rows - aws:', awsRaw.length, 'awa:', awaRaw.length, 'bs:', bsRaw.length);
 
     // Build epoch-keyed maps (round to nearest 30s to handle slight timestamp skew)
     const awsMap={}, awaMap={};
