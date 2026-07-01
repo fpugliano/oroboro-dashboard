@@ -599,25 +599,37 @@ async function loadData() {
     const awaRaw=parseInfluxCSV(waData);
     const bsRaw =parseInfluxCSV(bsData);
 
+    // Build epoch-keyed maps (round to nearest 30s to handle slight timestamp skew)
     const awsMap={}, awaMap={};
-    awsRaw.forEach(r=>awsMap[r.time]=r.value);
-    awaRaw.forEach(r=>awaMap[r.time]=r.value);
+    awsRaw.forEach(r=>{
+      const epoch=Math.round(new Date(r.time).getTime()/30000)*30000;
+      awsMap[epoch]=r.value;
+    });
+    awaRaw.forEach(r=>{
+      const epoch=Math.round(new Date(r.time).getTime()/30000)*30000;
+      awaMap[epoch]=r.value;
+    });
 
     const newPts=[];
+    let matchCount=0, skipCount=0;
     bsRaw.forEach(r=>{
-      const t=r.time, stw=r.value*1.94384;
-      if (!awsMap[t]||!awaMap[t]||stw<minSOG) return;
-      const aws=awsMap[t]*1.94384;
-      const awaRad=awaMap[t];
+      const epoch=Math.round(new Date(r.time).getTime()/30000)*30000;
+      const stw=r.value*1.94384;
+      if (!awsMap[epoch]||!awaMap[epoch]) { skipCount++; return; }
+      if (stw<minSOG) return;
+      const aws=awsMap[epoch]*1.94384;
+      const awaRad=awaMap[epoch];
       let awa=Math.abs(awaRad*(180/Math.PI));
       if(awa>180) awa=360-awa;
       const twx=aws*Math.cos(awaRad)-stw, twy=aws*Math.sin(awaRad);
       const tws=Math.sqrt(twx*twx+twy*twy);
       let twa=Math.abs(Math.atan2(twy,twx)*(180/Math.PI));
       if(twa>=20&&twa<=180&&tws>2) {
-        newPts.push({twa,tws,stw,awa,aws,time:t});
+        newPts.push({twa,tws,stw,awa,aws,time:r.time});
+        matchCount++;
       }
     });
+    console.log(`STW rows: ${bsRaw.length}, matched: ${matchCount}, skipped (no wind match): ${skipCount}`);
 
     sailingData=sailingData.concat(newPts);
     updateBestFromData(newPts);
