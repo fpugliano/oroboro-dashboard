@@ -491,7 +491,7 @@ function drawPolar() {
     ctx.setLineDash([]);
     const last=twas[twas.length-2];
     const lp=toXY(last, OFFICIAL_POLAR[tws][last]);
-    ctx.fillStyle='#'+shade+shade+shade+'aa';
+    ctx.fillStyle=VPP_COLORS[tws]+'88';
     ctx.font='9px Rajdhani,sans-serif'; ctx.textAlign='left';
     ctx.fillText(tws+'kt',lp.x+3,lp.y);
   });
