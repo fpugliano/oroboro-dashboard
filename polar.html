@@ -231,8 +231,9 @@ button.btn-sec { background:var(--card); color:var(--text); border:1px solid var
       <option value="3h">Last 3h</option>
       <option value="6h">Last 6h</option>
       <option value="12h">Last 12h</option>
-      <option value="24h" selected>Last 24h</option>
-      <option value="7d">Last 7d</option>
+      <option value="24h">Last 24h</option>
+      <option value="48h">Last 48h</option>
+      <option value="7d" selected>Last 7d</option>
       <option value="30d">Last 30d</option>
     </select>
     <label>From:</label>
@@ -473,10 +474,10 @@ function drawPolar() {
   ctx.fillStyle='#5a6a7a'; ctx.font='11px Rajdhani,sans-serif'; ctx.textAlign='center';
   ctx.fillText('▼ TRUE WIND', cx, cy-maxSpd*scale-6);
 
-  // VPP curves
+  // VPP curves - colored to match TWS legend, visible on dark background
+  const VPP_COLORS = {4:'#ff8c00',6:'#f59e0b',8:'#22c55e',10:'#00d4ff',12:'#00d4ff',14:'#a855f7',16:'#ef4444'};
   [4,6,8,10,12,14,16].forEach((tws,i) => {
-    const shade = Math.round(42+(i*5)).toString(16).padStart(2,'0');
-    ctx.strokeStyle='#'+shade+shade+shade+'88';
+    ctx.strokeStyle = VPP_COLORS[tws] + '55';
     ctx.lineWidth=1.2; ctx.setLineDash([3,3]);
     const twas = Object.keys(OFFICIAL_POLAR[tws]).map(Number).sort((a,b)=>a-b);
     ['','neg'].forEach(side => {
@@ -589,9 +590,9 @@ async function loadData() {
 
   try {
     const [wsData,waData,bsData] = await Promise.all([
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.speedApparent"&&r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.angleApparent"&&r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.speedThroughWater"&&r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`)
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.speedApparent")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.angleApparent")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.speedThroughWater")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`)
     ]);
 
     const awsRaw=parseInfluxCSV(wsData);
