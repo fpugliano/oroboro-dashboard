@@ -595,9 +595,13 @@ async function loadData() {
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.speedThroughWater")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`)
     ]);
 
+    console.log('wsData length:', wsData.length, 'first 200:', wsData.substring(0,200));
+    console.log('waData length:', waData.length);
+    console.log('bsData length:', bsData.length, 'first 200:', bsData.substring(0,200));
     const awsRaw=parseInfluxCSV(wsData);
     const awaRaw=parseInfluxCSV(waData);
     const bsRaw =parseInfluxCSV(bsData);
+    console.log('parsed rows - aws:', awsRaw.length, 'awa:', awaRaw.length, 'bs:', bsRaw.length);
 
     // Build epoch-keyed maps (round to nearest 30s to handle slight timestamp skew)
     const awsMap={}, awaMap={};
