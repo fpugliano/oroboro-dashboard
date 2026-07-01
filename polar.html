@@ -7,167 +7,129 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>S/V Oroboro — Polar Performance</title>
 <style>
-  :root {
-    --bg: #0a0e14;
-    --card-bg: #111820;
-    --border: #1a2332;
-    --text: #c8d6e5;
-    --text-dim: #5a6a7a;
-    --cyan: #00d4ff;
-    --orange: #ff8c00;
-    --green: #22c55e;
-    --red: #ef4444;
-    --yellow: #f59e0b;
-    --purple: #a855f7;
-  }
+:root {
+  --bg:       #0a0e14;
+  --card:     #111820;
+  --border:   #1a2332;
+  --text:     #c8d6e5;
+  --dim:      #5a6a7a;
+  --dimmer:   #3a4a5a;
+  --cyan:     #00d4ff;
+  --green:    #22c55e;
+  --orange:   #f59e0b;
+  --red:      #ef4444;
+  --blue:     #60a5fa;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Rajdhani','Segoe UI',sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
 
-  * { margin:0; padding:0; box-sizing:border-box; }
+/* ── TOP BAR ── */
+#top-bar {
+  display: flex; align-items: center;
+  padding: 8px 12px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 10;
+}
+#top-bar a { color: var(--cyan); text-decoration: none; font-size: 13px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 5px; }
+#top-bar h1 { flex:1; text-align:center; font-size:14px; font-weight:500; letter-spacing:1px; text-transform:uppercase; color: var(--dim); }
+#conn-badge { font-size:10px; display:flex; align-items:center; gap:4px; }
+#conn-dot { width:7px; height:7px; border-radius:50%; background:#f59e0b; }
 
-  body {
-    font-family: 'Rajdhani', 'Segoe UI', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0) 0;
-  }
+/* ── SECTION LABELS ── */
+.sec-label {
+  font-size: 9px; font-weight:500; text-transform:uppercase; letter-spacing:0.08em;
+  color: var(--dimmer); padding: 6px 12px 2px;
+  background: var(--bg);
+}
 
-  #top-bar {
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    background: var(--card-bg);
-    border-bottom: 1px solid var(--border);
-  }
-  #top-bar a {
-    color: var(--cyan);
-    text-decoration: none;
-    font-size: 14px;
-    padding: 6px 12px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-  }
-  #top-bar h1 {
-    flex: 1;
-    text-align: center;
-    font-size: 16px;
-    font-weight: 500;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-  }
+/* ── LIVE STRIP ── */
+#live-strip {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+}
+.live-row { display:flex; gap:0; }
+.live-cell {
+  flex:1; text-align:center;
+  border-right: 1px solid var(--border);
+  padding: 0 3px;
+}
+.live-cell:last-child { border-right:none; }
+.live-lbl { font-size:9px; color:var(--dimmer); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:2px; }
+.live-val { font-size:20px; font-weight:500; line-height:1; }
+.live-unit { font-size:9px; color:var(--dim); }
+.perf-pill { display:inline-block; font-size:13px; font-weight:600; padding:2px 8px; border-radius:4px; }
+.pg { background:#14532d; color:var(--green); }
+.po { background:#78350f; color:var(--orange); }
+.pr { background:#7f1d1d; color:var(--red); }
 
-  .controls {
-    display: flex;
-    gap: 8px;
-    padding: 10px 12px;
-    flex-wrap: wrap;
-    align-items: center;
-    background: var(--card-bg);
-    border-bottom: 1px solid var(--border);
-  }
-  .controls label {
-    font-size: 12px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .controls select, .controls button, .controls input[type="datetime-local"] {
-    background: var(--bg);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 6px 10px;
-    font-size: 13px;
-    font-family: inherit;
-  }
-  .controls input[type="datetime-local"] { color-scheme: dark; }
-  .controls button {
-    cursor: pointer;
-    background: var(--cyan);
-    color: var(--bg);
-    font-weight: 600;
-    border: none;
-    padding: 6px 16px;
-  }
-  .controls button:hover { opacity: 0.9; }
-  .controls button.secondary {
-    background: var(--card-bg);
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
+.vmg-row {
+  display:flex; margin-top:8px; padding-top:8px;
+  border-top: 1px solid var(--border);
+}
+.vmg-cell { flex:1; text-align:center; }
+.vmg-lbl { font-size:9px; color:var(--dimmer); text-transform:uppercase; }
+.vmg-val { font-size:14px; font-weight:500; }
+.vmg-sub { font-size:9px; color:var(--dim); margin-top:1px; }
 
-  #polar-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 10px;
-  }
+/* ── POLAR DIAGRAM ── */
+#polar-wrap { padding: 8px 10px; background: var(--bg); }
+#polarCanvas { background:var(--card); border-radius:8px; border:1px solid var(--border); display:block; }
 
-  canvas#polarCanvas {
-    background: var(--card-bg);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-  }
+.legend { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; padding:6px 12px; }
+.leg { display:flex; align-items:center; gap:4px; font-size:10px; color:var(--dim); }
+.leg-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.leg-line { width:14px; height:1.5px; flex-shrink:0; }
 
-  .stats-bar {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 8px;
-    padding: 10px 12px;
-  }
-  .stat-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px;
-    text-align: center;
-  }
-  .stat-card .label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-dim);
-    margin-bottom: 4px;
-  }
-  .stat-card .value {
-    font-size: 20px;
-    font-weight: 600;
-  }
-  .stat-card .value.green { color: var(--green); }
-  .stat-card .value.orange { color: var(--orange); }
-  .stat-card .value.red { color: var(--red); }
-  .stat-card .value.cyan { color: var(--cyan); }
+/* ── POLAR TABLE ── */
+#table-wrap { padding: 0 10px 10px; background: var(--bg); overflow-x:auto; }
+table.ptable { border-collapse:collapse; width:100%; min-width:520px; font-size:11px; }
+.ptable th {
+  font-size:9px; color:var(--dimmer); text-transform:uppercase; letter-spacing:0.04em;
+  padding:4px 5px; text-align:center; border-bottom:1px solid var(--border);
+  background: var(--bg);
+}
+.ptable th.twa-h { color:var(--cyan); font-size:10px; }
+.ptable th.sub-vpp { color:var(--dimmer); }
+.ptable th.sub-best { color:#225533; }
+.ptable td { padding:3px 5px; text-align:center; border-bottom:1px solid #0d1520; }
+.ptable td.tws-c { color:var(--dim); font-weight:500; text-align:left; font-size:12px; }
+.ptable td.vpp { color:#3a5a7a; }
+.ptable td.best-g { color:var(--green); font-weight:500; }
+.ptable td.best-o { color:var(--orange); font-weight:500; }
+.ptable td.best-r { color:var(--red); font-weight:500; }
+.ptable td.best-none { color:var(--dimmer); }
+.tbl-note { display:flex; gap:14px; padding:5px 0 0; font-size:9px; flex-wrap:wrap; }
+.tbl-note span { color:var(--dimmer); }
+.tbl-note .n-vpp { color:#3a5a7a; }
+.tbl-note .n-best { color:#22c55e; }
 
-  .legend {
-    display: flex;
-    gap: 16px;
-    justify-content: center;
-    padding: 8px 12px;
-    flex-wrap: wrap;
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--text-dim);
-  }
-  .legend-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-  }
-
-  #status {
-    text-align: center;
-    padding: 8px;
-    font-size: 12px;
-    color: var(--text-dim);
-  }
-
-  @media (max-width: 600px) {
-    .stats-bar { grid-template-columns: repeat(2, 1fr); }
-  }
+/* ── CONTROLS ── */
+#controls {
+  background: var(--card); border-top:1px solid var(--border);
+  padding: 8px 12px;
+}
+.ctrl-row { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.ctrl-row label { font-size:11px; color:var(--dim); text-transform:uppercase; }
+.ctrl-row select, .ctrl-row input[type="datetime-local"] {
+  background:var(--bg); color:var(--text); border:1px solid var(--border);
+  border-radius:4px; padding:5px 7px; font-size:12px; font-family:inherit;
+  flex:1; min-width:0;
+}
+.ctrl-row input[type="datetime-local"] { color-scheme:dark; }
+button.btn-primary { background:var(--cyan); color:var(--bg); border:none; border-radius:4px; padding:6px 14px; font-size:12px; font-weight:600; font-family:inherit; cursor:pointer; }
+button.btn-sec { background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:4px; padding:6px 10px; font-size:12px; font-family:inherit; cursor:pointer; }
+.stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
+.stat { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:6px 8px; text-align:center; }
+.stat .slbl { font-size:9px; color:var(--dimmer); text-transform:uppercase; }
+.stat .sval { font-size:16px; font-weight:500; }
+#status-line { text-align:center; padding:6px 12px; font-size:11px; color:var(--dim); }
 </style>
 </head>
 <body>
@@ -175,568 +137,651 @@
 <div id="top-bar">
   <a href="oroboro.html">← Dashboard</a>
   <h1>Polar Performance</h1>
-  <div style="width:90px"></div>
+  <div id="conn-badge"><div id="conn-dot"></div><span id="conn-txt" style="color:#f59e0b">Connecting</span></div>
 </div>
 
-<div class="controls">
-  <label>Time range:</label>
-  <select id="timeRange">
-    <option value="1h">Last 1 hour</option>
-    <option value="3h">Last 3 hours</option>
-    <option value="6h">Last 6 hours</option>
-    <option value="12h">Last 12 hours</option>
-    <option value="24h" selected>Last 24 hours</option>
-    <option value="7d">Last 7 days</option>
-    <option value="30d">Last 30 days</option>
-    <option value="all">All data</option>
-  </select>
-  <label>From:</label>
-  <input type="datetime-local" id="fromTime">
-  <label>To:</label>
-  <input type="datetime-local" id="toTime">
-  <label>Min STW:</label>
-  <select id="minSOG">
-    <option value="0.5">0.5 kt</option>
-    <option value="1" selected>1 kt</option>
-    <option value="2">2 kt</option>
-    <option value="3">3 kt</option>
-  </select>
-  <button onclick="loadData()">Load Data</button>
-  <button class="secondary" onclick="clearData()">Clear</button>
-  <button class="secondary" onclick="exportCSV()">Export CSV</button>
+<div class="sec-label">Live Instruments</div>
+<div id="live-strip">
+  <div class="live-row">
+    <div class="live-cell">
+      <div class="live-lbl">TWS</div>
+      <div class="live-val" id="l-tws" style="color:var(--cyan)">—<span class="live-unit"> kt</span></div>
+    </div>
+    <div class="live-cell">
+      <div class="live-lbl">TWA</div>
+      <div class="live-val" id="l-twa">—<span class="live-unit">°</span></div>
+    </div>
+    <div class="live-cell">
+      <div class="live-lbl">AWA</div>
+      <div class="live-val" id="l-awa">—<span class="live-unit">°</span></div>
+    </div>
+    <div class="live-cell">
+      <div class="live-lbl">STW</div>
+      <div class="live-val" id="l-stw">—<span class="live-unit"> kt</span></div>
+    </div>
+    <div class="live-cell">
+      <div class="live-lbl">Polar BSP</div>
+      <div class="live-val" id="l-pbsp">—<span class="live-unit"> kt</span></div>
+    </div>
+    <div class="live-cell">
+      <div class="live-lbl">Perf</div>
+      <div class="live-val" id="l-perf">—</div>
+    </div>
+  </div>
+  <div class="vmg-row">
+    <div class="vmg-cell">
+      <div class="vmg-lbl">VMG</div>
+      <div class="vmg-val" id="l-vmg" style="color:var(--green)">—<span style="font-size:9px;color:var(--dim)"> kt</span></div>
+      <div class="vmg-sub" id="l-vmg-tgt">target —</div>
+    </div>
+    <div class="vmg-cell">
+      <div class="vmg-lbl">VMG%</div>
+      <div class="vmg-val" id="l-vmgpct">—</div>
+      <div class="vmg-sub">of polar</div>
+    </div>
+    <div class="vmg-cell">
+      <div class="vmg-lbl">Target TWA</div>
+      <div class="vmg-val" id="l-tgt-twa" style="color:var(--blue)">—<span style="font-size:9px;color:var(--dim)">°</span></div>
+      <div class="vmg-sub" id="l-twa-delta">—</div>
+    </div>
+    <div class="vmg-cell">
+      <div class="vmg-lbl">SOG</div>
+      <div class="live-val" id="l-sog" style="font-size:14px">—<span class="live-unit"> kt</span></div>
+      <div class="vmg-sub" id="l-cog">COG —°</div>
+    </div>
+  </div>
 </div>
 
-<div class="legend">
-  <div class="legend-item"><div class="legend-dot" style="background:#ff8c00"></div> 4-6 kt TWS</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> 6-8 kt TWS</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> 8-12 kt TWS</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#00d4ff"></div> 12-16 kt TWS</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div> 16-20 kt TWS</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> 20+ kt TWS</div>
-  <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,255,0.15); border:1px solid #555"></div> Official polar (TWS)</div>
-</div>
-
-<div id="polar-container">
+<div class="sec-label">Polar Diagram</div>
+<div id="polar-wrap">
   <canvas id="polarCanvas"></canvas>
+  <div class="legend">
+    <div class="leg"><div class="leg-dot" style="background:#ff8c00"></div>4-6 kt</div>
+    <div class="leg"><div class="leg-dot" style="background:#f59e0b"></div>6-8 kt</div>
+    <div class="leg"><div class="leg-dot" style="background:#22c55e"></div>8-12 kt</div>
+    <div class="leg"><div class="leg-dot" style="background:#00d4ff"></div>12-16 kt</div>
+    <div class="leg"><div class="leg-dot" style="background:#a855f7"></div>16-20 kt</div>
+    <div class="leg"><div class="leg-dot" style="background:#ef4444"></div>20+ kt</div>
+    <div class="leg"><div class="leg-line" style="background:#2a3a4a;border-top:1px dashed #2a3a4a"></div>VPP polar</div>
+    <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>VMG target</div>
+  </div>
 </div>
 
-<div class="stats-bar">
-  <div class="stat-card"><div class="label">Data Points</div><div class="value cyan" id="statPoints">0</div></div>
-  <div class="stat-card"><div class="label">Max Boat Speed (STW)</div><div class="value green" id="statMaxBS">—</div></div>
-  <div class="stat-card"><div class="label">Avg Performance</div><div class="value orange" id="statAvgPerf">—</div></div>
-  <div class="stat-card"><div class="label">Best VMG Upwind</div><div class="value cyan" id="statVMGUp">—</div></div>
-  <div class="stat-card"><div class="label">Best VMG Downwind</div><div class="value cyan" id="statVMGDn">—</div></div>
-  <div class="stat-card"><div class="label">Sailing Hours</div><div class="value orange" id="statHours">—</div></div>
+<div class="sec-label">Polar Table — VPP vs Oroboro Best</div>
+<div id="table-wrap">
+  <table class="ptable" id="polar-table">
+    <thead>
+      <tr id="twa-header-row"></tr>
+      <tr id="sub-header-row"></tr>
+    </thead>
+    <tbody id="polar-table-body"></tbody>
+  </table>
+  <div class="tbl-note">
+    <span class="n-vpp">VPP = Leopard 40 theoretical (Robertson & Caine F02)</span>
+    <span class="n-best">Best = Oroboro achieved (Jun 29 2026 + loaded data)</span>
+    <span>* downwind VPP includes gennaker</span>
+  </div>
 </div>
 
-<div id="status">No data loaded — go sailing and come back! Uses True Wind Speed/Angle (TWS/TWA) and Speed Through Water (STW).</div>
+<div id="controls">
+  <div class="ctrl-row">
+    <label>Range:</label>
+    <select id="timeRange">
+      <option value="1h">Last 1h</option>
+      <option value="3h">Last 3h</option>
+      <option value="6h">Last 6h</option>
+      <option value="12h">Last 12h</option>
+      <option value="24h" selected>Last 24h</option>
+      <option value="7d">Last 7d</option>
+      <option value="30d">Last 30d</option>
+    </select>
+    <label>From:</label>
+    <input type="datetime-local" id="fromTime">
+    <label>To:</label>
+    <input type="datetime-local" id="toTime">
+  </div>
+  <div class="ctrl-row" style="margin-top:6px">
+    <label>Min STW:</label>
+    <select id="minSOG" style="flex:none;width:80px">
+      <option value="0.5">0.5 kt</option>
+      <option value="1" selected>1 kt</option>
+      <option value="2">2 kt</option>
+      <option value="3">3 kt</option>
+    </select>
+    <button class="btn-primary" onclick="loadData()">Load Data</button>
+    <button class="btn-sec" onclick="clearData()">Clear</button>
+    <button class="btn-sec" onclick="exportCSV()">Export CSV</button>
+  </div>
+  <div class="stats-row">
+    <div class="stat"><div class="slbl">Data Points</div><div class="sval" id="s-pts" style="color:var(--cyan)">—</div></div>
+    <div class="stat"><div class="slbl">Avg Perf</div><div class="sval" id="s-perf" style="color:var(--orange)">—</div></div>
+    <div class="stat"><div class="slbl">Max STW</div><div class="sval" id="s-maxstw" style="color:var(--green)">—</div></div>
+    <div class="stat"><div class="slbl">Best VMG↑</div><div class="sval" id="s-vmgup" style="color:var(--cyan)">—</div></div>
+    <div class="stat"><div class="slbl">Best VMG↓</div><div class="sval" id="s-vmgdn" style="color:var(--cyan)">—</div></div>
+    <div class="stat"><div class="slbl">Sail Hours</div><div class="sval" id="s-hrs" style="color:var(--orange)">—</div></div>
+  </div>
+  <div id="status-line">No data loaded — press Load Data.</div>
+</div>
 
 <script>
-// ═══════════════════════════════════════════════════════════
-// Official Leopard 40 polar data (digitized from the PDF)
-// Format: { tws: { twa: boatSpeed } }
-// TWA in degrees, boat speed in knots
-// These are approximate values read from the polar curves
-// ═══════════════════════════════════════════════════════════
-// Exact VPP data from Robertson & Caine design file 224-F02.VPP
-// All data indexed by TWS for reference, but we plot in AWS/AWA space
+'use strict';
 
-// BOATSPEEDS at BEST (knots) — TWA rows, TWS columns
-const OFFICIAL_POLAR_TWS = {
-  4:  { 52:2.40, 60:2.79, 70:3.07, 75:3.14, 80:3.61, 90:3.77, 100:3.74, 110:3.53, 120:3.21, 130:2.86, 135:2.68, 140:2.50, 150:2.21, 160:2.04, 165:1.97, 170:1.91, 180:1.82 },
-  6:  { 52:3.52, 60:4.02, 70:4.36, 75:4.44, 80:5.09, 90:5.25, 100:5.17, 110:4.90, 120:4.53, 130:4.11, 135:3.88, 140:3.65, 150:3.26, 160:3.01, 165:2.92, 170:2.83, 180:2.69 },
-  8:  { 52:4.48, 60:5.05, 70:5.43, 75:5.52, 80:6.39, 90:6.55, 100:6.43, 110:6.09, 120:5.67, 130:5.18, 135:4.92, 140:4.67, 150:4.23, 160:3.94, 165:3.83, 170:3.72, 180:3.54 },
-  10: { 52:5.33, 60:5.98, 70:6.42, 75:6.52, 80:7.52, 90:7.65, 100:7.50, 110:7.17, 120:6.73, 130:6.17, 135:5.88, 140:5.59, 150:5.11, 160:4.79, 165:4.66, 170:4.54, 180:4.34 },
-  12: { 52:6.13, 60:6.86, 70:7.30, 75:7.39, 80:8.48, 90:8.59, 100:8.40, 110:8.07, 120:7.64, 130:7.09, 135:6.79, 140:6.48, 150:5.94, 160:5.60, 165:5.45, 170:5.31, 180:5.08 },
-  14: { 52:6.88, 60:7.61, 70:8.04, 75:8.13, 80:9.46, 90:9.57, 100:9.32, 110:8.92, 120:8.44, 130:7.89, 135:7.59, 140:7.28, 150:6.75, 160:6.38, 165:6.21, 170:6.06, 180:5.80 },
-  16: { 52:7.53, 60:8.27, 70:8.73, 75:8.84, 80:10.67, 90:10.82, 100:10.43, 110:9.87, 120:9.26, 130:8.62, 135:8.31, 140:8.00, 150:7.48, 160:7.11, 165:6.95, 170:6.78, 180:6.49 }
+// ═══════════════════════════════════════════════════════════
+// Config
+// ═══════════════════════════════════════════════════════════
+const HOST         = window.location.hostname || '192.168.1.238';
+const SK_PORT      = 3000;
+const INFLUX_BASE  = `http://${HOST}:8086`;
+const INFLUX_ORG   = 'Oroboro';
+const INFLUX_BUCKET= 'signalk';
+const INFLUX_TOKEN = '_ehS1A3X3dmlkDKZNNfZaOfrC2r1zD24HhMNiozyLd_t1Br9DX6T4QqebV4nBEEgtSQlUkTBsSylA3_-xtY5PA==';
+const WS_URL       = `ws://${HOST}:${SK_PORT}/signalk/v1/stream?subscribe=none`;
+
+// ═══════════════════════════════════════════════════════════
+// VPP Polar Data — Robertson & Caine F02 (BOATSPEEDS at BEST)
+// ═══════════════════════════════════════════════════════════
+const OFFICIAL_POLAR = {
+  4:  {52:2.40,60:2.79,70:3.07,75:3.14,80:3.61,90:3.77,100:3.74,110:3.53,120:3.21,130:2.86,135:2.68,140:2.50,150:2.21,160:2.04,165:1.97,170:1.91,180:1.82},
+  6:  {52:3.52,60:4.02,70:4.36,75:4.44,80:5.09,90:5.25,100:5.17,110:4.90,120:4.53,130:4.11,135:3.88,140:3.65,150:3.26,160:3.01,165:2.92,170:2.83,180:2.69},
+  8:  {52:4.48,60:5.05,70:5.43,75:5.52,80:6.39,90:6.55,100:6.43,110:6.09,120:5.67,130:5.18,135:4.92,140:4.67,150:4.23,160:3.94,165:3.83,170:3.72,180:3.54},
+  10: {52:5.33,60:5.98,70:6.42,75:6.52,80:7.52,90:7.65,100:7.50,110:7.17,120:6.73,130:6.17,135:5.88,140:5.59,150:5.11,160:4.79,165:4.66,170:4.54,180:4.34},
+  12: {52:6.13,60:6.86,70:7.30,75:7.39,80:8.48,90:8.59,100:8.40,110:8.07,120:7.64,130:7.09,135:6.79,140:6.48,150:5.94,160:5.60,165:5.45,170:5.31,180:5.08},
+  14: {52:6.88,60:7.61,70:8.04,75:8.13,80:9.46,90:9.57,100:9.32,110:8.92,120:8.44,130:7.89,135:7.59,140:7.28,150:6.75,160:6.38,165:6.21,170:6.06,180:5.80},
+  16: {52:7.53,60:8.27,70:8.73,75:8.84,80:10.67,90:10.82,100:10.43,110:9.87,120:9.26,130:8.62,135:8.31,140:8.00,150:7.48,160:7.11,165:6.95,170:6.78,180:6.49}
 };
-
 
 // Optimal VMG data from VPP
 const OPTIMAL_VMG = {
-  upwind:  { 4: {angle:53.3, speed:2.48, vmg:1.48}, 6: {angle:52.6, speed:3.56, vmg:2.17}, 8: {angle:51.6, speed:4.45, vmg:2.76}, 10: {angle:51.3, speed:5.25, vmg:3.28}, 12: {angle:51.4, speed:6.04, vmg:3.77}, 14: {angle:51.0, speed:6.74, vmg:4.24}, 16: {angle:50.3, speed:7.30, vmg:4.66} },
-  downwind:{ 4: {angle:143.6, speed:2.38, vmg:1.92}, 6: {angle:147.5, speed:3.34, vmg:2.82}, 8: {angle:147.5, speed:4.32, vmg:3.65}, 10: {angle:147.5, speed:5.21, vmg:4.40}, 12: {angle:147.5, speed:6.06, vmg:5.11}, 14: {angle:147.5, speed:6.87, vmg:5.79}, 16: {angle:147.5, speed:7.60, vmg:6.41} }
+  upwind:  {4:{a:53.3,s:2.48,v:1.48},6:{a:52.6,s:3.56,v:2.17},8:{a:51.6,s:4.45,v:2.76},10:{a:51.3,s:5.25,v:3.28},12:{a:51.4,s:6.04,v:3.77},14:{a:51.0,s:6.74,v:4.24},16:{a:50.3,s:7.30,v:4.66}},
+  downwind:{4:{a:143.6,s:2.38,v:1.92},6:{a:147.5,s:3.34,v:2.82},8:{a:147.5,s:4.32,v:3.65},10:{a:147.5,s:5.21,v:4.40},12:{a:147.5,s:6.06,v:5.11},14:{a:147.5,s:6.87,v:5.79},16:{a:147.5,s:7.60,v:6.41}}
+};
+
+// Curated TWA columns for the table
+const TABLE_TWA = [52, 60, 70, 90, 110, 130, 150, 170];
+const TABLE_TWS = [4, 6, 8, 10, 12, 14, 16];
+
+// Pre-seeded best achieved data from Jun 29 2026 session
+const OROBORO_BEST = {
+  4:  {52:null,60:null,70:null,90:null,110:null,130:null,150:null,170:null},
+  6:  {52:null,60:null,70:null,90:4.62,110:null,130:null,150:null,170:null},
+  8:  {52:null,60:null,70:5.30,90:5.31,110:null,130:null,150:null,170:null},
+  10: {52:null,60:4.92,70:5.67,90:5.53,110:null,130:4.73,150:null,170:null},
+  12: {52:4.65,60:4.92,70:5.67,90:6.21,110:5.84,130:5.40,150:5.22,170:null},
+  14: {52:null,60:null,70:null,90:7.02,110:6.33,130:5.85,150:5.41,170:null},
+  16: {52:null,60:null,70:6.61,90:7.29,110:7.66,130:7.13,150:6.89,170:5.48}
 };
 
 const TWS_COLORS = {
-  '4-6':  '#ff8c00',
-  '6-8':  '#f59e0b',
-  '8-12': '#22c55e',
-  '12-16':'#00d4ff',
-  '16-20':'#a855f7',
-  '20+':  '#ef4444'
+  '4-6':'#ff8c00','6-8':'#f59e0b','8-12':'#22c55e',
+  '12-16':'#00d4ff','16-20':'#a855f7','20+':'#ef4444'
 };
 
-function getTWSBucket(tws) {
-  if (tws < 4) return null;
-  if (tws < 6) return '4-6';
-  if (tws < 8) return '6-8';
-  if (tws < 12) return '8-12';
-  if (tws < 16) return '12-16';
-  if (tws < 20) return '16-20';
-  return '20+';
+function getTWSBucket(t) {
+  if (t>=4&&t<6)  return '4-6';
+  if (t>=6&&t<8)  return '6-8';
+  if (t>=8&&t<12) return '8-12';
+  if (t>=12&&t<16)return '12-16';
+  if (t>=16&&t<20)return '16-20';
+  if (t>=20)      return '20+';
+  return null;
 }
 
+// ═══════════════════════════════════════════════════════════
+// Polar interpolation
+// ═══════════════════════════════════════════════════════════
+function getOfficialSpeed(tws, twa) {
+  const twsKeys = Object.keys(OFFICIAL_POLAR).map(Number).sort((a,b)=>a-b);
+  let tws1 = twsKeys[0], tws2 = twsKeys[twsKeys.length-1];
+  for (let i=0; i<twsKeys.length-1; i++) {
+    if (tws >= twsKeys[i] && tws <= twsKeys[i+1]) { tws1=twsKeys[i]; tws2=twsKeys[i+1]; break; }
+  }
+  const twaKeys = Object.keys(OFFICIAL_POLAR[tws1]).map(Number).sort((a,b)=>a-b);
+  let twa1=twaKeys[0], twa2=twaKeys[twaKeys.length-1];
+  for (let i=0; i<twaKeys.length-1; i++) {
+    if (twa >= twaKeys[i] && twa <= twaKeys[i+1]) { twa1=twaKeys[i]; twa2=twaKeys[i+1]; break; }
+  }
+  const dTWS = tws2===tws1 ? 0 : (tws-tws1)/(tws2-tws1);
+  const dTWA = twa2===twa1 ? 0 : (twa-twa1)/(twa2-twa1);
+  const b11=OFFICIAL_POLAR[tws1][twa1], b12=OFFICIAL_POLAR[tws1][twa2];
+  const b21=OFFICIAL_POLAR[tws2][twa1], b22=OFFICIAL_POLAR[tws2][twa2];
+  if (!b11||!b12||!b21||!b22) return 0;
+  return b11*(1-dTWS)*(1-dTWA) + b12*(1-dTWS)*dTWA + b21*dTWS*(1-dTWA) + b22*dTWS*dTWA;
+}
+
+function getOptimalVMG(tws, side) {
+  const twsKeys = [4,6,8,10,12,14,16];
+  let lo=twsKeys[0], hi=twsKeys[twsKeys.length-1];
+  for (let i=0;i<twsKeys.length-1;i++) {
+    if (tws>=twsKeys[i]&&tws<=twsKeys[i+1]) { lo=twsKeys[i]; hi=twsKeys[i+1]; break; }
+  }
+  const t = hi===lo ? 0 : (tws-lo)/(hi-lo);
+  const d = OPTIMAL_VMG[side];
+  return {
+    a: d[lo].a*(1-t)+d[hi].a*t,
+    v: d[lo].v*(1-t)+d[hi].v*t
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// Sailing data store
+// ═══════════════════════════════════════════════════════════
 let sailingData = [];
-const SK_BASE = window.location.protocol === 'https:'
-  ? `https://${window.location.host}`
-  : `http://${window.location.hostname}:3000`;
-const INFLUX_BASE = `http://${window.location.hostname}:8086`;
-const INFLUX_ORG = 'Oroboro';
-const INFLUX_BUCKET = 'signalk';
-const INFLUX_TOKEN = '_ehS1A3X3dmlkDKZNNfZaOfrC2r1zD24HhMNiozyLd_t1Br9DX6T4QqebV4nBEEgtSQlUkTBsSylA3_-xtY5PA==';
 
-async function loadData() {
-  const minSOG = parseFloat(document.getElementById('minSOG').value);
-  const fromVal = document.getElementById('fromTime').value;
-  const toVal   = document.getElementById('toTime').value;
-
-  let rangeArg;
-  if (fromVal) {
-    const startISO = new Date(fromVal).toISOString();
-    rangeArg = toVal
-      ? `start: ${startISO}, stop: ${new Date(toVal).toISOString()}`
-      : `start: ${startISO}`;
-  } else {
-    const range = document.getElementById('timeRange').value;
-    rangeArg = `start: ${range === 'all' ? '-365d' : `-${range}`}`;
-  }
-
-  document.getElementById('status').textContent = 'Loading data from InfluxDB...';
-
-  // Fetch TWS, TWA, STW separately and merge client-side by timestamp
-  try {
-    const [wsData, waData, bsData] = await Promise.all([
-      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(${rangeArg}) |> filter(fn: (r) => r._measurement == "environment.wind.speedApparent") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
-      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(${rangeArg}) |> filter(fn: (r) => r._measurement == "environment.wind.angleApparent") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`),
-      fetchInflux(`from(bucket: "${INFLUX_BUCKET}") |> range(${rangeArg}) |> filter(fn: (r) => r._measurement == "navigation.speedThroughWater") |> filter(fn: (r) => r._field == "value") |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)`)
-    ]);
-
-    const ws = parseInfluxCSV(wsData);
-    const wa = parseInfluxCSV(waData);
-    const bs = parseInfluxCSV(bsData);
-
-    const twsMap = {};
-    ws.forEach(r => { twsMap[r.time] = r.value * 1.94384; }); // m/s to knots
-    const awaMap = {}; // apparent wind angle in degrees (absolute)
-    wa.forEach(r => { awaMap[r.time] = Math.abs(r.value * (180 / Math.PI)); });
-
-    let newPoints = [];
-    bs.forEach(r => {
-      const t = r.time;
-      const stw = r.value * 1.94384; // m/s to knots
-      if (twsMap[t] !== undefined && awaMap[t] !== undefined && stw > minSOG) {
-        const tws = twsMap[t];
-        let awa = awaMap[t];
-        if (awa > 180) awa = 360 - awa;
-        // Compute TWS/TWA from AWS/AWA/STW
-        const awsMs = ws.find ? null : null; // AWS already in twsMap as apparent speed
-        // Use client-side true wind calc: same as dashboard
-        const awaRad = awa * Math.PI / 180;
-        const awsKt = twsMap[t]; // note: twsMap stores AWS (apparent wind speed) — rename for clarity
-        const twx = awsKt * Math.cos(awaRad) - stw;
-        const twy = awsKt * Math.sin(awaRad);
-        const twsCalc = Math.sqrt(twx * twx + twy * twy);
-        let twa = Math.atan2(twy, twx) * 180 / Math.PI;
-        if (twa < 0) twa = -twa; // absolute value
-        if (twa >= 20 && twa <= 180 && twsCalc > 2) {
-          newPoints.push({ twa: twa, tws: twsCalc, awa: awa, aws: awsKt, stw, time: t });
-        }
+function updateBestFromData(pts) {
+  const binTWA = twa => TABLE_TWA.reduce((a,b)=>Math.abs(b-twa)<Math.abs(a-twa)?b:a);
+  const binTWS = tws => { for(const t of TABLE_TWS) if(tws<t+1) return t; return 16; };
+  pts.forEach(d => {
+    const ta = binTWA(d.twa), tw = binTWS(d.tws);
+    if (Math.abs(d.twa-ta)<=10) {
+      if (!OROBORO_BEST[tw]) OROBORO_BEST[tw]={};
+      if (!OROBORO_BEST[tw][ta] || d.stw > OROBORO_BEST[tw][ta]) {
+        OROBORO_BEST[tw][ta] = +d.stw.toFixed(2);
       }
-    });
-
-    sailingData = sailingData.concat(newPoints);
-    document.getElementById('status').textContent = `Loaded ${newPoints.length} new data points (${sailingData.length} total)`;
-    updateStats();
-    drawPolar();
-
-  } catch (err) {
-    document.getElementById('status').textContent = `Error: ${err.message}. Go sailing first — data is recorded automatically.`;
-    drawPolar(); // Still draw the official polar
-  }
+    }
+  });
+  buildTable();
 }
 
+// ═══════════════════════════════════════════════════════════
+// Polar Table
+// ═══════════════════════════════════════════════════════════
+function buildTable() {
+  const hdr = document.getElementById('twa-header-row');
+  const sub = document.getElementById('sub-header-row');
+  const body= document.getElementById('polar-table-body');
+
+  hdr.innerHTML = '<th style="text-align:left">TWS</th>' +
+    TABLE_TWA.map(a=>`<th colspan="2" class="twa-h">${a}°</th>`).join('');
+
+  sub.innerHTML = '<th style="text-align:left;color:var(--dimmer)">kt</th>' +
+    TABLE_TWA.map(()=>'<th class="sub-vpp">VPP</th><th class="sub-best">Best</th>').join('');
+
+  body.innerHTML = TABLE_TWS.map(tw => {
+    const cells = TABLE_TWA.map(ta => {
+      const vpp = OFFICIAL_POLAR[tw]?.[ta] ?? '—';
+      const best = OROBORO_BEST[tw]?.[ta];
+      let bestCell = '—', bestClass = 'best-none';
+      if (best) {
+        const pct = vpp !== '—' ? best/vpp : 0;
+        bestClass = pct >= 0.90 ? 'best-g' : pct >= 0.75 ? 'best-o' : 'best-r';
+        bestCell = best.toFixed(2);
+      }
+      return `<td class="vpp">${typeof vpp==='number'?vpp.toFixed(2):vpp}</td><td class="${bestClass}">${bestCell}</td>`;
+    }).join('');
+    return `<tr><td class="tws-c">${tw} kt</td>${cells}</tr>`;
+  }).join('');
+}
+
+buildTable();
+
+// ═══════════════════════════════════════════════════════════
+// Polar Diagram
+// ═══════════════════════════════════════════════════════════
+let livePoint = null; // {twa, stw} for live position marker
+
+function drawPolar() {
+  const canvas = document.getElementById('polarCanvas');
+  const wrap = document.getElementById('polar-wrap');
+  const size = Math.min(wrap.clientWidth - 20, window.innerHeight - 300, 600);
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  canvas.style.width = size + 'px';
+  canvas.style.height = size + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const cx=size/2, cy=size/2, maxSpd=12, R=size*0.42, scale=R/maxSpd;
+
+  ctx.fillStyle='#111820'; ctx.fillRect(0,0,size,size);
+
+  function toXY(twa, bs) {
+    return {
+      x: cx + Math.sin(twa*Math.PI/180)*bs*scale,
+      y: cy - Math.cos(twa*Math.PI/180)*bs*scale
+    };
+  }
+
+  // Speed rings
+  ctx.setLineDash([2,4]); ctx.strokeStyle='#1a2332'; ctx.lineWidth=0.5;
+  for (let s=2; s<=maxSpd; s+=2) {
+    ctx.beginPath(); ctx.arc(cx,cy,s*scale,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle='#3a4a5a'; ctx.font='10px Rajdhani,sans-serif';
+    ctx.textAlign='right';
+    ctx.fillText(s+' kt', cx-s*scale-3, cy+4);
+  }
+  ctx.setLineDash([]);
+
+  // Angle rays
+  for (let a=30; a<=180; a+=10) {
+    ctx.strokeStyle='#1a2332'; ctx.lineWidth=0.5; ctx.setLineDash([1,6]);
+    let p = toXY(a,maxSpd);
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(p.x,p.y); ctx.stroke();
+    p = toXY(-a,maxSpd);
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(p.x,p.y); ctx.stroke();
+    ctx.setLineDash([]);
+    if (a%30===0) {
+      ctx.fillStyle='#3a4a5a'; ctx.font='11px Rajdhani,sans-serif'; ctx.textAlign='center';
+      const rp=toXY(a,maxSpd+0.9); ctx.fillText(a+'°',rp.x,rp.y+4);
+      const lp=toXY(-a,maxSpd+0.9); ctx.fillText(a+'°',lp.x,lp.y+4);
+    }
+  }
+
+  // Wind axis
+  ctx.strokeStyle='#5a6a7a'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx,cy-maxSpd*scale); ctx.stroke();
+  ctx.fillStyle='#5a6a7a'; ctx.font='11px Rajdhani,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('▼ TRUE WIND', cx, cy-maxSpd*scale-6);
+
+  // VPP curves
+  [4,6,8,10,12,14,16].forEach((tws,i) => {
+    const shade = Math.round(42+(i*5)).toString(16).padStart(2,'0');
+    ctx.strokeStyle='#'+shade+shade+shade+'88';
+    ctx.lineWidth=1.2; ctx.setLineDash([3,3]);
+    const twas = Object.keys(OFFICIAL_POLAR[tws]).map(Number).sort((a,b)=>a-b);
+    ['','neg'].forEach(side => {
+      ctx.beginPath();
+      twas.forEach((twa,j) => {
+        const pt = toXY(side==='neg'?-twa:twa, OFFICIAL_POLAR[tws][twa]);
+        j===0 ? ctx.moveTo(pt.x,pt.y) : ctx.lineTo(pt.x,pt.y);
+      });
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+    const last=twas[twas.length-2];
+    const lp=toXY(last, OFFICIAL_POLAR[tws][last]);
+    ctx.fillStyle='#'+shade+shade+shade+'aa';
+    ctx.font='9px Rajdhani,sans-serif'; ctx.textAlign='left';
+    ctx.fillText(tws+'kt',lp.x+3,lp.y);
+  });
+
+  // VMG target lines (blue) - TWS-interpolated at current TWS or default 10kt
+  const curTWS = livePoint ? livePoint.tws : 10;
+  const vmgUp = getOptimalVMG(curTWS,'upwind');
+  const vmgDn = getOptimalVMG(curTWS,'downwind');
+  ctx.strokeStyle='#60a5fa'; ctx.lineWidth=1.5; ctx.setLineDash([6,4]);
+  [[vmgUp.a,true],[vmgDn.a,true]].forEach(([ang]) => {
+    ctx.beginPath(); ctx.moveTo(cx,cy); let p=toXY(ang,maxSpd); ctx.lineTo(p.x,p.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,cy); p=toXY(-ang,maxSpd); ctx.lineTo(p.x,p.y); ctx.stroke();
+  });
+  ctx.setLineDash([]);
+  ctx.fillStyle='#60a5fa88'; ctx.font='9px Rajdhani,sans-serif'; ctx.textAlign='left';
+  let vp=toXY(vmgUp.a,maxSpd); ctx.fillText('VMG↑ '+vmgUp.a.toFixed(0)+'°',vp.x+4,vp.y);
+  vp=toXY(vmgDn.a,maxSpd); ctx.fillText('VMG↓ '+vmgDn.a.toFixed(0)+'°',vp.x+4,vp.y);
+
+  // Data dots
+  sailingData.forEach(d => {
+    const bucket=getTWSBucket(d.tws); if (!bucket) return;
+    const col=TWS_COLORS[bucket];
+    [d.twa,-d.twa].forEach((twa,i) => {
+      const pt=toXY(twa,d.stw);
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,2.5,0,Math.PI*2);
+      ctx.fillStyle=col+(i===0?'90':'40'); ctx.fill();
+    });
+  });
+
+  // Live position ring
+  if (livePoint && livePoint.stw > 0) {
+    [livePoint.twa,-livePoint.twa].forEach(twa => {
+      const pt=toXY(twa,livePoint.stw);
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,7,0,Math.PI*2);
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,3,0,Math.PI*2);
+      ctx.fillStyle='#ffffff'; ctx.fill();
+    });
+  }
+
+  // Labels
+  ctx.fillStyle='#2a3a4a'; ctx.font='10px Rajdhani,sans-serif';
+  ctx.textAlign='right'; ctx.fillText('PORT', cx-maxSpd*scale-3, cy-3);
+  ctx.textAlign='left'; ctx.fillText('STBD', cx+maxSpd*scale+3, cy-3);
+  ctx.fillStyle='#c8d6e580'; ctx.font='bold 11px Rajdhani,sans-serif';
+  ctx.textAlign='left'; ctx.fillText('S/V OROBORO — POLAR', 8, size-7);
+}
+
+window.addEventListener('resize', drawPolar);
+drawPolar();
+
+// ═══════════════════════════════════════════════════════════
+// InfluxDB
+// ═══════════════════════════════════════════════════════════
 async function fetchInflux(query) {
-  const resp = await fetch(`${INFLUX_BASE}/api/v2/query?org=${encodeURIComponent(INFLUX_ORG)}`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Token ${INFLUX_TOKEN}`,
-      'Content-Type': 'application/vnd.flux',
-      'Accept': 'text/csv'
+  const r = await fetch(`${INFLUX_BASE}/api/v2/query?org=${encodeURIComponent(INFLUX_ORG)}`, {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/vnd.flux',
+      'Authorization':`Token ${INFLUX_TOKEN}`,
+      'Accept':'application/csv'
     },
     body: query
   });
-  if (!resp.ok) throw new Error(`InfluxDB returned ${resp.status}`);
-  return await resp.text();
+  return r.text();
 }
 
 function parseInfluxCSV(csv) {
-  const rows = csv.trim().split('\n');
-  const results = [];
-  if (rows.length < 2) return results;
-
-  // First row is the header (starts with a leading comma)
-  const headers = rows[0].split(',');
-  const timeIdx  = headers.indexOf('_time');
-  const valueIdx = headers.indexOf('_value');
-  if (timeIdx < 0 || valueIdx < 0) return results;
-
-  for (let i = 1; i < rows.length; i++) {
-    const cols = rows[i].split(',');
-    const timeStr = cols[timeIdx];
-    const value   = parseFloat(cols[valueIdx]);
-    if (!timeStr || isNaN(value)) continue;
-    // Round to 30-second epoch bucket to align the three streams
-    const time = String(Math.round(new Date(timeStr).getTime() / 30000));
-    results.push({ time, value });
+  const rows=[], lines=csv.split('\n');
+  let headers=[];
+  for (const line of lines) {
+    if (!line.trim()||line.startsWith('#')) continue;
+    const cols=line.split(',');
+    if (cols[0]==='') { headers=cols; continue; }
+    if (!headers.length) continue;
+    const obj={};
+    headers.forEach((h,i)=>obj[h.trim()]=cols[i]?.trim());
+    if (obj._value) rows.push({time:obj._time, value:parseFloat(obj._value)});
   }
-  return results;
+  return rows;
+}
+
+async function loadData() {
+  const btn = document.querySelector('.btn-primary');
+  btn.textContent='Loading…'; btn.disabled=true;
+  document.getElementById('status-line').textContent='Fetching data from InfluxDB…';
+
+  const rangeEl=document.getElementById('timeRange');
+  const from=document.getElementById('fromTime').value;
+  const to=document.getElementById('toTime').value;
+  let rangeArg = from&&to
+    ? `start:${new Date(from).toISOString()},stop:${new Date(to).toISOString()}`
+    : `start:-${rangeEl.value}`;
+
+  const minSOG = parseFloat(document.getElementById('minSOG').value);
+
+  try {
+    const [wsData,waData,bsData] = await Promise.all([
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.speedApparent"&&r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.angleApparent"&&r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.speedThroughWater"&&r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`)
+    ]);
+
+    const awsRaw=parseInfluxCSV(wsData);
+    const awaRaw=parseInfluxCSV(waData);
+    const bsRaw =parseInfluxCSV(bsData);
+
+    const awsMap={}, awaMap={};
+    awsRaw.forEach(r=>awsMap[r.time]=r.value);
+    awaRaw.forEach(r=>awaMap[r.time]=r.value);
+
+    const newPts=[];
+    bsRaw.forEach(r=>{
+      const t=r.time, stw=r.value*1.94384;
+      if (!awsMap[t]||!awaMap[t]||stw<minSOG) return;
+      const aws=awsMap[t]*1.94384;
+      const awaRad=awaMap[t];
+      let awa=Math.abs(awaRad*(180/Math.PI));
+      if(awa>180) awa=360-awa;
+      const twx=aws*Math.cos(awaRad)-stw, twy=aws*Math.sin(awaRad);
+      const tws=Math.sqrt(twx*twx+twy*twy);
+      let twa=Math.abs(Math.atan2(twy,twx)*(180/Math.PI));
+      if(twa>=20&&twa<=180&&tws>2) {
+        newPts.push({twa,tws,stw,awa,aws,time:t});
+      }
+    });
+
+    sailingData=sailingData.concat(newPts);
+    updateBestFromData(newPts);
+    updateStats();
+    drawPolar();
+    document.getElementById('status-line').textContent=`Loaded ${newPts.length} new points (${sailingData.length} total)`;
+  } catch(e) {
+    document.getElementById('status-line').textContent='Error loading data: '+e.message;
+  }
+  btn.textContent='Load Data'; btn.disabled=false;
 }
 
 function clearData() {
-  sailingData = [];
-  document.getElementById('status').textContent = 'Data cleared';
-  document.getElementById('statPoints').textContent = '0';
-  document.getElementById('statMaxBS').textContent = '—';
-  document.getElementById('statAvgPerf').textContent = '—';
-  document.getElementById('statVMGUp').textContent = '—';
-  document.getElementById('statVMGDn').textContent = '—';
-  document.getElementById('statHours').textContent = '—';
+  sailingData=[];
+  document.getElementById('status-line').textContent='Data cleared.';
+  updateStats();
   drawPolar();
 }
 
 function updateStats() {
-  const n = sailingData.length;
-  document.getElementById('statPoints').textContent = n.toLocaleString();
-
-  if (n === 0) return;
-
-  const maxBS = Math.max(...sailingData.map(d => d.stw));
-  document.getElementById('statMaxBS').textContent = maxBS.toFixed(1) + ' kt';
-
-  // Average performance vs official polar
-  let perfSum = 0, perfCount = 0;
-  sailingData.forEach(d => {
-    const official = getOfficialSpeed(d.tws, d.twa);
-    if (official > 0) {
-      perfSum += (d.stw / official) * 100;
-      perfCount++;
-    }
-  });
-  if (perfCount > 0) {
-    const avgPerf = perfSum / perfCount;
-    const el = document.getElementById('statAvgPerf');
-    el.textContent = avgPerf.toFixed(0) + '%';
-    el.className = 'value ' + (avgPerf >= 100 ? 'green' : avgPerf >= 80 ? 'orange' : 'red');
-  }
-
-  // Best VMG upwind (TWA < 90)
-  let bestVMGUp = 0;
-  sailingData.filter(d => d.twa < 90).forEach(d => {
-    const vmg = d.stw * Math.cos(d.twa * Math.PI / 180);
-    if (vmg > bestVMGUp) bestVMGUp = vmg;
-  });
-  document.getElementById('statVMGUp').textContent = bestVMGUp > 0 ? bestVMGUp.toFixed(1) + ' kt' : '—';
-
-  // Best VMG downwind (TWA > 90)
-  let bestVMGDn = 0;
-  sailingData.filter(d => d.twa > 90).forEach(d => {
-    const vmg = d.stw * Math.cos((180 - d.twa) * Math.PI / 180);
-    if (vmg > bestVMGDn) bestVMGDn = vmg;
-  });
-  document.getElementById('statVMGDn').textContent = bestVMGDn > 0 ? bestVMGDn.toFixed(1) + ' kt' : '—';
-
-  // Sailing hours (30s intervals)
-  document.getElementById('statHours').textContent = (n * 30 / 3600).toFixed(1) + ' hr';
-}
-
-function getOfficialSpeed(tws, twa) {
-  // Bilinear interpolation directly on OFFICIAL_POLAR_TWS table
-  const twsSpeeds = [4, 6, 8, 10, 12, 14, 16];
-  const twas = [52, 60, 70, 75, 80, 90, 100, 110, 120, 130, 135, 140, 150, 160, 165, 170, 180];
-
-  // Clamp to table range
-  tws = Math.max(twsSpeeds[0], Math.min(twsSpeeds[twsSpeeds.length - 1], tws));
-  twa = Math.max(twas[0], Math.min(twas[twas.length - 1], twa));
-
-  // Find bracketing TWS
-  let tws1 = twsSpeeds[0], tws2 = twsSpeeds[1];
-  for (let i = 0; i < twsSpeeds.length - 1; i++) {
-    if (tws >= twsSpeeds[i] && tws <= twsSpeeds[i + 1]) { tws1 = twsSpeeds[i]; tws2 = twsSpeeds[i + 1]; break; }
-  }
-
-  // Find bracketing TWA
-  let twa1 = twas[0], twa2 = twas[1];
-  for (let i = 0; i < twas.length - 1; i++) {
-    if (twa >= twas[i] && twa <= twas[i + 1]) { twa1 = twas[i]; twa2 = twas[i + 1]; break; }
-  }
-
-  const fTWS = tws1 === tws2 ? 0 : (tws - tws1) / (tws2 - tws1);
-  const fTWA = twa1 === twa2 ? 0 : (twa - twa1) / (twa2 - twa1);
-
-  const bs11 = OFFICIAL_POLAR_TWS[tws1][twa1];
-  const bs12 = OFFICIAL_POLAR_TWS[tws1][twa2];
-  const bs21 = OFFICIAL_POLAR_TWS[tws2][twa1];
-  const bs22 = OFFICIAL_POLAR_TWS[tws2][twa2];
-
-  return (bs11 + (bs12 - bs11) * fTWA) * (1 - fTWS) + (bs21 + (bs22 - bs21) * fTWA) * fTWS;
-}
-
-// ═══════════════════════════════════════════════════════════
-// Polar diagram drawing
-// ═══════════════════════════════════════════════════════════
-
-function drawPolar() {
-  const canvas = document.getElementById('polarCanvas');
-  const container = document.getElementById('polar-container');
-  const size = Math.min(container.clientWidth - 20, window.innerHeight - 340, 700);
-  canvas.width = size * (window.devicePixelRatio || 1);
-  canvas.height = size * (window.devicePixelRatio || 1);
-  canvas.style.width = size + 'px';
-  canvas.style.height = size + 'px';
-  const ctx = canvas.getContext('2d');
-  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
-
-  const cx = size / 2;
-  const cy = size / 2; // center of canvas for full polar
-  const maxSpeed = 12;
-  const radius = size * 0.42;
-  const scale = radius / maxSpeed;
-
-  // Clear
-  ctx.fillStyle = '#111820';
-  ctx.fillRect(0, 0, size, size);
-
-  // Convert angle (TWA, 0° = upwind) + boat speed to canvas x,y
-  function toXY(twa, bs) {
-    const x = cx + Math.sin(twa * Math.PI / 180) * bs * scale;
-    const y = cy - Math.cos(twa * Math.PI / 180) * bs * scale;
-    return { x, y };
-  }
-
-  // Draw speed rings (full circles)
-  ctx.strokeStyle = '#1a2332';
-  ctx.lineWidth = 0.5;
-  ctx.setLineDash([2, 4]);
-  for (let spd = 2; spd <= maxSpeed; spd += 2) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, spd * scale, 0, Math.PI * 2);
-    ctx.stroke();
-    // Speed label on left side
-    ctx.fillStyle = '#3a4a5a';
-    ctx.font = '10px Rajdhani, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(spd + ' kt', cx - spd * scale - 4, cy + 4);
-  }
-  ctx.setLineDash([]);
-
-  // Draw angle lines on both sides
-  ctx.strokeStyle = '#1a2332';
-  ctx.lineWidth = 0.5;
-  for (let angle = 30; angle <= 180; angle += 10) {
-    // Right side (starboard)
-    ctx.setLineDash([1, 6]);
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    let pt = toXY(angle, maxSpeed);
-    ctx.lineTo(pt.x, pt.y);
-    ctx.stroke();
-    // Left side (port) — mirror
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    pt = toXY(-angle, maxSpeed);
-    ctx.lineTo(pt.x, pt.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Angle labels on right side only
-    if (angle % 30 === 0 || angle === 30) {
-      ctx.fillStyle = '#3a4a5a';
-      ctx.font = '11px Rajdhani, sans-serif';
-      const rpt = toXY(angle, maxSpeed + 0.8);
-      ctx.textAlign = 'center';
-      ctx.fillText(angle + '°', rpt.x, rpt.y + 4);
-      // Mirror label on left
-      const lpt = toXY(-angle, maxSpeed + 0.8);
-      ctx.fillText(angle + '°', lpt.x, lpt.y + 4);
-    }
-  }
-
-  // Draw wind direction line (0° = top)
-  ctx.strokeStyle = '#5a6a7a';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.lineTo(cx, cy - maxSpeed * scale);
-  ctx.stroke();
-  // And the dead downwind line (180°)
-  ctx.strokeStyle = '#2a3342';
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.lineTo(cx, cy + maxSpeed * scale);
-  ctx.stroke();
-
-  // Wind arrow at top
-  ctx.fillStyle = '#5a6a7a';
-  ctx.font = '12px Rajdhani, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('▼ TRUE WIND', cx, cy - maxSpeed * scale - 8);
-
-  // Draw official polar curves directly in TWA space — both sides
-  const officialTWS = [4, 6, 8, 10, 12, 14, 16];
-  const officialColors = ['#333', '#3a3a3a', '#444', '#4a4a4a', '#555', '#5a5a5a', '#666'];
-
-  officialTWS.forEach((tws, i) => {
-    const twas = Object.keys(OFFICIAL_POLAR_TWS[tws]).map(Number).sort((a, b) => a - b);
-
-    ctx.strokeStyle = officialColors[i];
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 3]);
-
-    // Right side (starboard)
-    ctx.beginPath();
-    let first = true;
-    twas.forEach(twa => {
-      const bs = OFFICIAL_POLAR_TWS[tws][twa];
-      const pt = toXY(twa, bs);
-      if (first) { ctx.moveTo(pt.x, pt.y); first = false; }
-      else ctx.lineTo(pt.x, pt.y);
-    });
-    ctx.stroke();
-
-    // Left side (port) — mirror
-    ctx.beginPath();
-    first = true;
-    twas.forEach(twa => {
-      const bs = OFFICIAL_POLAR_TWS[tws][twa];
-      const pt = toXY(-twa, bs);
-      if (first) { ctx.moveTo(pt.x, pt.y); first = false; }
-      else ctx.lineTo(pt.x, pt.y);
-    });
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // TWS label on right side near the downwind end
-    const lastTWA = twas[twas.length - 2];
-    const lpt = toXY(lastTWA, OFFICIAL_POLAR_TWS[tws][lastTWA]);
-    ctx.fillStyle = officialColors[i];
-    ctx.font = '9px Rajdhani, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(tws + 'kt TWS', lpt.x + 4, lpt.y);
-  });
-
-  // Draw actual sailing data points — both sides (mirrored)
-  sailingData.forEach(d => {
-    const bucket = getTWSBucket(d.tws);
-    if (!bucket) return;
-    const color = TWS_COLORS[bucket];
-
-    // Right side (starboard)
-    let pt = toXY(d.twa, d.stw);
-    ctx.beginPath();
-    ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
-    ctx.fillStyle = color + '80';
-    ctx.fill();
-
-    // Left side (port) — mirror
-    pt = toXY(-d.twa, d.stw);
-    ctx.beginPath();
-    ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
-    ctx.fillStyle = color + '40';
-    ctx.fill();
-  });
-
-  // Draw optimal VMG angles (TWA from VPP) — both sides
-  const vmgUpTWA = 51;    // ~51° TWA upwind optimal
-  const vmgDnTWA = 147.5; // ~147.5° TWA downwind optimal
-
-  ctx.strokeStyle = '#22c55e40';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([6, 4]);
-
-  // VMG upwind — right and left
-  ctx.beginPath(); ctx.moveTo(cx, cy);
-  let vpt = toXY(vmgUpTWA, maxSpeed); ctx.lineTo(vpt.x, vpt.y); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx, cy);
-  vpt = toXY(-vmgUpTWA, maxSpeed); ctx.lineTo(vpt.x, vpt.y); ctx.stroke();
-
-  // VMG downwind — right and left
-  ctx.beginPath(); ctx.moveTo(cx, cy);
-  vpt = toXY(vmgDnTWA, maxSpeed); ctx.lineTo(vpt.x, vpt.y); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx, cy);
-  vpt = toXY(-vmgDnTWA, maxSpeed); ctx.lineTo(vpt.x, vpt.y); ctx.stroke();
-
-  ctx.setLineDash([]);
-  ctx.fillStyle = '#22c55e80';
-  ctx.font = '9px Rajdhani, sans-serif';
-  ctx.textAlign = 'left';
-  vpt = toXY(vmgUpTWA, maxSpeed);
-  ctx.fillText('VMG↑ ' + vmgUpTWA + '°', vpt.x + 6, vpt.y);
-  vpt = toXY(vmgDnTWA, maxSpeed);
-  ctx.fillText('VMG↓ ' + vmgDnTWA + '°', vpt.x + 6, vpt.y);
-
-  // Port / Starboard labels
-  ctx.fillStyle = '#2a3a4a';
-  ctx.font = '11px Rajdhani, sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText('PORT', cx - maxSpeed * scale - 4, cy - 4);
-  ctx.textAlign = 'left';
-  ctx.fillText('STARBOARD', cx + maxSpeed * scale + 4, cy - 4);
-
-  // Title
-  ctx.fillStyle = '#c8d6e5';
-  ctx.font = 'bold 14px Rajdhani, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('S/V OROBORO — POLAR DIAGRAM (TWS/TWA)', 10, size - 8);
-}
-
-// ═══════════════════════════════════════════════════════════
-// Export
-// ═══════════════════════════════════════════════════════════
-function exportCSV() {
-  if (sailingData.length === 0) {
-    document.getElementById('status').textContent = 'No data to export — load data first.';
+  const n=sailingData.length;
+  document.getElementById('s-pts').textContent=n||'—';
+  if (!n) {
+    ['s-perf','s-maxstw','s-vmgup','s-vmgdn','s-hrs'].forEach(id=>document.getElementById(id).textContent='—');
     return;
   }
+  const perfs=sailingData.map(d=>{const o=getOfficialSpeed(d.tws,d.twa);return o>0?d.stw/o:0;}).filter(p=>p>0);
+  const avgPerf=perfs.reduce((a,b)=>a+b,0)/perfs.length*100;
+  document.getElementById('s-perf').textContent=avgPerf.toFixed(0)+'%';
+  document.getElementById('s-perf').style.color=avgPerf>=90?'#22c55e':avgPerf>=75?'#f59e0b':'#ef4444';
+  document.getElementById('s-maxstw').textContent=Math.max(...sailingData.map(d=>d.stw)).toFixed(1)+' kt';
+  const upVMG=sailingData.filter(d=>d.twa<90).map(d=>d.stw*Math.cos(d.twa*Math.PI/180));
+  const dnVMG=sailingData.filter(d=>d.twa>90).map(d=>d.stw*Math.cos((180-d.twa)*Math.PI/180));
+  document.getElementById('s-vmgup').textContent=upVMG.length?Math.max(...upVMG).toFixed(1)+' kt':'—';
+  document.getElementById('s-vmgdn').textContent=dnVMG.length?Math.max(...dnVMG).toFixed(1)+' kt':'—';
+  const hrs=n*30/3600;
+  document.getElementById('s-hrs').textContent=hrs.toFixed(1)+' hr';
+}
 
-  const rows = [
-    ['timestamp_unix_30s', 'awa_deg', 'aws_kt', 'twa_deg', 'tws_kt', 'stw_kt', 'tws_bucket', 'official_polar_kt', 'performance_pct']
-  ];
+// ═══════════════════════════════════════════════════════════
+// Live WebSocket
+// ═══════════════════════════════════════════════════════════
+let _aws=0,_awa=0,_stw=0,_sog=0,_cog=0;
+let wsConn=null, reconnTimer=null;
 
-  sailingData.forEach(d => {
-    const official = getOfficialSpeed(d.tws, d.twa);
-    const perf = official > 0 ? ((d.stw / official) * 100).toFixed(1) : '';
-    rows.push([
-      d.time,
-      d.awa != null ? d.awa.toFixed(1) : '',
-      d.aws != null ? d.aws.toFixed(2) : '',
-      d.twa.toFixed(1),
-      d.tws.toFixed(2),
-      d.stw.toFixed(2),
-      getTWSBucket(d.tws) || '',
-      official > 0 ? official.toFixed(2) : '',
-      perf
-    ]);
+function setConn(s) {
+  const dot=document.getElementById('conn-dot');
+  const txt=document.getElementById('conn-txt');
+  const c={live:'#22c55e',connecting:'#f59e0b',offline:'#ef4444'};
+  const l={live:'Live',connecting:'Connecting',offline:'Offline'};
+  dot.style.background=c[s]; txt.textContent=l[s]; txt.style.color=c[s];
+}
+
+function connectWS() {
+  clearTimeout(reconnTimer);
+  setConn('connecting');
+  try { wsConn=new WebSocket(WS_URL); } catch(_){ scheduleReconn(); return; }
+  wsConn.onopen=()=>{
+    setConn('live');
+    wsConn.send(JSON.stringify({
+      context:'vessels.self',
+      subscribe:[
+        {path:'environment.wind.speedApparent'},
+        {path:'environment.wind.angleApparent'},
+        {path:'navigation.speedThroughWater'},
+        {path:'navigation.speedOverGround'},
+        {path:'navigation.courseOverGroundTrue'}
+      ]
+    }));
+  };
+  wsConn.onmessage=e=>{
+    try {
+      const msg=JSON.parse(e.data);
+      if (msg.updates) msg.updates.forEach(u=>{
+        if (u.values) u.values.forEach(v=>onWSValue(v.path,v.value));
+      });
+    } catch(_){}
+  };
+  wsConn.onerror=()=>{};
+  wsConn.onclose=()=>{ setConn('offline'); scheduleReconn(); };
+}
+
+function scheduleReconn() { reconnTimer=setTimeout(connectWS,3000); }
+
+function onWSValue(path, val) {
+  if (path==='environment.wind.speedApparent') _aws=val*1.94384;
+  else if (path==='environment.wind.angleApparent') _awa=val;
+  else if (path==='navigation.speedThroughWater') _stw=val*1.94384;
+  else if (path==='navigation.speedOverGround') _sog=val*1.94384;
+  else if (path==='navigation.courseOverGroundTrue') _cog=val*(180/Math.PI);
+  updateLiveInstruments();
+}
+
+function updateLiveInstruments() {
+  const awaRad=_awa;
+  const awaDeg=Math.abs(awaRad*(180/Math.PI));
+  const twx=_aws*Math.cos(awaRad)-_stw, twy=_aws*Math.sin(awaRad);
+  const tws=Math.sqrt(twx*twx+twy*twy);
+  const twa=Math.abs(Math.atan2(twy,twx)*(180/Math.PI));
+
+  document.getElementById('l-tws').innerHTML=tws.toFixed(1)+'<span class="live-unit"> kt</span>';
+  document.getElementById('l-twa').innerHTML=twa.toFixed(0)+'<span class="live-unit">°</span>';
+  document.getElementById('l-awa').innerHTML=awaDeg.toFixed(0)+'<span class="live-unit">°</span>';
+  document.getElementById('l-stw').innerHTML=_stw.toFixed(1)+'<span class="live-unit"> kt</span>';
+  document.getElementById('l-sog').innerHTML=_sog.toFixed(1)+'<span class="live-unit"> kt</span>';
+  document.getElementById('l-cog').textContent='COG '+_cog.toFixed(0)+'°';
+
+  const polar=getOfficialSpeed(tws,twa);
+  document.getElementById('l-pbsp').innerHTML=polar>0?polar.toFixed(1)+'<span class="live-unit"> kt</span>':'—';
+
+  if (polar>0&&_stw>0) {
+    const pct=(_stw/polar*100);
+    const cls=pct>=90?'pg':pct>=75?'po':'pr';
+    document.getElementById('l-perf').innerHTML=`<span class="perf-pill ${cls}">${pct.toFixed(0)}%</span>`;
+  } else {
+    document.getElementById('l-perf').textContent='—';
+  }
+
+  // VMG
+  const upwind=twa<90;
+  const side=upwind?'upwind':'downwind';
+  const vmgOpt=getOptimalVMG(tws,side);
+  const vmg=_stw*Math.cos(twa*Math.PI/180)*(upwind?1:-1);
+  const vmgTgt=vmgOpt.v;
+  const vmgPct=vmgTgt>0?vmg/vmgTgt*100:0;
+
+  document.getElementById('l-vmg').innerHTML=vmg.toFixed(2)+'<span style="font-size:9px;color:var(--dim)"> kt</span>';
+  document.getElementById('l-vmg-tgt').textContent='target '+vmgTgt.toFixed(2);
+  const vmgCol=vmgPct>=90?'var(--green)':vmgPct>=75?'var(--orange)':'var(--red)';
+  document.getElementById('l-vmgpct').innerHTML=`<span style="color:${vmgCol}">${vmgPct.toFixed(0)}%</span>`;
+
+  const tgtTWA=vmgOpt.a;
+  const delta=twa-tgtTWA;
+  document.getElementById('l-tgt-twa').innerHTML=tgtTWA.toFixed(0)+'<span style="font-size:9px;color:var(--dim)">°</span>';
+  document.getElementById('l-twa-delta').textContent=
+    Math.abs(delta)<1?'on target':delta>0?'+'+delta.toFixed(0)+'° bear away':delta.toFixed(0)+'° head up';
+
+  // Update live point on polar
+  livePoint={twa,tws,stw:_stw};
+  drawPolar();
+}
+
+// ═══════════════════════════════════════════════════════════
+// Export CSV
+// ═══════════════════════════════════════════════════════════
+function exportCSV() {
+  if (!sailingData.length) { document.getElementById('status-line').textContent='No data to export.'; return; }
+  const rows=[['time_utc','awa_deg','aws_kt','twa_deg','tws_kt','stw_kt','tws_bucket','polar_bsp_kt','performance_pct']];
+  sailingData.forEach(d=>{
+    const pol=getOfficialSpeed(d.tws,d.twa);
+    const pct=pol>0?(d.stw/pol*100).toFixed(1):'';
+    rows.push([d.time,d.awa?.toFixed(1)||'',d.aws?.toFixed(2)||'',d.twa.toFixed(1),d.tws.toFixed(2),d.stw.toFixed(2),getTWSBucket(d.tws)||'',pol>0?pol.toFixed(2):'',pct]);
   });
-
-  const csv = rows.map(r => r.join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const now = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', 'h').replace(':', 'm');
-  a.href = url;
-  a.download = `oroboro_polar_${now}.csv`;
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`oroboro_polar_${new Date().toISOString().slice(0,16).replace(/[T:]/g,'_')}.csv`;
   a.click();
-  URL.revokeObjectURL(url);
-  document.getElementById('status').textContent = `Exported ${sailingData.length} rows to CSV.`;
+  document.getElementById('status-line').textContent=`Exported ${sailingData.length} rows.`;
 }
 
 // ═══════════════════════════════════════════════════════════
 // Init
 // ═══════════════════════════════════════════════════════════
-window.addEventListener('resize', drawPolar);
-drawPolar();
+connectWS();
 </script>
 </body>
 </html>
