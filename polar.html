@@ -47,10 +47,11 @@ body{font-family:'Rajdhani','Segoe UI',sans-serif;background:var(--bg);color:var
 .sec-label{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#ffffff;padding:8px 12px 3px;background:var(--bg);opacity:0.6;}
 .divider{height:1px;background:var(--border);margin:0;}
 
-/* DUAL POLAR CANVASES */
-#dual-polar{display:flex;gap:6px;padding:6px 8px;background:var(--bg);}
-.polar-box{flex:1;display:flex;flex-direction:column;}
-.polar-title{font-size:9px;text-align:center;text-transform:uppercase;letter-spacing:0.06em;padding-bottom:3px;font-weight:500;}
+/* POLAR TABS */
+.polar-tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);}
+.polar-tab{flex:1;text-align:center;padding:9px 4px;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:#aabbcc;cursor:pointer;border-bottom:2px solid transparent;}
+.polar-tab.active{color:var(--cyan);border-bottom:2px solid var(--cyan);}
+#polar-panel{padding:6px 8px;background:var(--bg);}
 .polar-canvas-wrap{background:var(--card);border-radius:7px;border:1px solid var(--border);overflow:hidden;touch-action:pinch-zoom;}
 .polar-canvas-wrap canvas{display:block;}
 
@@ -129,17 +130,14 @@ button.btn-sec{background:var(--card);color:#ffffff;border:1px solid var(--borde
   </div>
 </div>
 
-<!-- DUAL POLAR DIAGRAMS -->
+<!-- POLAR TABS -->
 <div class="sec-label">▼ Polar Diagram</div>
-<div id="dual-polar">
-  <div class="polar-box">
-    <div class="polar-title" style="color:#ffffff;">VPP Polar</div>
-    <div class="polar-canvas-wrap"><canvas id="vppCanvas"></canvas></div>
-  </div>
-  <div class="polar-box">
-    <div class="polar-title" style="color:var(--green);">My Best</div>
-    <div class="polar-canvas-wrap"><canvas id="bestCanvas"></canvas></div>
-  </div>
+<div class="polar-tabs">
+  <div class="polar-tab active" id="tab-vpp" onclick="switchTab('vpp')">VPP Polar</div>
+  <div class="polar-tab" id="tab-best" onclick="switchTab('best')" style="color:var(--green)">My Best</div>
+</div>
+<div id="polar-panel">
+  <div class="polar-canvas-wrap"><canvas id="polarCanvas"></canvas></div>
 </div>
 
 <!-- LEGEND -->
@@ -353,6 +351,17 @@ buildTable();
 // ═══════════════════════════════════════════════════════════
 // Dual Polar Drawing
 // ═══════════════════════════════════════════════════════════
+let activeTab='vpp';
+
+function switchTab(tab) {
+  activeTab=tab;
+  document.getElementById('tab-vpp').className='polar-tab'+(tab==='vpp'?' active':'');
+  document.getElementById('tab-best').className='polar-tab'+(tab==='best'?' active':'');
+  document.getElementById('tab-vpp').style.color=tab==='vpp'?'var(--cyan)':'#aabbcc';
+  document.getElementById('tab-best').style.color=tab==='best'?'var(--green)':'#aabbcc';
+  drawPolar();
+}
+
 function drawCanvas(canvasId, mode) {
   const canvas=document.getElementById(canvasId);
   const wrap=canvas.parentElement;
@@ -379,7 +388,7 @@ function drawCanvas(canvasId, mode) {
     ctx.beginPath(); ctx.arc(ox,oy,s*scale,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
     const lp=toXY(90,s);
     ctx.fillStyle='#ffffffcc'; ctx.font=`${Math.max(8,size*0.06)}px Rajdhani,sans-serif`;
-    ctx.textAlign='left'; ctx.fillText(s+'kt',lp.x+2,lp.y+4);
+    ctx.textAlign='left'; ctx.fillText(s+' STW',lp.x+2,lp.y+4);
   }
 
   // Angle rays & labels - starboard side only
@@ -434,7 +443,7 @@ function drawCanvas(canvasId, mode) {
       const last=twas[twas.length-2];
       const lp=toXY(last,OFFICIAL_POLAR[tws][last]);
       ctx.fillStyle='#ffffffcc'; ctx.font=`${Math.max(7,size*0.06)}px Rajdhani,sans-serif`;
-      ctx.textAlign='left'; ctx.fillText(tws+'kt',lp.x+3,lp.y+1);
+      ctx.textAlign='left'; ctx.fillText(tws+' TWS',lp.x+3,lp.y+1);
     });
   } else {
     // My Best curves - solid, colored by TWS band
@@ -488,9 +497,9 @@ function drawCanvas(canvasId, mode) {
   ctx.textAlign='left'; ctx.fillText('S/V OROBORO',5,size-5);
 }
 
-function drawBoth() { drawCanvas('vppCanvas','vpp'); drawCanvas('bestCanvas','best'); }
-window.addEventListener('resize',drawBoth);
-drawBoth();
+function drawPolar() { drawCanvas('polarCanvas', activeTab); }
+window.addEventListener('resize',drawPolar);
+drawPolar();
 
 // ═══════════════════════════════════════════════════════════
 // Leaflet Track Map
@@ -655,7 +664,7 @@ async function loadData() {
     trackData=trackData.concat(newTrack);
     updateBestFromData(newPts);
     updateStats();
-    drawBoth();
+    drawPolar();
     renderTrack();
     document.getElementById('status-line').textContent=`Loaded ${newPts.length} new points (${sailingData.length} total)`;
   } catch(e) {
@@ -668,7 +677,7 @@ async function loadData() {
 function clearData() {
   sailingData=[]; trackData=[];
   document.getElementById('status-line').textContent='Data cleared.';
-  updateStats(); drawBoth(); renderTrack();
+  updateStats(); drawPolar(); renderTrack();
 }
 
 function updateStats() {
@@ -814,7 +823,7 @@ function updateLive() {
   document.getElementById('l-twa-delta').textContent=Math.abs(delta)<1?'on target':delta>0?'+'+delta.toFixed(0)+'° bear away':delta.toFixed(0)+'° head up';
 
   livePoint={twa,tws,stw:_stw};
-  drawBoth();
+  drawPolar();
 
   // Update live boat marker on map
   if(_lat&&_lon) {
