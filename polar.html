@@ -6,130 +6,101 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>S/V Oroboro — Polar Performance</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root {
-  --bg:       #0a0e14;
-  --card:     #111820;
-  --border:   #1a2332;
-  --text:     #c8d6e5;
-  --dim:      #5a6a7a;
-  --dimmer:   #3a4a5a;
-  --cyan:     #00d4ff;
-  --green:    #22c55e;
-  --orange:   #f59e0b;
-  --red:      #ef4444;
-  --blue:     #60a5fa;
+  --bg:#0a0e14; --card:#111820; --border:#1a2332;
+  --text:#ffffff; --dim:#ffffff; --dimmer:#aabbcc;
+  --cyan:#00d4ff; --green:#22c55e; --orange:#f59e0b;
+  --red:#ef4444; --blue:#60a5fa;
 }
-* { margin:0; padding:0; box-sizing:border-box; }
-body {
-  font-family: 'Rajdhani','Segoe UI',sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Rajdhani','Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 
-/* ── TOP BAR ── */
-#top-bar {
-  display: flex; align-items: center;
-  padding: 8px 12px;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 10;
-}
-#top-bar a { color: var(--cyan); text-decoration: none; font-size: 13px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 5px; }
-#top-bar h1 { flex:1; text-align:center; font-size:14px; font-weight:500; letter-spacing:1px; text-transform:uppercase; color: var(--dim); }
-#conn-badge { font-size:10px; display:flex; align-items:center; gap:4px; }
-#conn-dot { width:7px; height:7px; border-radius:50%; background:#f59e0b; }
+/* TOP BAR */
+#top-bar{display:flex;align-items:center;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+#top-bar a{color:var(--cyan);text-decoration:none;font-size:13px;padding:5px 10px;border:1px solid var(--border);border-radius:5px;}
+#top-bar h1{flex:1;text-align:center;font-size:14px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:#ffffff;}
+#conn-badge{font-size:10px;display:flex;align-items:center;gap:4px;}
+#conn-dot{width:7px;height:7px;border-radius:50%;background:#f59e0b;}
 
-/* ── SECTION LABELS ── */
-.sec-label {
-  font-size: 9px; font-weight:500; text-transform:uppercase; letter-spacing:0.08em;
-  color: var(--dimmer); padding: 6px 12px 2px;
-  background: var(--bg);
-}
+/* LIVE STRIP */
+#live-strip{background:var(--card);border-bottom:1px solid var(--border);padding:10px 12px;}
+.live-row{display:flex;}
+.live-cell{flex:1;text-align:center;border-right:1px solid var(--border);padding:0 3px;}
+.live-cell:last-child{border-right:none;}
+.live-lbl{font-size:9px;color:#ffffff;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;opacity:0.55;}
+.live-val{font-size:20px;font-weight:500;line-height:1;}
+.live-unit{font-size:9px;color:#aabbcc;}
+.perf-pill{display:inline-block;font-size:13px;font-weight:600;padding:2px 8px;border-radius:4px;}
+.pg{background:#14532d;color:var(--green);}
+.po{background:#78350f;color:var(--orange);}
+.pr{background:#7f1d1d;color:var(--red);}
+.vmg-row{display:flex;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+.vmg-cell{flex:1;text-align:center;}
+.vmg-lbl{font-size:9px;color:#ffffff;text-transform:uppercase;opacity:0.55;}
+.vmg-val{font-size:14px;font-weight:500;}
+.vmg-sub{font-size:9px;color:#aabbcc;margin-top:1px;}
 
-/* ── LIVE STRIP ── */
-#live-strip {
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  padding: 10px 12px;
-}
-.live-row { display:flex; gap:0; }
-.live-cell {
-  flex:1; text-align:center;
-  border-right: 1px solid var(--border);
-  padding: 0 3px;
-}
-.live-cell:last-child { border-right:none; }
-.live-lbl { font-size:9px; color:var(--dimmer); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:2px; }
-.live-val { font-size:20px; font-weight:500; line-height:1; }
-.live-unit { font-size:9px; color:var(--dim); }
-.perf-pill { display:inline-block; font-size:13px; font-weight:600; padding:2px 8px; border-radius:4px; }
-.pg { background:#14532d; color:var(--green); }
-.po { background:#78350f; color:var(--orange); }
-.pr { background:#7f1d1d; color:var(--red); }
+/* SECTION DIVIDERS */
+.sec-label{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#ffffff;padding:8px 12px 3px;background:var(--bg);opacity:0.6;}
+.divider{height:1px;background:var(--border);margin:0;}
 
-.vmg-row {
-  display:flex; margin-top:8px; padding-top:8px;
-  border-top: 1px solid var(--border);
-}
-.vmg-cell { flex:1; text-align:center; }
-.vmg-lbl { font-size:9px; color:var(--dimmer); text-transform:uppercase; }
-.vmg-val { font-size:14px; font-weight:500; }
-.vmg-sub { font-size:9px; color:var(--dim); margin-top:1px; }
+/* DUAL POLAR CANVASES */
+#dual-polar{display:flex;gap:6px;padding:6px 8px;background:var(--bg);}
+.polar-box{flex:1;display:flex;flex-direction:column;}
+.polar-title{font-size:9px;text-align:center;text-transform:uppercase;letter-spacing:0.06em;padding-bottom:3px;font-weight:500;}
+.polar-canvas-wrap{background:var(--card);border-radius:7px;border:1px solid var(--border);overflow:hidden;touch-action:pinch-zoom;}
+.polar-canvas-wrap canvas{display:block;}
 
-/* ── POLAR DIAGRAM ── */
-#polar-wrap { padding: 8px 10px; background: var(--bg); }
-#polarCanvas { background:var(--card); border-radius:8px; border:1px solid var(--border); display:block; }
+/* LEGEND */
+.legend{display:flex;flex-wrap:wrap;gap:6px 10px;padding:5px 12px;justify-content:center;}
+.leg{display:flex;align-items:center;gap:3px;font-size:9px;color:#ffffff;}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.leg-line{width:14px;height:1.5px;flex-shrink:0;}
+.leg-dash{width:14px;height:1.5px;flex-shrink:0;background:repeating-linear-gradient(90deg,#fff 0,#fff 4px,transparent 4px,transparent 7px);}
 
-.legend { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; padding:6px 12px; }
-.leg { display:flex; align-items:center; gap:4px; font-size:10px; color:var(--dim); }
-.leg-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-.leg-line { width:14px; height:1.5px; flex-shrink:0; }
+/* TABLE */
+#table-wrap{overflow-x:auto;padding:4px 10px 8px;}
+table.ptable{border-collapse:collapse;font-size:10px;width:100%;min-width:480px;}
+.ptable th{font-size:8px;color:#ffffff;text-transform:uppercase;letter-spacing:0.04em;padding:3px 4px;text-align:center;border-bottom:1px solid var(--border);}
+.ptable th.twa-h{color:var(--cyan);font-size:9px;}
+.ptable th.sub-vpp{color:#aabbcc;}
+.ptable th.sub-best{color:#22c55e;}
+.ptable td{padding:3px 4px;text-align:center;border-bottom:1px solid #0d1520;}
+.ptable td.tws-c{color:#ffffff;font-weight:500;text-align:left;font-size:11px;}
+.ptable td.vpp{color:#5a7a9a;}
+.ptable td.best-g{color:var(--green);font-weight:500;}
+.ptable td.best-o{color:var(--orange);font-weight:500;}
+.ptable td.best-r{color:var(--red);font-weight:500;}
+.ptable td.best-none{color:#aabbcc;}
+.tbl-note{display:flex;gap:12px;padding:4px 0 0;font-size:8px;flex-wrap:wrap;}
+.tbl-note .n-vpp{color:#5a7a9a;}
+.tbl-note .n-best{color:#22c55e;}
 
-/* ── POLAR TABLE ── */
-#table-wrap { padding: 0 10px 10px; background: var(--bg); overflow-x:auto; }
-table.ptable { border-collapse:collapse; width:100%; min-width:520px; font-size:11px; }
-.ptable th {
-  font-size:9px; color:var(--dimmer); text-transform:uppercase; letter-spacing:0.04em;
-  padding:4px 5px; text-align:center; border-bottom:1px solid var(--border);
-  background: var(--bg);
-}
-.ptable th.twa-h { color:var(--cyan); font-size:10px; }
-.ptable th.sub-vpp { color:var(--dimmer); }
-.ptable th.sub-best { color:#225533; }
-.ptable td { padding:3px 5px; text-align:center; border-bottom:1px solid #0d1520; }
-.ptable td.tws-c { color:var(--dim); font-weight:500; text-align:left; font-size:12px; }
-.ptable td.vpp { color:#3a5a7a; }
-.ptable td.best-g { color:var(--green); font-weight:500; }
-.ptable td.best-o { color:var(--orange); font-weight:500; }
-.ptable td.best-r { color:var(--red); font-weight:500; }
-.ptable td.best-none { color:var(--dimmer); }
-.tbl-note { display:flex; gap:14px; padding:5px 0 0; font-size:9px; flex-wrap:wrap; }
-.tbl-note span { color:var(--dimmer); }
-.tbl-note .n-vpp { color:#3a5a7a; }
-.tbl-note .n-best { color:#22c55e; }
+/* TRACK MAP */
+#map-container{height:340px;position:relative;}
+#track-map{height:100%;width:100%;}
+.leaflet-container{background:#0a0e14;}
+.map-stats-overlay{position:absolute;top:8px;right:8px;background:rgba(10,14,20,0.88);border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:9px;z-index:500;pointer-events:none;}
+.map-legend-overlay{position:absolute;bottom:8px;left:8px;background:rgba(10,14,20,0.88);border:1px solid var(--border);border-radius:5px;padding:5px 7px;font-size:8px;z-index:500;pointer-events:none;}
+.map-legend-overlay div{display:flex;align-items:center;gap:4px;margin-bottom:2px;}
+.map-legend-overlay div:last-child{margin-bottom:0;}
+.mleg-line{width:16px;height:3px;border-radius:2px;}
 
-/* ── CONTROLS ── */
-#controls {
-  background: var(--card); border-top:1px solid var(--border);
-  padding: 8px 12px;
-}
-.ctrl-row { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
-.ctrl-row label { font-size:11px; color:var(--dim); text-transform:uppercase; }
-.ctrl-row select, .ctrl-row input[type="datetime-local"] {
-  background:var(--bg); color:var(--text); border:1px solid var(--border);
-  border-radius:4px; padding:5px 7px; font-size:12px; font-family:inherit;
-  flex:1; min-width:0;
-}
-.ctrl-row input[type="datetime-local"] { color-scheme:dark; }
-button.btn-primary { background:var(--cyan); color:var(--bg); border:none; border-radius:4px; padding:6px 14px; font-size:12px; font-weight:600; font-family:inherit; cursor:pointer; }
-button.btn-sec { background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:4px; padding:6px 10px; font-size:12px; font-family:inherit; cursor:pointer; }
-.stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
-.stat { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:6px 8px; text-align:center; }
-.stat .slbl { font-size:9px; color:var(--dimmer); text-transform:uppercase; }
-.stat .sval { font-size:16px; font-weight:500; }
-#status-line { text-align:center; padding:6px 12px; font-size:11px; color:var(--dim); }
+/* CONTROLS */
+#controls{background:var(--card);border-top:1px solid var(--border);padding:8px 12px;}
+.ctrl-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;}
+.ctrl-row label{font-size:10px;color:#ffffff;text-transform:uppercase;opacity:0.6;}
+.ctrl-row select,.ctrl-row input[type="datetime-local"]{background:var(--bg);color:#ffffff;border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-size:11px;font-family:inherit;flex:1;min-width:0;color-scheme:dark;}
+button.btn-primary{background:var(--cyan);color:var(--bg);border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;}
+button.btn-sec{background:var(--card);color:#ffffff;border:1px solid var(--border);border-radius:4px;padding:6px 10px;font-size:12px;font-family:inherit;cursor:pointer;}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
+.stat{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 7px;text-align:center;}
+.stat .slbl{font-size:8px;color:#ffffff;text-transform:uppercase;opacity:0.5;}
+.stat .sval{font-size:15px;font-weight:500;}
+#status-line{text-align:center;padding:5px 12px;font-size:10px;color:#aabbcc;}
 </style>
 </head>
 <body>
@@ -137,77 +108,57 @@ button.btn-sec { background:var(--card); color:var(--text); border:1px solid var
 <div id="top-bar">
   <a href="oroboro.html">← Dashboard</a>
   <h1>Polar Performance</h1>
-  <div id="conn-badge"><div id="conn-dot"></div><span id="conn-txt" style="color:#f59e0b">Connecting</span></div>
+  <div id="conn-badge"><div id="conn-dot"></div><span id="conn-txt" style="color:#f59e0b;font-size:10px;">Connecting</span></div>
 </div>
 
-<div class="sec-label">Live Instruments</div>
+<!-- LIVE INSTRUMENTS -->
 <div id="live-strip">
   <div class="live-row">
-    <div class="live-cell">
-      <div class="live-lbl">TWS</div>
-      <div class="live-val" id="l-tws" style="color:var(--cyan)">—<span class="live-unit"> kt</span></div>
-    </div>
-    <div class="live-cell">
-      <div class="live-lbl">TWA</div>
-      <div class="live-val" id="l-twa">—<span class="live-unit">°</span></div>
-    </div>
-    <div class="live-cell">
-      <div class="live-lbl">AWA</div>
-      <div class="live-val" id="l-awa">—<span class="live-unit">°</span></div>
-    </div>
-    <div class="live-cell">
-      <div class="live-lbl">STW</div>
-      <div class="live-val" id="l-stw">—<span class="live-unit"> kt</span></div>
-    </div>
-    <div class="live-cell">
-      <div class="live-lbl">Polar BSP</div>
-      <div class="live-val" id="l-pbsp">—<span class="live-unit"> kt</span></div>
-    </div>
-    <div class="live-cell">
-      <div class="live-lbl">Perf</div>
-      <div class="live-val" id="l-perf">—</div>
-    </div>
+    <div class="live-cell"><div class="live-lbl">TWS</div><div class="live-val" id="l-tws" style="color:var(--cyan)">—<span class="live-unit"> kt</span></div></div>
+    <div class="live-cell"><div class="live-lbl">TWA</div><div class="live-val" id="l-twa">—<span class="live-unit">°</span></div></div>
+    <div class="live-cell"><div class="live-lbl">AWA</div><div class="live-val" id="l-awa">—<span class="live-unit">°</span></div></div>
+    <div class="live-cell"><div class="live-lbl">STW</div><div class="live-val" id="l-stw">—<span class="live-unit"> kt</span></div></div>
+    <div class="live-cell"><div class="live-lbl">Polar BSP</div><div class="live-val" id="l-pbsp">—<span class="live-unit"> kt</span></div></div>
+    <div class="live-cell"><div class="live-lbl">Perf</div><div class="live-val" id="l-perf">—</div></div>
   </div>
   <div class="vmg-row">
-    <div class="vmg-cell">
-      <div class="vmg-lbl">VMG</div>
-      <div class="vmg-val" id="l-vmg" style="color:var(--green)">—<span style="font-size:9px;color:var(--dim)"> kt</span></div>
-      <div class="vmg-sub" id="l-vmg-tgt">target —</div>
-    </div>
-    <div class="vmg-cell">
-      <div class="vmg-lbl">VMG%</div>
-      <div class="vmg-val" id="l-vmgpct">—</div>
-      <div class="vmg-sub">of polar</div>
-    </div>
-    <div class="vmg-cell">
-      <div class="vmg-lbl">Target TWA</div>
-      <div class="vmg-val" id="l-tgt-twa" style="color:var(--blue)">—<span style="font-size:9px;color:var(--dim)">°</span></div>
-      <div class="vmg-sub" id="l-twa-delta">—</div>
-    </div>
-    <div class="vmg-cell">
-      <div class="vmg-lbl">SOG</div>
-      <div class="live-val" id="l-sog" style="font-size:14px">—<span class="live-unit"> kt</span></div>
-      <div class="vmg-sub" id="l-cog">COG —°</div>
-    </div>
+    <div class="vmg-cell"><div class="vmg-lbl">VMG</div><div class="vmg-val" id="l-vmg" style="color:var(--green)">—</div><div class="vmg-sub" id="l-vmg-tgt">target —</div></div>
+    <div class="vmg-cell"><div class="vmg-lbl">VMG%</div><div class="vmg-val" id="l-vmgpct">—</div><div class="vmg-sub">of polar</div></div>
+    <div class="vmg-cell"><div class="vmg-lbl">VPP Target</div><div class="vmg-val" id="l-tgt-twa" style="color:var(--blue)">—</div><div class="vmg-sub" id="l-twa-delta">—</div></div>
+    <div class="vmg-cell"><div class="vmg-lbl">SOG</div><div class="vmg-val" id="l-sog" style="font-size:14px">—<span style="font-size:9px;color:#aabbcc"> kt</span></div><div class="vmg-sub" id="l-cog">COG —°</div></div>
   </div>
 </div>
 
-<div class="sec-label">Polar Diagram</div>
-<div id="polar-wrap">
-  <canvas id="polarCanvas"></canvas>
-  <div class="legend">
-    <div class="leg"><div class="leg-dot" style="background:#ff8c00"></div>4-6 kt</div>
-    <div class="leg"><div class="leg-dot" style="background:#f59e0b"></div>6-8 kt</div>
-    <div class="leg"><div class="leg-dot" style="background:#22c55e"></div>8-12 kt</div>
-    <div class="leg"><div class="leg-dot" style="background:#00d4ff"></div>12-16 kt</div>
-    <div class="leg"><div class="leg-dot" style="background:#a855f7"></div>16-20 kt</div>
-    <div class="leg"><div class="leg-dot" style="background:#ef4444"></div>20+ kt</div>
-    <div class="leg"><div class="leg-line" style="background:#2a3a4a;border-top:1px dashed #2a3a4a"></div>VPP polar</div>
-    <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>VMG target</div>
+<!-- DUAL POLAR DIAGRAMS -->
+<div class="sec-label">▼ Polar Diagram</div>
+<div id="dual-polar">
+  <div class="polar-box">
+    <div class="polar-title" style="color:#ffffff;">VPP Polar</div>
+    <div class="polar-canvas-wrap"><canvas id="vppCanvas"></canvas></div>
+  </div>
+  <div class="polar-box">
+    <div class="polar-title" style="color:var(--green);">My Best</div>
+    <div class="polar-canvas-wrap"><canvas id="bestCanvas"></canvas></div>
   </div>
 </div>
 
-<div class="sec-label">Polar Table — VPP vs Oroboro Best</div>
+<!-- LEGEND -->
+<div class="legend">
+  <div class="leg"><div class="leg-dot" style="background:#ff8c00"></div>4-6kt</div>
+  <div class="leg"><div class="leg-dot" style="background:#f59e0b"></div>6-8kt</div>
+  <div class="leg"><div class="leg-dot" style="background:#22c55e"></div>8-12kt</div>
+  <div class="leg"><div class="leg-dot" style="background:#00d4ff"></div>12-16kt</div>
+  <div class="leg"><div class="leg-dot" style="background:#a855f7"></div>16-20kt</div>
+  <div class="leg"><div class="leg-dot" style="background:#ef4444"></div>20+kt</div>
+  <div class="leg"><div class="leg-dash"></div>VPP</div>
+  <div class="leg"><div class="leg-line" style="background:var(--green)"></div>My best</div>
+  <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>VMG tgt</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- TABLE -->
+<div class="sec-label">▼ Table — VPP vs My Best</div>
 <div id="table-wrap">
   <table class="ptable" id="polar-table">
     <thead>
@@ -217,12 +168,30 @@ button.btn-sec { background:var(--card); color:var(--text); border:1px solid var
     <tbody id="polar-table-body"></tbody>
   </table>
   <div class="tbl-note">
-    <span class="n-vpp">VPP = Leopard 40 theoretical (Robertson & Caine F02)</span>
-    <span class="n-best">Best = Oroboro achieved (Jun 29 2026 + loaded data)</span>
-    <span>* downwind VPP includes gennaker</span>
+    <span class="n-vpp">VPP = Leopard 40 theoretical (F02)</span>
+    <span class="n-best">Best = Oroboro achieved</span>
+    <span style="color:#aabbcc">* downwind VPP includes gennaker</span>
   </div>
 </div>
 
+<div class="divider"></div>
+
+<!-- TRACK MAP -->
+<div class="sec-label">▼ Track Chart</div>
+<div id="map-container">
+  <div id="track-map"></div>
+  <div class="map-stats-overlay" id="map-stats" style="display:none;"></div>
+  <div class="map-legend-overlay">
+    <div><div class="mleg-line" style="background:#ff8c00"></div><span style="color:#fff">4-6kt TWS</span></div>
+    <div><div class="mleg-line" style="background:#f59e0b"></div><span style="color:#fff">6-8kt TWS</span></div>
+    <div><div class="mleg-line" style="background:#22c55e"></div><span style="color:#fff">8-12kt TWS</span></div>
+    <div><div class="mleg-line" style="background:#00d4ff"></div><span style="color:#fff">12-16kt TWS</span></div>
+    <div><div class="mleg-line" style="background:#a855f7"></div><span style="color:#fff">16-20kt TWS</span></div>
+    <div><div style="width:10px;height:10px;border-radius:50%;border:2px solid #fff;"></div><span style="color:#fff">Tack/Jibe</span></div>
+  </div>
+</div>
+
+<!-- CONTROLS -->
 <div id="controls">
   <div class="ctrl-row">
     <label>Range:</label>
@@ -241,20 +210,20 @@ button.btn-sec { background:var(--card); color:var(--text); border:1px solid var
     <label>To:</label>
     <input type="datetime-local" id="toTime">
   </div>
-  <div class="ctrl-row" style="margin-top:6px">
+  <div class="ctrl-row">
     <label>Min STW:</label>
-    <select id="minSOG" style="flex:none;width:80px">
+    <select id="minSOG" style="flex:none;width:80px;">
       <option value="0.5">0.5 kt</option>
       <option value="1" selected>1 kt</option>
       <option value="2">2 kt</option>
-      <option value="3">3 kt</option>
     </select>
     <button class="btn-primary" onclick="loadData()">Load Data</button>
     <button class="btn-sec" onclick="clearData()">Clear</button>
     <button class="btn-sec" onclick="exportCSV()">Export CSV</button>
+    <button class="btn-sec" onclick="exportGPX()">Export GPX</button>
   </div>
   <div class="stats-row">
-    <div class="stat"><div class="slbl">Data Points</div><div class="sval" id="s-pts" style="color:var(--cyan)">—</div></div>
+    <div class="stat"><div class="slbl">Points</div><div class="sval" id="s-pts" style="color:var(--cyan)">—</div></div>
     <div class="stat"><div class="slbl">Avg Perf</div><div class="sval" id="s-perf" style="color:var(--orange)">—</div></div>
     <div class="stat"><div class="slbl">Max STW</div><div class="sval" id="s-maxstw" style="color:var(--green)">—</div></div>
     <div class="stat"><div class="slbl">Best VMG↑</div><div class="sval" id="s-vmgup" style="color:var(--cyan)">—</div></div>
@@ -270,16 +239,17 @@ button.btn-sec { background:var(--card); color:var(--text); border:1px solid var
 // ═══════════════════════════════════════════════════════════
 // Config
 // ═══════════════════════════════════════════════════════════
-const HOST         = window.location.hostname || '192.168.1.238';
-const SK_PORT      = 3000;
-const INFLUX_BASE  = `http://${HOST}:8086`;
-const INFLUX_ORG   = 'Oroboro';
-const INFLUX_BUCKET= 'signalk';
-const INFLUX_TOKEN = '_ehS1A3X3dmlkDKZNNfZaOfrC2r1zD24HhMNiozyLd_t1Br9DX6T4QqebV4nBEEgtSQlUkTBsSylA3_-xtY5PA==';
-const WS_URL       = `ws://${HOST}:${SK_PORT}/signalk/v1/stream?subscribe=none`;
+const HOST          = window.location.hostname || '192.168.1.238';
+const INFLUX_HOST   = '192.168.1.238';
+const SK_PORT       = 3000;
+const INFLUX_BASE   = `http://${INFLUX_HOST}:8086`;
+const INFLUX_ORG    = 'Oroboro';
+const INFLUX_BUCKET = 'signalk';
+const INFLUX_TOKEN  = '_ehS1A3X3dmlkDKZNNfZaOfrC2r1zD24HhMNiozyLd_t1Br9DX6T4QqebV4nBEEgtSQlUkTBsSylA3_-xtY5PA==';
+const WS_URL        = `ws://${HOST}:${SK_PORT}/signalk/v1/stream?subscribe=none`;
 
 // ═══════════════════════════════════════════════════════════
-// VPP Polar Data — Robertson & Caine F02 (BOATSPEEDS at BEST)
+// VPP Data
 // ═══════════════════════════════════════════════════════════
 const OFFICIAL_POLAR = {
   4:  {52:2.40,60:2.79,70:3.07,75:3.14,80:3.61,90:3.77,100:3.74,110:3.53,120:3.21,130:2.86,135:2.68,140:2.50,150:2.21,160:2.04,165:1.97,170:1.91,180:1.82},
@@ -291,93 +261,71 @@ const OFFICIAL_POLAR = {
   16: {52:7.53,60:8.27,70:8.73,75:8.84,80:10.67,90:10.82,100:10.43,110:9.87,120:9.26,130:8.62,135:8.31,140:8.00,150:7.48,160:7.11,165:6.95,170:6.78,180:6.49}
 };
 
-// Optimal VMG data from VPP
 const OPTIMAL_VMG = {
-  upwind:  {4:{a:53.3,s:2.48,v:1.48},6:{a:52.6,s:3.56,v:2.17},8:{a:51.6,s:4.45,v:2.76},10:{a:51.3,s:5.25,v:3.28},12:{a:51.4,s:6.04,v:3.77},14:{a:51.0,s:6.74,v:4.24},16:{a:50.3,s:7.30,v:4.66}},
-  downwind:{4:{a:143.6,s:2.38,v:1.92},6:{a:147.5,s:3.34,v:2.82},8:{a:147.5,s:4.32,v:3.65},10:{a:147.5,s:5.21,v:4.40},12:{a:147.5,s:6.06,v:5.11},14:{a:147.5,s:6.87,v:5.79},16:{a:147.5,s:7.60,v:6.41}}
+  upwind:  {4:{a:53.3,v:1.48},6:{a:52.6,v:2.17},8:{a:51.6,v:2.76},10:{a:51.3,v:3.28},12:{a:51.4,v:3.77},14:{a:51.0,v:4.24},16:{a:50.3,v:4.66}},
+  downwind:{4:{a:143.6,v:1.92},6:{a:147.5,v:2.82},8:{a:147.5,v:3.65},10:{a:147.5,v:4.40},12:{a:147.5,v:5.11},14:{a:147.5,v:5.79},16:{a:147.5,v:6.41}}
 };
 
-// Curated TWA columns for the table
-const TABLE_TWA = [52, 60, 70, 90, 110, 130, 150, 170];
-const TABLE_TWS = [4, 6, 8, 10, 12, 14, 16];
+const TABLE_TWA = [52,60,70,90,110,130,150,170];
+const TABLE_TWS = [4,6,8,10,12,14,16];
 
-// Pre-seeded best achieved data from Jun 29 2026 session
 const OROBORO_BEST = {
-  4:  {52:null,60:null,70:null,90:null,110:null,130:null,150:null,170:null},
-  6:  {52:null,60:null,70:null,90:4.62,110:null,130:null,150:null,170:null},
-  8:  {52:null,60:null,70:5.30,90:5.31,110:null,130:null,150:null,170:null},
-  10: {52:null,60:4.92,70:5.67,90:5.53,110:null,130:4.73,150:null,170:null},
-  12: {52:4.65,60:4.92,70:5.67,90:6.21,110:5.84,130:5.40,150:5.22,170:null},
-  14: {52:null,60:null,70:null,90:7.02,110:6.33,130:5.85,150:5.41,170:null},
-  16: {52:null,60:null,70:6.61,90:7.29,110:7.66,130:7.13,150:6.89,170:5.48}
+  4:{52:null,60:null,70:null,90:null,110:null,130:null,150:null,170:null},
+  6:{52:null,60:null,70:null,90:4.62,110:null,130:null,150:null,170:null},
+  8:{52:null,60:null,70:5.30,90:5.31,110:null,130:null,150:null,170:null},
+  10:{52:null,60:4.92,70:5.67,90:5.53,110:null,130:4.73,150:null,170:null},
+  12:{52:4.65,60:4.92,70:5.67,90:6.21,110:5.84,130:5.40,150:5.22,170:null},
+  14:{52:null,60:null,70:null,90:7.02,110:6.33,130:5.85,150:5.41,170:null},
+  16:{52:null,60:null,70:6.61,90:7.29,110:7.66,130:7.13,150:6.89,170:5.48}
 };
 
-const TWS_COLORS = {
-  '4-6':'#ff8c00','6-8':'#f59e0b','8-12':'#22c55e',
-  '12-16':'#00d4ff','16-20':'#a855f7','20+':'#ef4444'
-};
+const TWS_COLORS = {'4-6':'#ff8c00','6-8':'#f59e0b','8-12':'#22c55e','12-16':'#00d4ff','16-20':'#a855f7','20+':'#ef4444'};
 
 function getTWSBucket(t) {
-  if (t>=4&&t<6)  return '4-6';
-  if (t>=6&&t<8)  return '6-8';
-  if (t>=8&&t<12) return '8-12';
-  if (t>=12&&t<16)return '12-16';
-  if (t>=16&&t<20)return '16-20';
-  if (t>=20)      return '20+';
-  return null;
+  if(t>=4&&t<6) return '4-6'; if(t>=6&&t<8) return '6-8';
+  if(t>=8&&t<12) return '8-12'; if(t>=12&&t<16) return '12-16';
+  if(t>=16&&t<20) return '16-20'; if(t>=20) return '20+'; return null;
 }
 
-// ═══════════════════════════════════════════════════════════
-// Polar interpolation
-// ═══════════════════════════════════════════════════════════
+function getTWSColor(tws) { return TWS_COLORS[getTWSBucket(tws)] || '#888'; }
+
 function getOfficialSpeed(tws, twa) {
-  const twsKeys = Object.keys(OFFICIAL_POLAR).map(Number).sort((a,b)=>a-b);
-  let tws1 = twsKeys[0], tws2 = twsKeys[twsKeys.length-1];
-  for (let i=0; i<twsKeys.length-1; i++) {
-    if (tws >= twsKeys[i] && tws <= twsKeys[i+1]) { tws1=twsKeys[i]; tws2=twsKeys[i+1]; break; }
-  }
-  const twaKeys = Object.keys(OFFICIAL_POLAR[tws1]).map(Number).sort((a,b)=>a-b);
-  let twa1=twaKeys[0], twa2=twaKeys[twaKeys.length-1];
-  for (let i=0; i<twaKeys.length-1; i++) {
-    if (twa >= twaKeys[i] && twa <= twaKeys[i+1]) { twa1=twaKeys[i]; twa2=twaKeys[i+1]; break; }
-  }
-  const dTWS = tws2===tws1 ? 0 : (tws-tws1)/(tws2-tws1);
-  const dTWA = twa2===twa1 ? 0 : (twa-twa1)/(twa2-twa1);
-  const b11=OFFICIAL_POLAR[tws1][twa1], b12=OFFICIAL_POLAR[tws1][twa2];
-  const b21=OFFICIAL_POLAR[tws2][twa1], b22=OFFICIAL_POLAR[tws2][twa2];
-  if (!b11||!b12||!b21||!b22) return 0;
-  return b11*(1-dTWS)*(1-dTWA) + b12*(1-dTWS)*dTWA + b21*dTWS*(1-dTWA) + b22*dTWS*dTWA;
+  const twsKeys=Object.keys(OFFICIAL_POLAR).map(Number).sort((a,b)=>a-b);
+  let tws1=twsKeys[0],tws2=twsKeys[twsKeys.length-1];
+  for(let i=0;i<twsKeys.length-1;i++){if(tws>=twsKeys[i]&&tws<=twsKeys[i+1]){tws1=twsKeys[i];tws2=twsKeys[i+1];break;}}
+  const twaKeys=Object.keys(OFFICIAL_POLAR[tws1]).map(Number).sort((a,b)=>a-b);
+  let twa1=twaKeys[0],twa2=twaKeys[twaKeys.length-1];
+  for(let i=0;i<twaKeys.length-1;i++){if(twa>=twaKeys[i]&&twa<=twaKeys[i+1]){twa1=twaKeys[i];twa2=twaKeys[i+1];break;}}
+  const dTWS=tws2===tws1?0:(tws-tws1)/(tws2-tws1);
+  const dTWA=twa2===twa1?0:(twa-twa1)/(twa2-twa1);
+  const b11=OFFICIAL_POLAR[tws1][twa1],b12=OFFICIAL_POLAR[tws1][twa2];
+  const b21=OFFICIAL_POLAR[tws2][twa1],b22=OFFICIAL_POLAR[tws2][twa2];
+  if(!b11||!b12||!b21||!b22) return 0;
+  return b11*(1-dTWS)*(1-dTWA)+b12*(1-dTWS)*dTWA+b21*dTWS*(1-dTWA)+b22*dTWS*dTWA;
 }
 
-function getOptimalVMG(tws, side) {
-  const twsKeys = [4,6,8,10,12,14,16];
-  let lo=twsKeys[0], hi=twsKeys[twsKeys.length-1];
-  for (let i=0;i<twsKeys.length-1;i++) {
-    if (tws>=twsKeys[i]&&tws<=twsKeys[i+1]) { lo=twsKeys[i]; hi=twsKeys[i+1]; break; }
-  }
-  const t = hi===lo ? 0 : (tws-lo)/(hi-lo);
-  const d = OPTIMAL_VMG[side];
-  return {
-    a: d[lo].a*(1-t)+d[hi].a*t,
-    v: d[lo].v*(1-t)+d[hi].v*t
-  };
+function getOptimalVMG(tws,side) {
+  const keys=[4,6,8,10,12,14,16];
+  let lo=keys[0],hi=keys[keys.length-1];
+  for(let i=0;i<keys.length-1;i++){if(tws>=keys[i]&&tws<=keys[i+1]){lo=keys[i];hi=keys[i+1];break;}}
+  const t=hi===lo?0:(tws-lo)/(hi-lo);
+  const d=OPTIMAL_VMG[side];
+  return {a:d[lo].a*(1-t)+d[hi].a*t, v:d[lo].v*(1-t)+d[hi].v*t};
 }
 
 // ═══════════════════════════════════════════════════════════
-// Sailing data store
+// Data store
 // ═══════════════════════════════════════════════════════════
-let sailingData = [];
+let sailingData=[], trackData=[], livePoint=null;
 
 function updateBestFromData(pts) {
-  const binTWA = twa => TABLE_TWA.reduce((a,b)=>Math.abs(b-twa)<Math.abs(a-twa)?b:a);
-  const binTWS = tws => { for(const t of TABLE_TWS) if(tws<t+1) return t; return 16; };
-  pts.forEach(d => {
-    const ta = binTWA(d.twa), tw = binTWS(d.tws);
-    if (Math.abs(d.twa-ta)<=10) {
-      if (!OROBORO_BEST[tw]) OROBORO_BEST[tw]={};
-      if (!OROBORO_BEST[tw][ta] || d.stw > OROBORO_BEST[tw][ta]) {
-        OROBORO_BEST[tw][ta] = +d.stw.toFixed(2);
-      }
+  const binTWA=twa=>TABLE_TWA.reduce((a,b)=>Math.abs(b-twa)<Math.abs(a-twa)?b:a);
+  const binTWS=tws=>{for(const t of TABLE_TWS)if(tws<t+1)return t;return 16;};
+  pts.forEach(d=>{
+    const ta=binTWA(d.twa),tw=binTWS(d.tws);
+    if(Math.abs(d.twa-ta)<=10){
+      if(!OROBORO_BEST[tw])OROBORO_BEST[tw]={};
+      if(!OROBORO_BEST[tw][ta]||d.stw>OROBORO_BEST[tw][ta]) OROBORO_BEST[tw][ta]=+d.stw.toFixed(2);
     }
   });
   buildTable();
@@ -387,428 +335,495 @@ function updateBestFromData(pts) {
 // Polar Table
 // ═══════════════════════════════════════════════════════════
 function buildTable() {
-  const hdr = document.getElementById('twa-header-row');
-  const sub = document.getElementById('sub-header-row');
-  const body= document.getElementById('polar-table-body');
-
-  hdr.innerHTML = '<th style="text-align:left">TWS</th>' +
-    TABLE_TWA.map(a=>`<th colspan="2" class="twa-h">${a}°</th>`).join('');
-
-  sub.innerHTML = '<th style="text-align:left;color:var(--dimmer)">kt</th>' +
-    TABLE_TWA.map(()=>'<th class="sub-vpp">VPP</th><th class="sub-best">Best</th>').join('');
-
-  body.innerHTML = TABLE_TWS.map(tw => {
-    const cells = TABLE_TWA.map(ta => {
-      const vpp = OFFICIAL_POLAR[tw]?.[ta] ?? '—';
-      const best = OROBORO_BEST[tw]?.[ta];
-      let bestCell = '—', bestClass = 'best-none';
-      if (best) {
-        const pct = vpp !== '—' ? best/vpp : 0;
-        bestClass = pct >= 0.90 ? 'best-g' : pct >= 0.75 ? 'best-o' : 'best-r';
-        bestCell = best.toFixed(2);
-      }
-      return `<td class="vpp">${typeof vpp==='number'?vpp.toFixed(2):vpp}</td><td class="${bestClass}">${bestCell}</td>`;
+  document.getElementById('twa-header-row').innerHTML='<th style="text-align:left">TWS</th>'+TABLE_TWA.map(a=>`<th colspan="2" class="twa-h">${a}°</th>`).join('');
+  document.getElementById('sub-header-row').innerHTML='<th style="text-align:left;color:#aabbcc">kt</th>'+TABLE_TWA.map(()=>'<th class="sub-vpp">VPP</th><th class="sub-best">Best</th>').join('');
+  document.getElementById('polar-table-body').innerHTML=TABLE_TWS.map(tw=>{
+    const cells=TABLE_TWA.map(ta=>{
+      const vpp=OFFICIAL_POLAR[tw]?.[ta]??'—';
+      const best=OROBORO_BEST[tw]?.[ta];
+      let bc='—',cls='best-none';
+      if(best){const p=vpp!=='—'?best/vpp:0;cls=p>=0.90?'best-g':p>=0.75?'best-o':'best-r';bc=best.toFixed(2);}
+      return `<td class="vpp">${typeof vpp==='number'?vpp.toFixed(2):vpp}</td><td class="${cls}">${bc}</td>`;
     }).join('');
     return `<tr><td class="tws-c">${tw} kt</td>${cells}</tr>`;
   }).join('');
 }
-
 buildTable();
 
 // ═══════════════════════════════════════════════════════════
-// Polar Diagram
+// Dual Polar Drawing
 // ═══════════════════════════════════════════════════════════
-let livePoint = null; // {twa, stw} for live position marker
+function drawCanvas(canvasId, mode) {
+  const canvas=document.getElementById(canvasId);
+  const wrap=canvas.parentElement;
+  const size=wrap.clientWidth;
+  if(!size) return;
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=size*dpr; canvas.height=size*dpr;
+  canvas.style.width=size+'px'; canvas.style.height=size+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
 
-function drawPolar() {
-  const canvas = document.getElementById('polarCanvas');
-  const wrap = document.getElementById('polar-wrap');
-  const size = Math.min(wrap.clientWidth - 20, window.innerHeight - 300, 600);
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = size * dpr;
-  canvas.height = size * dpr;
-  canvas.style.width = size + 'px';
-  canvas.style.height = size + 'px';
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-
-  const cx=size/2, cy=size/2, maxSpd=12, R=size*0.42, scale=R/maxSpd;
+  // Origin at left edge for single-side polar
+  const ox=size*0.12, oy=size*0.5, maxSpd=11, R=size*0.82, scale=R/maxSpd;
 
   ctx.fillStyle='#111820'; ctx.fillRect(0,0,size,size);
 
-  function toXY(twa, bs) {
-    return {
-      x: cx + Math.sin(twa*Math.PI/180)*bs*scale,
-      y: cy - Math.cos(twa*Math.PI/180)*bs*scale
-    };
+  function toXY(twa,spd) {
+    return {x:ox+Math.sin(twa*Math.PI/180)*spd*scale, y:oy-Math.cos(twa*Math.PI/180)*spd*scale};
   }
 
   // Speed rings
-  ctx.setLineDash([2,4]); ctx.strokeStyle='#2a3d52'; ctx.lineWidth=0.8;
-  for (let s=2; s<=maxSpd; s+=2) {
-    ctx.beginPath(); ctx.arc(cx,cy,s*scale,0,Math.PI*2); ctx.stroke();
-    ctx.fillStyle='#7a9abf'; ctx.font='11px Rajdhani,sans-serif';
-    ctx.textAlign='center';
-    ctx.fillText(s+' kt', cx, cy-s*scale+11);
+  for(let s=2;s<=maxSpd;s+=2) {
+    ctx.setLineDash([2,4]); ctx.strokeStyle='#2a3a4a'; ctx.lineWidth=0.7;
+    ctx.beginPath(); ctx.arc(ox,oy,s*scale,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+    const lp=toXY(90,s);
+    ctx.fillStyle='#ffffffcc'; ctx.font=`${Math.max(8,size*0.06)}px Rajdhani,sans-serif`;
+    ctx.textAlign='left'; ctx.fillText(s+'kt',lp.x+2,lp.y+4);
   }
+
+  // Angle rays & labels - starboard side only
+  for(let a=30;a<=170;a+=30) {
+    const p=toXY(a,maxSpd);
+    ctx.setLineDash([2,5]); ctx.strokeStyle='#2a3a4a'; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.setLineDash([]);
+    const lbl=toXY(a,maxSpd+0.7);
+    ctx.fillStyle='#ffffff'; ctx.font=`${Math.max(8,size*0.065)}px Rajdhani,sans-serif`;
+    ctx.textAlign='center'; ctx.fillText(a+'°',lbl.x,lbl.y+4);
+  }
+  // Vertical axis (0°)
+  ctx.strokeStyle='#3a4a5a'; ctx.lineWidth=0.6;
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox,oy-maxSpd*scale); ctx.stroke();
+  // 180° line
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox,oy+maxSpd*scale); ctx.stroke();
+  // 90° horizontal
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox+maxSpd*scale,oy); ctx.stroke();
+
+  // Wind label
+  ctx.fillStyle='#ffffff'; ctx.font=`bold ${Math.max(8,size*0.065)}px Rajdhani,sans-serif`;
+  ctx.textAlign='center'; ctx.fillText('▼ WIND',ox,oy-maxSpd*scale-5);
+
+  // 180° label
+  ctx.fillStyle='#ffffff'; ctx.font=`${Math.max(8,size*0.065)}px Rajdhani,sans-serif`;
+  ctx.textAlign='center'; ctx.fillText('180°',ox,oy+maxSpd*scale+12);
+  ctx.textAlign='right'; ctx.fillText('90°',ox+maxSpd*scale+2,oy+4);
+
+  // VMG target lines
+  const curTWS=livePoint?livePoint.tws:10;
+  const vmgUp=getOptimalVMG(curTWS,'upwind');
+  const vmgDn=getOptimalVMG(curTWS,'downwind');
+  ctx.strokeStyle='#60a5fa'; ctx.lineWidth=1.8; ctx.setLineDash([7,4]);
+  let p=toXY(vmgUp.a,maxSpd); ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(p.x,p.y); ctx.stroke();
+  p=toXY(vmgDn.a,maxSpd); ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(p.x,p.y); ctx.stroke();
   ctx.setLineDash([]);
+  const pu=toXY(vmgUp.a,maxSpd+0.5);
+  ctx.fillStyle='#60a5fa'; ctx.font=`${Math.max(7,size*0.06)}px Rajdhani,sans-serif`;
+  ctx.textAlign='left'; ctx.fillText(vmgUp.a.toFixed(0)+'°',pu.x,pu.y);
 
-  // Angle rays
-  for (let a=30; a<=180; a+=10) {
-    ctx.strokeStyle='#2a3d52'; ctx.lineWidth=0.5; ctx.setLineDash([1,6]);
-    let p = toXY(a,maxSpd);
-    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(p.x,p.y); ctx.stroke();
-    p = toXY(-a,maxSpd);
-    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(p.x,p.y); ctx.stroke();
-    ctx.setLineDash([]);
-    if (a%30===0) {
-      ctx.fillStyle='#7a9abf'; ctx.font='11px Rajdhani,sans-serif'; ctx.textAlign='center';
-      const rp=toXY(a,maxSpd+0.9); ctx.fillText(a+'°',rp.x,rp.y+4);
-      const lp=toXY(-a,maxSpd+0.9); ctx.fillText(a+'°',lp.x,lp.y+4);
-    }
-  }
-
-  // Wind axis
-  ctx.strokeStyle='#5a6a7a'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx,cy-maxSpd*scale); ctx.stroke();
-  ctx.fillStyle='#5a6a7a'; ctx.font='11px Rajdhani,sans-serif'; ctx.textAlign='center';
-  ctx.fillText('▼ TRUE WIND', cx, cy-maxSpd*scale-6);
-
-  // VPP curves - colored to match TWS legend, visible on dark background
-  const VPP_COLORS = {4:'#ff8c00',6:'#f59e0b',8:'#22c55e',10:'#00d4ff',12:'#00d4ff',14:'#a855f7',16:'#ef4444'};
-  [4,6,8,10,12,14,16].forEach((tws,i) => {
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth=1.8; ctx.setLineDash([4,3]);
-    const twas = Object.keys(OFFICIAL_POLAR[tws]).map(Number).sort((a,b)=>a-b);
-    ['','neg'].forEach(side => {
+  if(mode==='vpp') {
+    // VPP curves - white dashed
+    [4,6,8,10,12,14,16].forEach(tws=>{
+      const twas=Object.keys(OFFICIAL_POLAR[tws]).map(Number).sort((a,b)=>a-b);
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
       ctx.beginPath();
-      twas.forEach((twa,j) => {
-        const pt = toXY(side==='neg'?-twa:twa, OFFICIAL_POLAR[tws][twa]);
-        j===0 ? ctx.moveTo(pt.x,pt.y) : ctx.lineTo(pt.x,pt.y);
+      twas.forEach((twa,j)=>{
+        const pt=toXY(twa,OFFICIAL_POLAR[tws][twa]);
+        j===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y);
+      });
+      ctx.stroke(); ctx.setLineDash([]);
+      const last=twas[twas.length-2];
+      const lp=toXY(last,OFFICIAL_POLAR[tws][last]);
+      ctx.fillStyle='#ffffffcc'; ctx.font=`${Math.max(7,size*0.06)}px Rajdhani,sans-serif`;
+      ctx.textAlign='left'; ctx.fillText(tws+'kt',lp.x+3,lp.y+1);
+    });
+  } else {
+    // My Best curves - solid, colored by TWS band
+    // ghost VPP
+    const allTwas=Object.keys(OFFICIAL_POLAR[16]).map(Number).sort((a,b)=>a-b);
+    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=0.8; ctx.setLineDash([3,4]);
+    ctx.beginPath();
+    allTwas.forEach((twa,j)=>{
+      const pt=toXY(twa,OFFICIAL_POLAR[16][twa]);
+      j===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y);
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+
+    // Draw best envelope per TWS band using OROBORO_BEST
+    [4,6,8,10,12,14,16].forEach(tws=>{
+      const col=getTWSColor(tws);
+      const pts=TABLE_TWA.map(twa=>{
+        const spd=OROBORO_BEST[tws]?.[twa];
+        return spd?{twa,spd}:null;
+      }).filter(Boolean);
+      if(pts.length<2) return;
+      ctx.strokeStyle=col; ctx.lineWidth=2; ctx.setLineDash([]);
+      ctx.beginPath();
+      pts.forEach((p,j)=>{
+        const pt=toXY(p.twa,p.spd);
+        j===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y);
       });
       ctx.stroke();
     });
-    ctx.setLineDash([]);
-    const last=twas[twas.length-2];
-    const lp=toXY(last, OFFICIAL_POLAR[tws][last]);
-    ctx.fillStyle='#ffffffcc';
-    ctx.font='10px Rajdhani,sans-serif'; ctx.textAlign='left';
-    ctx.fillText(tws+'kt',lp.x+4,lp.y+1);
-  });
-
-  // VMG target lines (blue) - TWS-interpolated at current TWS or default 10kt
-  const curTWS = livePoint ? livePoint.tws : 10;
-  const vmgUp = getOptimalVMG(curTWS,'upwind');
-  const vmgDn = getOptimalVMG(curTWS,'downwind');
-  ctx.strokeStyle='#60a5fa'; ctx.lineWidth=2.5; ctx.setLineDash([8,4]);
-  [[vmgUp.a,true],[vmgDn.a,true]].forEach(([ang]) => {
-    ctx.beginPath(); ctx.moveTo(cx,cy); let p=toXY(ang,maxSpd); ctx.lineTo(p.x,p.y); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx,cy); p=toXY(-ang,maxSpd); ctx.lineTo(p.x,p.y); ctx.stroke();
-  });
-  ctx.setLineDash([]);
-  ctx.fillStyle='#60a5fa'; ctx.font='10px Rajdhani,sans-serif'; ctx.textAlign='left';
-  let vp=toXY(vmgUp.a,maxSpd); ctx.fillText('VMG↑ '+vmgUp.a.toFixed(0)+'°',vp.x+4,vp.y);
-  vp=toXY(vmgDn.a,maxSpd); ctx.fillText('VMG↓ '+vmgDn.a.toFixed(0)+'°',vp.x+4,vp.y);
-
-  // Data dots
-  sailingData.forEach(d => {
-    const bucket=getTWSBucket(d.tws); if (!bucket) return;
-    const col=TWS_COLORS[bucket];
-    [d.twa,-d.twa].forEach((twa,i) => {
-      const pt=toXY(twa,d.stw);
-      ctx.beginPath(); ctx.arc(pt.x,pt.y,2.5,0,Math.PI*2);
-      ctx.fillStyle=col+(i===0?'90':'40'); ctx.fill();
-    });
-  });
-
-  // Live position ring
-  if (livePoint && livePoint.stw > 0) {
-    [livePoint.twa,-livePoint.twa].forEach(twa => {
-      const pt=toXY(twa,livePoint.stw);
-      ctx.beginPath(); ctx.arc(pt.x,pt.y,7,0,Math.PI*2);
-      ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.5; ctx.stroke();
-      ctx.beginPath(); ctx.arc(pt.x,pt.y,3,0,Math.PI*2);
-      ctx.fillStyle='#ffffff'; ctx.fill();
-    });
   }
 
-  // Labels
-  ctx.fillStyle='#5a7a9a'; ctx.font='10px Rajdhani,sans-serif';
-  ctx.textAlign='right'; ctx.fillText('PORT', cx-maxSpd*scale-3, cy-3);
-  ctx.textAlign='left'; ctx.fillText('STBD', cx+maxSpd*scale+3, cy-3);
-  ctx.fillStyle='#c8d6e580'; ctx.font='bold 11px Rajdhani,sans-serif';
-  ctx.textAlign='left'; ctx.fillText('S/V OROBORO — POLAR', 8, size-7);
+  // Data dots (both modes)
+  sailingData.forEach(d=>{
+    const col=getTWSColor(d.tws); if(!col) return;
+    const pt=toXY(d.twa,d.stw);
+    ctx.beginPath(); ctx.arc(pt.x,pt.y,2.5,0,Math.PI*2);
+    ctx.fillStyle=col+'90'; ctx.fill();
+  });
+
+  // Live position
+  if(livePoint&&livePoint.stw>0.3) {
+    const pt=toXY(livePoint.twa,livePoint.stw);
+    ctx.beginPath(); ctx.arc(pt.x,pt.y,7,0,Math.PI*2);
+    ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.8; ctx.stroke();
+    ctx.beginPath(); ctx.arc(pt.x,pt.y,3,0,Math.PI*2);
+    ctx.fillStyle='#ffffff'; ctx.fill();
+  }
+
+  // Label
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font=`bold 9px Rajdhani,sans-serif`;
+  ctx.textAlign='left'; ctx.fillText('S/V OROBORO',5,size-5);
 }
 
-window.addEventListener('resize', drawPolar);
-drawPolar();
+function drawBoth() { drawCanvas('vppCanvas','vpp'); drawCanvas('bestCanvas','best'); }
+window.addEventListener('resize',drawBoth);
+drawBoth();
+
+// ═══════════════════════════════════════════════════════════
+// Leaflet Track Map
+// ═══════════════════════════════════════════════════════════
+const map=L.map('track-map',{zoomControl:true,attributionControl:true}).setView([37.09,25.15],12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom:18
+}).addTo(map);
+
+let trackLayers=[], markerLayers=[], boatMarker=null;
+
+function renderTrack() {
+  trackLayers.forEach(l=>map.removeLayer(l)); trackLayers=[];
+  markerLayers.forEach(l=>map.removeLayer(l)); markerLayers=[];
+
+  if(!trackData.length) return;
+
+  // Group into segments by TWS color
+  let segs=[], cur=[trackData[0]];
+  for(let i=1;i<trackData.length;i++) {
+    const prev=trackData[i-1], pt=trackData[i];
+    const gapSecs=(new Date(pt.time)-new Date(prev.time))/1000;
+    if(gapSecs>120||getTWSBucket(pt.tws)!==getTWSBucket(prev.tws)) {
+      segs.push({pts:cur,color:getTWSColor(cur[0].tws)});
+      cur=[pt];
+    } else { cur.push(pt); }
+  }
+  segs.push({pts:cur,color:getTWSColor(cur[0].tws)});
+
+  segs.forEach(seg=>{
+    if(seg.pts.length<2) return;
+    const coords=seg.pts.filter(p=>p.lat&&p.lon).map(p=>[p.lat,p.lon]);
+    if(coords.length<2) return;
+    const pl=L.polyline(coords,{color:seg.color,weight:3,opacity:0.9}).addTo(map);
+    trackLayers.push(pl);
+  });
+
+  // Tack/jibe markers: large heading changes
+  for(let i=2;i<trackData.length-2;i++) {
+    const pt=trackData[i];
+    if(!pt.lat||!pt.lon) continue;
+    const cogChange=Math.abs((trackData[i+2].cog||0)-(trackData[i-2].cog||0));
+    if(cogChange>25&&cogChange<335) {
+      const m=L.circleMarker([pt.lat,pt.lon],{radius:5,color:'#ffffff',weight:2,fill:false,opacity:0.8}).addTo(map);
+      markerLayers.push(m);
+    }
+  }
+
+  // Start marker
+  const start=trackData.find(p=>p.lat&&p.lon);
+  if(start) {
+    const m=L.circleMarker([start.lat,start.lon],{radius:7,color:'#22c55e',fillColor:'#22c55e',fillOpacity:1,weight:2}).addTo(map);
+    m.bindTooltip('Start',{permanent:false});
+    markerLayers.push(m);
+  }
+
+  // Fit map
+  const pts=trackData.filter(p=>p.lat&&p.lon).map(p=>[p.lat,p.lon]);
+  if(pts.length) map.fitBounds(pts,{padding:[20,20]});
+
+  // Stats overlay
+  const el=document.getElementById('map-stats');
+  el.style.display='block';
+  const dist=calcDistance(pts);
+  el.innerHTML=`<div style="color:#aabbcc;font-size:7px;text-transform:uppercase;margin-bottom:2px">${trackData.length} track pts</div><div style="color:#fff;font-size:9px">~${dist.toFixed(1)} nm</div>`;
+}
+
+function calcDistance(pts) {
+  let d=0;
+  for(let i=1;i<pts.length;i++) {
+    const R=3440.07; // nm
+    const lat1=pts[i-1][0]*Math.PI/180,lat2=pts[i][0]*Math.PI/180;
+    const dLat=(pts[i][0]-pts[i-1][0])*Math.PI/180;
+    const dLon=(pts[i][1]-pts[i-1][1])*Math.PI/180;
+    const a=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+    d+=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  }
+  return d;
+}
 
 // ═══════════════════════════════════════════════════════════
 // InfluxDB
 // ═══════════════════════════════════════════════════════════
 async function fetchInflux(query) {
-  const r = await fetch(`${INFLUX_BASE}/api/v2/query?org=${encodeURIComponent(INFLUX_ORG)}`, {
+  const r=await fetch(`${INFLUX_BASE}/api/v2/query?org=${encodeURIComponent(INFLUX_ORG)}`,{
     method:'POST',
-    headers:{
-      'Content-Type':'application/vnd.flux',
-      'Authorization':`Token ${INFLUX_TOKEN}`,
-      'Accept':'application/csv'
-    },
-    body: query
+    headers:{'Content-Type':'application/vnd.flux','Authorization':`Token ${INFLUX_TOKEN}`,'Accept':'application/csv'},
+    body:query
   });
   return r.text();
 }
 
 function parseInfluxCSV(csv) {
-  const rows=[], lines=csv.split('\n');
-  let headers=[], timeIdx=-1, valueIdx=-1;
-  for (const line of lines) {
-    if (!line.trim()||line.startsWith('#')) continue;
+  const rows=[],lines=csv.split('\n');
+  let headers=[],timeIdx=-1,valueIdx=-1;
+  for(const line of lines) {
+    if(!line.trim()||line.startsWith('#')) continue;
     const cols=line.split(',');
-    // Header row: first col empty, second col is "result"
-    if (cols[0]==='' && cols[1]==='result') {
-      headers=cols.map(h=>h.trim());
-      timeIdx=headers.indexOf('_time');
-      valueIdx=headers.indexOf('_value');
-      continue;
-    }
-    // Header row variant: annotation row starting with empty
-    if (cols[0]==='' && !cols[1].startsWith('_result') && headers.length===0) {
-      headers=cols.map(h=>h.trim());
-      timeIdx=headers.indexOf('_time');
-      valueIdx=headers.indexOf('_value');
-      continue;
-    }
-    // Data row: first col empty, second col starts with "_result"
-    if (cols[0]==='' && timeIdx>=0 && valueIdx>=0) {
-      const t=cols[timeIdx]?.trim();
-      const v=cols[valueIdx]?.trim();
-      if (t && v && v!=='') rows.push({time:t, value:parseFloat(v)});
+    if(cols[0]===''&&cols[1]==='result'){headers=cols.map(h=>h.trim());timeIdx=headers.indexOf('_time');valueIdx=headers.indexOf('_value');continue;}
+    if(cols[0]===''&&timeIdx>=0&&valueIdx>=0){
+      const t=cols[timeIdx]?.trim(),v=cols[valueIdx]?.trim();
+      if(t&&v&&v!=='') rows.push({time:t,value:parseFloat(v)});
     }
   }
   return rows;
 }
 
 async function loadData() {
-  const btn = document.querySelector('.btn-primary');
+  const btn=document.querySelector('.btn-primary');
   btn.textContent='Loading…'; btn.disabled=true;
   document.getElementById('status-line').textContent='Fetching data from InfluxDB…';
 
   const rangeEl=document.getElementById('timeRange');
   const from=document.getElementById('fromTime').value;
   const to=document.getElementById('toTime').value;
-  let rangeArg = from&&to
-    ? `start:${new Date(from).toISOString()},stop:${new Date(to).toISOString()}`
-    : `start:-${rangeEl.value}`;
-
-  const minSOG = parseFloat(document.getElementById('minSOG').value);
+  const rangeArg=from&&to?`start:${new Date(from).toISOString()},stop:${new Date(to).toISOString()}`:`start:-${rangeEl.value}`;
+  const minSOG=parseFloat(document.getElementById('minSOG').value);
 
   try {
-    const [wsData,waData,bsData] = await Promise.all([
+    const [wsData,waData,bsData,latData,lonData,cogData] = await Promise.all([
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.speedApparent")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.angleApparent")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.speedThroughWater")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`)
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.speedThroughWater")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position.latitude")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position.longitude")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.courseOverGroundTrue")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`)
     ]);
 
-    const awsRaw=parseInfluxCSV(wsData);
-    const awaRaw=parseInfluxCSV(waData);
-    const bsRaw =parseInfluxCSV(bsData);
+    const awsRaw=parseInfluxCSV(wsData), awaRaw=parseInfluxCSV(waData), bsRaw=parseInfluxCSV(bsData);
+    const latRaw=parseInfluxCSV(latData), lonRaw=parseInfluxCSV(lonData), cogRaw=parseInfluxCSV(cogData);
 
-    // Build epoch-keyed maps (round to nearest 30s to handle slight timestamp skew)
-    const awsMap={}, awaMap={};
-    awsRaw.forEach(r=>{
-      const epoch=Math.round(new Date(r.time).getTime()/30000)*30000;
-      awsMap[epoch]=r.value;
-    });
-    awaRaw.forEach(r=>{
-      const epoch=Math.round(new Date(r.time).getTime()/30000)*30000;
-      awaMap[epoch]=r.value;
-    });
+    const toEpoch=t=>Math.round(new Date(t).getTime()/30000)*30000;
+    const awsMap={},awaMap={},latMap={},lonMap={},cogMap={};
+    awsRaw.forEach(r=>{awsMap[toEpoch(r.time)]=r.value;});
+    awaRaw.forEach(r=>{awaMap[toEpoch(r.time)]=r.value;});
+    latRaw.forEach(r=>{latMap[toEpoch(r.time)]=r.value;});
+    lonRaw.forEach(r=>{lonMap[toEpoch(r.time)]=r.value;});
+    cogRaw.forEach(r=>{cogMap[toEpoch(r.time)]=r.value*(180/Math.PI);});
 
-    const newPts=[];
-    let matchCount=0, skipCount=0;
+    const newPts=[], newTrack=[];
     bsRaw.forEach(r=>{
-      const epoch=Math.round(new Date(r.time).getTime()/30000)*30000;
+      const epoch=toEpoch(r.time);
       const stw=r.value*1.94384;
-      if (!awsMap[epoch]||!awaMap[epoch]) { skipCount++; return; }
-      if (stw<minSOG) return;
+      if(!awsMap[epoch]||!awaMap[epoch]) return;
+      if(stw<minSOG) return;
       const aws=awsMap[epoch]*1.94384;
       const awaRad=awaMap[epoch];
-      let awa=Math.abs(awaRad*(180/Math.PI));
-      if(awa>180) awa=360-awa;
+      let awa=Math.abs(awaRad*(180/Math.PI)); if(awa>180) awa=360-awa;
       const twx=aws*Math.cos(awaRad)-stw, twy=aws*Math.sin(awaRad);
       const tws=Math.sqrt(twx*twx+twy*twy);
-      let twa=Math.abs(Math.atan2(twy,twx)*(180/Math.PI));
+      const twa=Math.abs(Math.atan2(twy,twx)*(180/Math.PI));
       if(twa>=20&&twa<=180&&tws>2) {
-        newPts.push({twa,tws,stw,awa,aws,time:r.time});
-        matchCount++;
+        const pt={twa,tws,stw,awa,aws,time:r.time,lat:latMap[epoch]||null,lon:lonMap[epoch]||null,cog:cogMap[epoch]||null};
+        newPts.push(pt);
+        if(pt.lat&&pt.lon) newTrack.push(pt);
       }
     });
-    console.log(`STW rows: ${bsRaw.length}, matched: ${matchCount}, skipped (no wind match): ${skipCount}`);
+    console.log(`Loaded: ${newPts.length} polar pts, ${newTrack.length} track pts`);
 
     sailingData=sailingData.concat(newPts);
+    trackData=trackData.concat(newTrack);
     updateBestFromData(newPts);
     updateStats();
-    drawPolar();
+    drawBoth();
+    renderTrack();
     document.getElementById('status-line').textContent=`Loaded ${newPts.length} new points (${sailingData.length} total)`;
   } catch(e) {
-    document.getElementById('status-line').textContent='Error loading data: '+e.message;
+    console.error(e);
+    document.getElementById('status-line').textContent='Error: '+e.message;
   }
   btn.textContent='Load Data'; btn.disabled=false;
 }
 
 function clearData() {
-  sailingData=[];
+  sailingData=[]; trackData=[];
   document.getElementById('status-line').textContent='Data cleared.';
-  updateStats();
-  drawPolar();
+  updateStats(); drawBoth(); renderTrack();
 }
 
 function updateStats() {
   const n=sailingData.length;
   document.getElementById('s-pts').textContent=n||'—';
-  if (!n) {
-    ['s-perf','s-maxstw','s-vmgup','s-vmgdn','s-hrs'].forEach(id=>document.getElementById(id).textContent='—');
-    return;
-  }
+  if(!n){['s-perf','s-maxstw','s-vmgup','s-vmgdn','s-hrs'].forEach(id=>document.getElementById(id).textContent='—');return;}
   const perfs=sailingData.map(d=>{const o=getOfficialSpeed(d.tws,d.twa);return o>0?d.stw/o:0;}).filter(p=>p>0);
-  const avgPerf=perfs.reduce((a,b)=>a+b,0)/perfs.length*100;
-  document.getElementById('s-perf').textContent=avgPerf.toFixed(0)+'%';
-  document.getElementById('s-perf').style.color=avgPerf>=90?'#22c55e':avgPerf>=75?'#f59e0b':'#ef4444';
+  const avg=perfs.reduce((a,b)=>a+b,0)/perfs.length*100;
+  document.getElementById('s-perf').textContent=avg.toFixed(0)+'%';
+  document.getElementById('s-perf').style.color=avg>=90?'#22c55e':avg>=75?'#f59e0b':'#ef4444';
   document.getElementById('s-maxstw').textContent=Math.max(...sailingData.map(d=>d.stw)).toFixed(1)+' kt';
-  const upVMG=sailingData.filter(d=>d.twa<90).map(d=>d.stw*Math.cos(d.twa*Math.PI/180));
-  const dnVMG=sailingData.filter(d=>d.twa>90).map(d=>d.stw*Math.cos((180-d.twa)*Math.PI/180));
-  document.getElementById('s-vmgup').textContent=upVMG.length?Math.max(...upVMG).toFixed(1)+' kt':'—';
-  document.getElementById('s-vmgdn').textContent=dnVMG.length?Math.max(...dnVMG).toFixed(1)+' kt':'—';
-  const hrs=n*30/3600;
-  document.getElementById('s-hrs').textContent=hrs.toFixed(1)+' hr';
-}
-
-// ═══════════════════════════════════════════════════════════
-// Live WebSocket
-// ═══════════════════════════════════════════════════════════
-let _aws=0,_awa=0,_stw=0,_sog=0,_cog=0;
-let wsConn=null, reconnTimer=null;
-
-function setConn(s) {
-  const dot=document.getElementById('conn-dot');
-  const txt=document.getElementById('conn-txt');
-  const c={live:'#22c55e',connecting:'#f59e0b',offline:'#ef4444'};
-  const l={live:'Live',connecting:'Connecting',offline:'Offline'};
-  dot.style.background=c[s]; txt.textContent=l[s]; txt.style.color=c[s];
-}
-
-function connectWS() {
-  clearTimeout(reconnTimer);
-  setConn('connecting');
-  try { wsConn=new WebSocket(WS_URL); } catch(_){ scheduleReconn(); return; }
-  wsConn.onopen=()=>{
-    setConn('live');
-    wsConn.send(JSON.stringify({
-      context:'vessels.self',
-      subscribe:[
-        {path:'environment.wind.speedApparent'},
-        {path:'environment.wind.angleApparent'},
-        {path:'navigation.speedThroughWater'},
-        {path:'navigation.speedOverGround'},
-        {path:'navigation.courseOverGroundTrue'}
-      ]
-    }));
-  };
-  wsConn.onmessage=e=>{
-    try {
-      const msg=JSON.parse(e.data);
-      if (msg.updates) msg.updates.forEach(u=>{
-        if (u.values) u.values.forEach(v=>onWSValue(v.path,v.value));
-      });
-    } catch(_){}
-  };
-  wsConn.onerror=()=>{};
-  wsConn.onclose=()=>{ setConn('offline'); scheduleReconn(); };
-}
-
-function scheduleReconn() { reconnTimer=setTimeout(connectWS,3000); }
-
-function onWSValue(path, val) {
-  if (path==='environment.wind.speedApparent') _aws=val*1.94384;
-  else if (path==='environment.wind.angleApparent') _awa=val;
-  else if (path==='navigation.speedThroughWater') _stw=val*1.94384;
-  else if (path==='navigation.speedOverGround') _sog=val*1.94384;
-  else if (path==='navigation.courseOverGroundTrue') _cog=val*(180/Math.PI);
-  updateLiveInstruments();
-}
-
-function updateLiveInstruments() {
-  const awaRad=_awa;
-  const awaDeg=Math.abs(awaRad*(180/Math.PI));
-  const twx=_aws*Math.cos(awaRad)-_stw, twy=_aws*Math.sin(awaRad);
-  const tws=Math.sqrt(twx*twx+twy*twy);
-  const twa=Math.abs(Math.atan2(twy,twx)*(180/Math.PI));
-
-  document.getElementById('l-tws').innerHTML=tws.toFixed(1)+'<span class="live-unit"> kt</span>';
-  document.getElementById('l-twa').innerHTML=twa.toFixed(0)+'<span class="live-unit">°</span>';
-  document.getElementById('l-awa').innerHTML=awaDeg.toFixed(0)+'<span class="live-unit">°</span>';
-  document.getElementById('l-stw').innerHTML=_stw.toFixed(1)+'<span class="live-unit"> kt</span>';
-  document.getElementById('l-sog').innerHTML=_sog.toFixed(1)+'<span class="live-unit"> kt</span>';
-  document.getElementById('l-cog').textContent='COG '+_cog.toFixed(0)+'°';
-
-  const polar=getOfficialSpeed(tws,twa);
-  document.getElementById('l-pbsp').innerHTML=polar>0?polar.toFixed(1)+'<span class="live-unit"> kt</span>':'—';
-
-  if (polar>0&&_stw>0) {
-    const pct=(_stw/polar*100);
-    const cls=pct>=90?'pg':pct>=75?'po':'pr';
-    document.getElementById('l-perf').innerHTML=`<span class="perf-pill ${cls}">${pct.toFixed(0)}%</span>`;
-  } else {
-    document.getElementById('l-perf').textContent='—';
-  }
-
-  // VMG
-  const upwind=twa<90;
-  const side=upwind?'upwind':'downwind';
-  const vmgOpt=getOptimalVMG(tws,side);
-  const vmg=_stw*Math.cos(twa*Math.PI/180)*(upwind?1:-1);
-  const vmgTgt=vmgOpt.v;
-  const vmgPct=vmgTgt>0?vmg/vmgTgt*100:0;
-
-  document.getElementById('l-vmg').innerHTML=vmg.toFixed(2)+'<span style="font-size:9px;color:var(--dim)"> kt</span>';
-  document.getElementById('l-vmg-tgt').textContent='target '+vmgTgt.toFixed(2);
-  const vmgCol=vmgPct>=90?'var(--green)':vmgPct>=75?'var(--orange)':'var(--red)';
-  document.getElementById('l-vmgpct').innerHTML=`<span style="color:${vmgCol}">${vmgPct.toFixed(0)}%</span>`;
-
-  const tgtTWA=vmgOpt.a;
-  const delta=twa-tgtTWA;
-  document.getElementById('l-tgt-twa').innerHTML=tgtTWA.toFixed(0)+'<span style="font-size:9px;color:var(--dim)">°</span>';
-  document.getElementById('l-twa-delta').textContent=
-    Math.abs(delta)<1?'on target':delta>0?'+'+delta.toFixed(0)+'° bear away':delta.toFixed(0)+'° head up';
-
-  // Update live point on polar
-  livePoint={twa,tws,stw:_stw};
-  drawPolar();
+  const up=sailingData.filter(d=>d.twa<90).map(d=>d.stw*Math.cos(d.twa*Math.PI/180));
+  const dn=sailingData.filter(d=>d.twa>90).map(d=>d.stw*Math.cos((180-d.twa)*Math.PI/180));
+  document.getElementById('s-vmgup').textContent=up.length?Math.max(...up).toFixed(1)+' kt':'—';
+  document.getElementById('s-vmgdn').textContent=dn.length?Math.max(...dn).toFixed(1)+' kt':'—';
+  document.getElementById('s-hrs').textContent=(n*30/3600).toFixed(1)+' hr';
 }
 
 // ═══════════════════════════════════════════════════════════
 // Export CSV
 // ═══════════════════════════════════════════════════════════
 function exportCSV() {
-  if (!sailingData.length) { document.getElementById('status-line').textContent='No data to export.'; return; }
-  const rows=[['time_utc','awa_deg','aws_kt','twa_deg','tws_kt','stw_kt','tws_bucket','polar_bsp_kt','performance_pct']];
+  if(!sailingData.length){document.getElementById('status-line').textContent='No data.';return;}
+  const rows=[['time_utc','lat','lon','awa_deg','aws_kt','twa_deg','tws_kt','stw_kt','tws_bucket','polar_bsp_kt','performance_pct']];
   sailingData.forEach(d=>{
     const pol=getOfficialSpeed(d.tws,d.twa);
     const pct=pol>0?(d.stw/pol*100).toFixed(1):'';
-    rows.push([d.time,d.awa?.toFixed(1)||'',d.aws?.toFixed(2)||'',d.twa.toFixed(1),d.tws.toFixed(2),d.stw.toFixed(2),getTWSBucket(d.tws)||'',pol>0?pol.toFixed(2):'',pct]);
+    rows.push([d.time,d.lat||'',d.lon||'',d.awa?.toFixed(1)||'',d.aws?.toFixed(2)||'',d.twa.toFixed(1),d.tws.toFixed(2),d.stw.toFixed(2),getTWSBucket(d.tws)||'',pol>0?pol.toFixed(2):'',pct]);
   });
-  const csv=rows.map(r=>r.join(',')).join('\n');
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));
   a.download=`oroboro_polar_${new Date().toISOString().slice(0,16).replace(/[T:]/g,'_')}.csv`;
   a.click();
-  document.getElementById('status-line').textContent=`Exported ${sailingData.length} rows.`;
 }
 
 // ═══════════════════════════════════════════════════════════
-// Init
+// Export GPX (with wind extensions)
 // ═══════════════════════════════════════════════════════════
+function exportGPX() {
+  const pts=sailingData.filter(d=>d.lat&&d.lon);
+  if(!pts.length){document.getElementById('status-line').textContent='No track data with GPS.';return;}
+  const lines=[
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<gpx version="1.1" creator="S/V Oroboro Dashboard" xmlns="http://www.topografix.com/GPX/1/1" xmlns:oroboro="https://github.com/fpugliano/oroboro-dashboard">',
+    '<trk><name>Oroboro Sail Track</name><trkseg>'
+  ];
+  pts.forEach(d=>{
+    const pol=getOfficialSpeed(d.tws,d.twa);
+    const pct=pol>0?(d.stw/pol*100).toFixed(1):'';
+    lines.push(`<trkpt lat="${d.lat.toFixed(6)}" lon="${d.lon.toFixed(6)}"><time>${d.time}</time><extensions>`+
+      `<oroboro:twa>${d.twa.toFixed(1)}</oroboro:twa>`+
+      `<oroboro:tws>${d.tws.toFixed(2)}</oroboro:tws>`+
+      `<oroboro:awa>${(d.awa||0).toFixed(1)}</oroboro:awa>`+
+      `<oroboro:aws>${(d.aws||0).toFixed(2)}</oroboro:aws>`+
+      `<oroboro:stw>${d.stw.toFixed(2)}</oroboro:stw>`+
+      `<oroboro:polar_pct>${pct}</oroboro:polar_pct>`+
+      `</extensions></trkpt>`);
+  });
+  lines.push('</trkseg></trk></gpx>');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'application/gpx+xml'}));
+  a.download=`oroboro_track_${new Date().toISOString().slice(0,10)}.gpx`;
+  a.click();
+  document.getElementById('status-line').textContent=`Exported ${pts.length} track points as GPX.`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Live WebSocket
+// ═══════════════════════════════════════════════════════════
+let _aws=0,_awa=0,_stw=0,_sog=0,_cog=0,_lat=null,_lon=null;
+let wsConn=null,reconnTimer=null;
+
+function setConn(s) {
+  const c={live:'#22c55e',connecting:'#f59e0b',offline:'#ef4444'};
+  const l={live:'Live',connecting:'Connecting',offline:'Offline'};
+  document.getElementById('conn-dot').style.background=c[s];
+  document.getElementById('conn-txt').textContent=l[s];
+  document.getElementById('conn-txt').style.color=c[s];
+}
+
+function connectWS() {
+  clearTimeout(reconnTimer); setConn('connecting');
+  try{wsConn=new WebSocket(WS_URL);}catch(_){scheduleReconn();return;}
+  wsConn.onopen=()=>{
+    setConn('live');
+    wsConn.send(JSON.stringify({context:'vessels.self',subscribe:[
+      {path:'environment.wind.speedApparent'},{path:'environment.wind.angleApparent'},
+      {path:'navigation.speedThroughWater'},{path:'navigation.speedOverGround'},
+      {path:'navigation.courseOverGroundTrue'},{path:'navigation.position'}
+    ]}));
+  };
+  wsConn.onmessage=e=>{
+    try{const msg=JSON.parse(e.data);if(msg.updates)msg.updates.forEach(u=>{if(u.values)u.values.forEach(v=>onWSValue(v.path,v.value));});}catch(_){}
+  };
+  wsConn.onerror=()=>{};
+  wsConn.onclose=()=>{setConn('offline');scheduleReconn();};
+}
+function scheduleReconn(){reconnTimer=setTimeout(connectWS,3000);}
+
+function onWSValue(path,val) {
+  if(path==='environment.wind.speedApparent') _aws=val*1.94384;
+  else if(path==='environment.wind.angleApparent') _awa=val;
+  else if(path==='navigation.speedThroughWater') _stw=val*1.94384;
+  else if(path==='navigation.speedOverGround') _sog=val*1.94384;
+  else if(path==='navigation.courseOverGroundTrue') _cog=val*(180/Math.PI);
+  else if(path==='navigation.position'&&val){_lat=val.latitude;_lon=val.longitude;}
+  updateLive();
+}
+
+function updateLive() {
+  const awaRad=_awa;
+  const awaDeg=Math.abs(awaRad*(180/Math.PI));
+  const twx=_aws*Math.cos(awaRad)-_stw, twy=_aws*Math.sin(awaRad);
+  const tws=Math.sqrt(twx*twx+twy*twy);
+  const twa=Math.abs(Math.atan2(twy,twx)*(180/Math.PI));
+
+  const set=(id,html)=>document.getElementById(id).innerHTML=html;
+  set('l-tws',tws.toFixed(1)+'<span class="live-unit"> kt</span>');
+  set('l-twa',twa.toFixed(0)+'<span class="live-unit">°</span>');
+  set('l-awa',awaDeg.toFixed(0)+'<span class="live-unit">°</span>');
+  set('l-stw',_stw.toFixed(1)+'<span class="live-unit"> kt</span>');
+  set('l-sog',_sog.toFixed(1)+'<span class="live-unit"> kt</span>');
+  document.getElementById('l-cog').textContent='COG '+_cog.toFixed(0)+'°';
+
+  const polar=getOfficialSpeed(tws,twa);
+  set('l-pbsp',polar>0?polar.toFixed(1)+'<span class="live-unit"> kt</span>':'—');
+  if(polar>0&&_stw>0){
+    const pct=_stw/polar*100;
+    const cls=pct>=90?'pg':pct>=75?'po':'pr';
+    set('l-perf',`<span class="perf-pill ${cls}">${pct.toFixed(0)}%</span>`);
+  } else set('l-perf','—');
+
+  const upwind=twa<90;
+  const vmgOpt=getOptimalVMG(tws,upwind?'upwind':'downwind');
+  const vmg=_stw*Math.cos(twa*Math.PI/180)*(upwind?1:-1);
+  const vmgPct=vmgOpt.v>0?vmg/vmgOpt.v*100:0;
+  const col=vmgPct>=90?'var(--green)':vmgPct>=75?'var(--orange)':'var(--red)';
+  set('l-vmg',vmg.toFixed(2)+'<span style="font-size:9px;color:#aabbcc"> kt</span>');
+  document.getElementById('l-vmg-tgt').textContent='target '+vmgOpt.v.toFixed(2);
+  set('l-vmgpct',`<span style="color:${col}">${vmgPct.toFixed(0)}%</span>`);
+  set('l-tgt-twa',vmgOpt.a.toFixed(0)+'<span style="font-size:9px;color:#aabbcc">°</span>');
+  const delta=twa-vmgOpt.a;
+  document.getElementById('l-twa-delta').textContent=Math.abs(delta)<1?'on target':delta>0?'+'+delta.toFixed(0)+'° bear away':delta.toFixed(0)+'° head up';
+
+  livePoint={twa,tws,stw:_stw};
+  drawBoth();
+
+  // Update live boat marker on map
+  if(_lat&&_lon) {
+    if(!boatMarker) {
+      boatMarker=L.circleMarker([_lat,_lon],{radius:7,color:'#ffffff',fillColor:'#ffffff',fillOpacity:1,weight:2}).addTo(map);
+    } else boatMarker.setLatLng([_lat,_lon]);
+  }
+}
+
 connectWS();
 </script>
 </body>
