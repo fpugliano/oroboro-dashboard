@@ -444,25 +444,25 @@ function drawPolar() {
   }
 
   // Speed rings
-  ctx.setLineDash([2,4]); ctx.strokeStyle='#1a2332'; ctx.lineWidth=0.5;
+  ctx.setLineDash([2,4]); ctx.strokeStyle='#2a3a4a'; ctx.lineWidth=0.8;
   for (let s=2; s<=maxSpd; s+=2) {
     ctx.beginPath(); ctx.arc(cx,cy,s*scale,0,Math.PI*2); ctx.stroke();
-    ctx.fillStyle='#3a4a5a'; ctx.font='10px Rajdhani,sans-serif';
-    ctx.textAlign='right';
-    ctx.fillText(s+' kt', cx-s*scale-3, cy+4);
+    ctx.fillStyle='#5a7a9a'; ctx.font='11px Rajdhani,sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText(s+' kt', cx, cy-s*scale+11);
   }
   ctx.setLineDash([]);
 
   // Angle rays
   for (let a=30; a<=180; a+=10) {
-    ctx.strokeStyle='#1a2332'; ctx.lineWidth=0.5; ctx.setLineDash([1,6]);
+    ctx.strokeStyle='#2a3a4a'; ctx.lineWidth=0.5; ctx.setLineDash([1,6]);
     let p = toXY(a,maxSpd);
     ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(p.x,p.y); ctx.stroke();
     p = toXY(-a,maxSpd);
     ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(p.x,p.y); ctx.stroke();
     ctx.setLineDash([]);
     if (a%30===0) {
-      ctx.fillStyle='#3a4a5a'; ctx.font='11px Rajdhani,sans-serif'; ctx.textAlign='center';
+      ctx.fillStyle='#6a8aaa'; ctx.font='11px Rajdhani,sans-serif'; ctx.textAlign='center';
       const rp=toXY(a,maxSpd+0.9); ctx.fillText(a+'°',rp.x,rp.y+4);
       const lp=toXY(-a,maxSpd+0.9); ctx.fillText(a+'°',lp.x,lp.y+4);
     }
@@ -477,8 +477,8 @@ function drawPolar() {
   // VPP curves - colored to match TWS legend, visible on dark background
   const VPP_COLORS = {4:'#ff8c00',6:'#f59e0b',8:'#22c55e',10:'#00d4ff',12:'#00d4ff',14:'#a855f7',16:'#ef4444'};
   [4,6,8,10,12,14,16].forEach((tws,i) => {
-    ctx.strokeStyle = VPP_COLORS[tws] + '55';
-    ctx.lineWidth=1.2; ctx.setLineDash([3,3]);
+    ctx.strokeStyle = VPP_COLORS[tws] + 'bb';
+    ctx.lineWidth=1.8; ctx.setLineDash([4,3]);
     const twas = Object.keys(OFFICIAL_POLAR[tws]).map(Number).sort((a,b)=>a-b);
     ['','neg'].forEach(side => {
       ctx.beginPath();
@@ -491,16 +491,16 @@ function drawPolar() {
     ctx.setLineDash([]);
     const last=twas[twas.length-2];
     const lp=toXY(last, OFFICIAL_POLAR[tws][last]);
-    ctx.fillStyle=VPP_COLORS[tws]+'88';
-    ctx.font='9px Rajdhani,sans-serif'; ctx.textAlign='left';
-    ctx.fillText(tws+'kt',lp.x+3,lp.y);
+    ctx.fillStyle=VPP_COLORS[tws]+'ee';
+    ctx.font='10px Rajdhani,sans-serif'; ctx.textAlign='left';
+    ctx.fillText(tws+'kt',lp.x+4,lp.y+1);
   });
 
   // VMG target lines (blue) - TWS-interpolated at current TWS or default 10kt
   const curTWS = livePoint ? livePoint.tws : 10;
   const vmgUp = getOptimalVMG(curTWS,'upwind');
   const vmgDn = getOptimalVMG(curTWS,'downwind');
-  ctx.strokeStyle='#60a5fa'; ctx.lineWidth=1.5; ctx.setLineDash([6,4]);
+  ctx.strokeStyle='#60a5fa'; ctx.lineWidth=2; ctx.setLineDash([8,4]);
   [[vmgUp.a,true],[vmgDn.a,true]].forEach(([ang]) => {
     ctx.beginPath(); ctx.moveTo(cx,cy); let p=toXY(ang,maxSpd); ctx.lineTo(p.x,p.y); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(cx,cy); p=toXY(-ang,maxSpd); ctx.lineTo(p.x,p.y); ctx.stroke();
@@ -533,7 +533,7 @@ function drawPolar() {
   }
 
   // Labels
-  ctx.fillStyle='#2a3a4a'; ctx.font='10px Rajdhani,sans-serif';
+  ctx.fillStyle='#4a6a8a'; ctx.font='10px Rajdhani,sans-serif';
   ctx.textAlign='right'; ctx.fillText('PORT', cx-maxSpd*scale-3, cy-3);
   ctx.textAlign='left'; ctx.fillText('STBD', cx+maxSpd*scale+3, cy-3);
   ctx.fillStyle='#c8d6e580'; ctx.font='bold 11px Rajdhani,sans-serif';
