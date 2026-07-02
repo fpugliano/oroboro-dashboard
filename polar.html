@@ -377,7 +377,7 @@ function drawCanvas(canvasId, mode) {
   // ── Layout ──────────────────────────────────────────────
   // Origin: left edge center, rings extend RIGHT only (starboard half)
   // Padding: top for wind label, bottom for 180° label, right for angle labels
-  const PAD_T=8, PAD_B=18, PAD_L=Math.max(32, W*0.12), PAD_R=Math.max(14, W*0.05);
+  const PAD_T=8, PAD_B=18, PAD_L=Math.max(52, W*0.15), PAD_R=Math.max(16, W*0.05);
   const drawH=H-PAD_T-PAD_B;
   const drawW=W-PAD_L-PAD_R;
   // Origin at left edge of drawing area, vertically centered
@@ -409,7 +409,7 @@ function drawCanvas(canvasId, mode) {
   ctx.setLineDash([]);
 
   // ── Angle rays (every 15°) ─────────────────────────────
-  for(let a=15;a<180;a+=15) {
+  for(let a=30;a<180;a+=15) {
     const isMajor=(a%30===0);
     ctx.strokeStyle=isMajor?'#3a4a5a':'#252f3a'; ctx.lineWidth=isMajor?0.7:0.4;
     ctx.setLineDash(isMajor?[3,5]:[2,6]);
@@ -431,7 +431,7 @@ function drawCanvas(canvasId, mode) {
 
   // ── Angle labels on outer arc ─────────────────────────
   ctx.fillStyle='#ffffff'; ctx.font=`${fs}px Rajdhani,sans-serif`;
-  [15,30,45,60,75,90,105,120,135,150,165,180].forEach(a=>{
+  [30,45,60,75,90,105,120,135,150,165,180].forEach(a=>{
     const p=toXY(a, maxSpd*1.05+1.0);
     if(p.x>W-2) return; // don't draw off-canvas
     const align=a<90?'left':a===90?'left':'left';
@@ -553,7 +553,7 @@ function drawCanvas(canvasId, mode) {
 
   // ── Boat name watermark ────────────────────────────────
   ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.font=`bold 9px Rajdhani,sans-serif`;
-  ctx.textAlign='left'; ctx.fillText('S/V OROBORO',PAD_L+4,H-6);
+  ctx.textAlign='left'; ctx.fillText('S/V OROBORO',4,H-6);
 }
 
 function drawPolar() { drawCanvas('polarCanvas', activeTab); }
