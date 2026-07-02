@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>S/V Oroboro — Polar Performance</title>
@@ -52,7 +52,7 @@ body{font-family:'Rajdhani','Segoe UI',sans-serif;background:var(--bg);color:var
 .polar-tab{flex:1;text-align:center;padding:9px 4px;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:#aabbcc;cursor:pointer;border-bottom:2px solid transparent;}
 .polar-tab.active{color:var(--cyan);border-bottom:2px solid var(--cyan);}
 #polar-panel{padding:6px 8px;background:var(--bg);}
-.polar-canvas-wrap{background:var(--card);border-radius:7px;border:1px solid var(--border);overflow:hidden;touch-action:pinch-zoom;max-width:480px;margin:0 auto;}
+.polar-canvas-wrap{background:var(--card);border-radius:7px;border:1px solid var(--border);touch-action:manipulation;max-width:600px;margin:0 auto;overflow:visible;}
 .polar-canvas-wrap canvas{display:block;width:100%!important;}
 
 /* LEGEND */
@@ -367,7 +367,7 @@ function drawCanvas(canvasId, mode) {
   const wrap=canvas.parentElement;
   const W=wrap.clientWidth;
   if(!W) return;
-  const H=Math.round(W*1.55); // portrait ratio matching Expedition/VPP convention
+  const H=Math.round(W*1.45); // portrait ratio matching Expedition/VPP convention
   const dpr=window.devicePixelRatio||1;
   canvas.width=W*dpr; canvas.height=H*dpr;
   canvas.style.width=W+'px'; canvas.style.height=H+'px';
@@ -377,7 +377,7 @@ function drawCanvas(canvasId, mode) {
   // ── Layout ──────────────────────────────────────────────
   // Origin: left edge center, rings extend RIGHT only (starboard half)
   // Padding: top for wind label, bottom for 180° label, right for angle labels
-  const PAD_T=20, PAD_B=22, PAD_L=32, PAD_R=14;
+  const PAD_T=8, PAD_B=18, PAD_L=Math.max(32, W*0.12), PAD_R=Math.max(14, W*0.05);
   const drawH=H-PAD_T-PAD_B;
   const drawW=W-PAD_L-PAD_R;
   // Origin at left edge of drawing area, vertically centered
@@ -455,7 +455,6 @@ function drawCanvas(canvasId, mode) {
 
   // ── "▼ WIND" label at top ─────────────────────────────
   ctx.fillStyle='#ffffff'; ctx.font=`bold ${fs}px Rajdhani,sans-serif`;
-  ctx.textAlign='center'; ctx.fillText('▼ TRUE WIND',ox+maxR/2,PAD_T-3);
 
   // ── VMG target lines (blue solid) ─────────────────────
   const curTWS=livePoint?livePoint.tws:10;
