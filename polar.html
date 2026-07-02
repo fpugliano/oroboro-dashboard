@@ -52,8 +52,8 @@ body{font-family:'Rajdhani','Segoe UI',sans-serif;background:var(--bg);color:var
 .polar-tab{flex:1;text-align:center;padding:9px 4px;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:#aabbcc;cursor:pointer;border-bottom:2px solid transparent;}
 .polar-tab.active{color:var(--cyan);border-bottom:2px solid var(--cyan);}
 #polar-panel{padding:6px 8px;background:var(--bg);}
-.polar-canvas-wrap{background:var(--card);border-radius:7px;border:1px solid var(--border);overflow:hidden;touch-action:pinch-zoom;}
-.polar-canvas-wrap canvas{display:block;}
+.polar-canvas-wrap{background:var(--card);border-radius:7px;border:1px solid var(--border);overflow:hidden;touch-action:pinch-zoom;max-width:480px;margin:0 auto;}
+.polar-canvas-wrap canvas{display:block;width:100%!important;}
 
 /* LEGEND */
 .legend{display:flex;flex-wrap:wrap;gap:6px 10px;padding:5px 12px;justify-content:center;}
@@ -377,7 +377,7 @@ function drawCanvas(canvasId, mode) {
   // ── Layout ──────────────────────────────────────────────
   // Origin: left edge center, rings extend RIGHT only (starboard half)
   // Padding: top for wind label, bottom for 180° label, right for angle labels
-  const PAD_T=20, PAD_B=22, PAD_L=6, PAD_R=30;
+  const PAD_T=20, PAD_B=22, PAD_L=32, PAD_R=14;
   const drawH=H-PAD_T-PAD_B;
   const drawW=W-PAD_L-PAD_R;
   // Origin at left edge of drawing area, vertically centered
@@ -437,7 +437,6 @@ function drawCanvas(canvasId, mode) {
     const align=a<90?'left':a===90?'left':'left';
     ctx.textAlign='left';
     if(a===180){ctx.textAlign='center'; ctx.fillText('180°',ox,H-4);}
-    else if(a===90){ctx.textAlign='left'; ctx.fillText('90°',ox+maxSpd*scale+3,oy+4);}
     else { ctx.textAlign='left'; ctx.fillText(a+'°',p.x+2,p.y+4); }
   });
 
@@ -456,7 +455,7 @@ function drawCanvas(canvasId, mode) {
 
   // ── "▼ WIND" label at top ─────────────────────────────
   ctx.fillStyle='#ffffff'; ctx.font=`bold ${fs}px Rajdhani,sans-serif`;
-  ctx.textAlign='center'; ctx.fillText('▼ TRUE WIND',ox,PAD_T-3);
+  ctx.textAlign='center'; ctx.fillText('▼ TRUE WIND',ox+maxR/2,PAD_T-3);
 
   // ── VMG target lines (blue solid) ─────────────────────
   const curTWS=livePoint?livePoint.tws:10;
