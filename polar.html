@@ -365,91 +365,142 @@ function switchTab(tab) {
 function drawCanvas(canvasId, mode) {
   const canvas=document.getElementById(canvasId);
   const wrap=canvas.parentElement;
-  const size=wrap.clientWidth;
-  if(!size) return;
+  const W=wrap.clientWidth;
+  if(!W) return;
+  const H=Math.round(W*1.55); // portrait ratio matching Expedition/VPP convention
   const dpr=window.devicePixelRatio||1;
-  canvas.width=size*dpr; canvas.height=size*dpr;
-  canvas.style.width=size+'px'; canvas.style.height=size+'px';
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
   const ctx=canvas.getContext('2d');
   ctx.scale(dpr,dpr);
 
-  // Origin at left edge for single-side polar
-  const ox=size*0.12, oy=size*0.5, maxSpd=11, R=size*0.82, scale=R/maxSpd;
+  // ── Layout ──────────────────────────────────────────────
+  // Origin: left edge center, rings extend RIGHT only (starboard half)
+  // Padding: top for wind label, bottom for 180° label, right for angle labels
+  const PAD_T=20, PAD_B=22, PAD_L=6, PAD_R=30;
+  const drawH=H-PAD_T-PAD_B;
+  const drawW=W-PAD_L-PAD_R;
+  // Origin at left edge of drawing area, vertically centered
+  const ox=PAD_L, oy=PAD_T+drawH/2;
+  // Scale: fit rings inside the taller dimension
+  // Max ring radius = min(drawW, drawH/2)
+  const maxR=Math.min(drawW*0.92, drawH/2*0.92);
+  const maxSpd=11, scale=maxR/maxSpd;
+  const fs=Math.max(9,W*0.055); // font size
 
-  ctx.fillStyle='#111820'; ctx.fillRect(0,0,size,size);
+  ctx.fillStyle='#111820'; ctx.fillRect(0,0,W,H);
 
   function toXY(twa,spd) {
-    return {x:ox+Math.sin(twa*Math.PI/180)*spd*scale, y:oy-Math.cos(twa*Math.PI/180)*spd*scale};
+    const r=spd*scale;
+    return {x:ox+Math.sin(twa*Math.PI/180)*r, y:oy-Math.cos(twa*Math.PI/180)*r};
   }
 
-  // Speed rings
+  // ── Clip to right half + padding ──────────────────────
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(ox, PAD_T, W-ox, H-PAD_T-PAD_B+4);
+  ctx.clip();
+
+  // ── Speed rings (dashed arcs) ──────────────────────────
+  ctx.setLineDash([3,5]); ctx.strokeStyle='#2d3d50'; ctx.lineWidth=0.8;
   for(let s=2;s<=maxSpd;s+=2) {
-    ctx.setLineDash([2,4]); ctx.strokeStyle='#2a3a4a'; ctx.lineWidth=0.7;
-    ctx.beginPath(); ctx.arc(ox,oy,s*scale,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
-    const lp=toXY(90,s);
-    ctx.fillStyle='#ffffffcc'; ctx.font=`${Math.max(8,size*0.06)}px Rajdhani,sans-serif`;
-    ctx.textAlign='left'; ctx.fillText(s+' STW',lp.x+2,lp.y+4);
+    ctx.beginPath(); ctx.arc(ox,oy,s*scale,-Math.PI/2,Math.PI/2); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // ── Angle rays (every 15°) ─────────────────────────────
+  for(let a=15;a<180;a+=15) {
+    const isMajor=(a%30===0);
+    ctx.strokeStyle=isMajor?'#3a4a5a':'#252f3a'; ctx.lineWidth=isMajor?0.7:0.4;
+    ctx.setLineDash(isMajor?[3,5]:[2,6]);
+    const p=toXY(a,maxSpd*1.02);
+    ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(p.x,p.y); ctx.stroke();
+    ctx.setLineDash([]);
   }
 
-  // Angle rays & labels - starboard side only
-  for(let a=30;a<=170;a+=30) {
-    const p=toXY(a,maxSpd);
-    ctx.setLineDash([2,5]); ctx.strokeStyle='#2a3a4a'; ctx.lineWidth=0.5;
-    ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.setLineDash([]);
-    const lbl=toXY(a,maxSpd+0.7);
-    ctx.fillStyle='#ffffff'; ctx.font=`${Math.max(8,size*0.065)}px Rajdhani,sans-serif`;
-    ctx.textAlign='center'; ctx.fillText(a+'°',lbl.x,lbl.y+4);
-  }
-  // Vertical axis (0°)
-  ctx.strokeStyle='#3a4a5a'; ctx.lineWidth=0.6;
-  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox,oy-maxSpd*scale); ctx.stroke();
-  // 180° line
-  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox,oy+maxSpd*scale); ctx.stroke();
-  // 90° horizontal
+  // ── Axes ──────────────────────────────────────────────
+  ctx.strokeStyle='#4a5a6a'; ctx.lineWidth=0.8;
+  // 0° (upwind) vertical line
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox,PAD_T); ctx.stroke();
+  // 180° (downwind) vertical line
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox,H-PAD_B); ctx.stroke();
+  // 90° horizontal line
   ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox+maxSpd*scale,oy); ctx.stroke();
 
-  // Wind label
-  ctx.fillStyle='#ffffff'; ctx.font=`bold ${Math.max(8,size*0.065)}px Rajdhani,sans-serif`;
-  ctx.textAlign='center'; ctx.fillText('▼ WIND',ox,oy-maxSpd*scale-5);
+  ctx.restore(); // end clip
 
-  // 180° label
-  ctx.fillStyle='#ffffff'; ctx.font=`${Math.max(8,size*0.065)}px Rajdhani,sans-serif`;
-  ctx.textAlign='center'; ctx.fillText('180°',ox,oy+maxSpd*scale+12);
-  ctx.textAlign='right'; ctx.fillText('90°',ox+maxSpd*scale+2,oy+4);
+  // ── Angle labels on outer arc ─────────────────────────
+  ctx.fillStyle='#ffffff'; ctx.font=`${fs}px Rajdhani,sans-serif`;
+  [15,30,45,60,75,90,105,120,135,150,165,180].forEach(a=>{
+    const p=toXY(a, maxSpd*1.05+1.0);
+    if(p.x>W-2) return; // don't draw off-canvas
+    const align=a<90?'left':a===90?'left':'left';
+    ctx.textAlign='left';
+    if(a===180){ctx.textAlign='center'; ctx.fillText('180°',ox,H-4);}
+    else if(a===90){ctx.textAlign='left'; ctx.fillText('90°',ox+maxSpd*scale+3,oy+4);}
+    else { ctx.textAlign='left'; ctx.fillText(a+'°',p.x+2,p.y+4); }
+  });
 
-  // VMG target lines
+  // ── Speed labels on the 0° upwind axis ────────────────
+  ctx.fillStyle='#ffffff'; ctx.font=`${fs*0.85}px Rajdhani,sans-serif`;
+  ctx.textAlign='right';
+  for(let s=2;s<=10;s+=2) {
+    const y=oy-s*scale;
+    ctx.fillText(s+' kt',ox-3,y+4);
+  }
+  // Left-side speed scale label
+  ctx.save();
+  ctx.fillStyle='#ffffff'; ctx.font=`${fs*0.75}px Rajdhani,sans-serif`;
+  ctx.textAlign='center';
+  ctx.restore();
+
+  // ── "▼ WIND" label at top ─────────────────────────────
+  ctx.fillStyle='#ffffff'; ctx.font=`bold ${fs}px Rajdhani,sans-serif`;
+  ctx.textAlign='center'; ctx.fillText('▼ TRUE WIND',ox,PAD_T-3);
+
+  // ── VMG target lines (blue solid) ─────────────────────
   const curTWS=livePoint?livePoint.tws:10;
   const vmgUp=getOptimalVMG(curTWS,'upwind');
   const vmgDn=getOptimalVMG(curTWS,'downwind');
-  ctx.strokeStyle='#60a5fa'; ctx.lineWidth=1.8; ctx.setLineDash([7,4]);
+  ctx.strokeStyle='#60a5fa'; ctx.lineWidth=2; ctx.setLineDash([8,4]);
   let p=toXY(vmgUp.a,maxSpd); ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(p.x,p.y); ctx.stroke();
   p=toXY(vmgDn.a,maxSpd); ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(p.x,p.y); ctx.stroke();
   ctx.setLineDash([]);
-  const pu=toXY(vmgUp.a,maxSpd+0.5);
-  ctx.fillStyle='#60a5fa'; ctx.font=`${Math.max(7,size*0.06)}px Rajdhani,sans-serif`;
-  ctx.textAlign='left'; ctx.fillText(vmgUp.a.toFixed(0)+'°',pu.x,pu.y);
+  // VMG angle labels
+  ctx.fillStyle='#60a5fa'; ctx.font=`bold ${fs*0.85}px Rajdhani,sans-serif`;
+  const pu=toXY(vmgUp.a,maxSpd*1.08);
+  const pd=toXY(vmgDn.a,maxSpd*1.08);
+  ctx.textAlign='left'; ctx.fillText(vmgUp.a.toFixed(0)+'°',pu.x+2,pu.y);
+  ctx.fillText(vmgDn.a.toFixed(0)+'°',pd.x+2,pd.y);
 
+  // ── Polar curves ──────────────────────────────────────
   if(mode==='vpp') {
-    // VPP curves - white dashed
-    [4,6,8,10,12,14,16].forEach(tws=>{
+    // White dashed VPP curves, labeled at downwind end
+    [4,6,8,10,12,14,16].forEach((tws,idx)=>{
       const twas=Object.keys(OFFICIAL_POLAR[tws]).map(Number).sort((a,b)=>a-b);
-      ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.6; ctx.setLineDash([4,3]);
       ctx.beginPath();
       twas.forEach((twa,j)=>{
         const pt=toXY(twa,OFFICIAL_POLAR[tws][twa]);
         j===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y);
       });
       ctx.stroke(); ctx.setLineDash([]);
-      const last=twas[twas.length-2];
-      const lp=toXY(last,OFFICIAL_POLAR[tws][last]);
-      ctx.fillStyle='#ffffffcc'; ctx.font=`${Math.max(7,size*0.06)}px Rajdhani,sans-serif`;
-      ctx.textAlign='left'; ctx.fillText(tws+' TWS',lp.x+3,lp.y+1);
+      // Label: place at 160-170° TWA end, staggered left of 0° axis
+      const labelTWA=170;
+      const labelSpd=OFFICIAL_POLAR[tws][170]||OFFICIAL_POLAR[tws][165]||OFFICIAL_POLAR[tws][160];
+      if(labelSpd) {
+        const lp=toXY(labelTWA,labelSpd);
+        ctx.fillStyle='#ffffff'; ctx.font=`${fs*0.8}px Rajdhani,sans-serif`;
+        ctx.textAlign='right'; ctx.fillText(tws,ox-3-idx*0,lp.y);
+      }
     });
+    // TWS axis label
+    ctx.fillStyle='#ffffffaa'; ctx.font=`${fs*0.75}px Rajdhani,sans-serif`;
+    ctx.textAlign='right'; ctx.fillText('TWS →',ox-3,oy+maxSpd*scale*0.7);
   } else {
-    // My Best curves - solid, colored by TWS band
-    // ghost VPP
+    // Ghost VPP (faint)
     const allTwas=Object.keys(OFFICIAL_POLAR[16]).map(Number).sort((a,b)=>a-b);
-    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=0.8; ctx.setLineDash([3,4]);
+    ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=0.8; ctx.setLineDash([3,5]);
     ctx.beginPath();
     allTwas.forEach((twa,j)=>{
       const pt=toXY(twa,OFFICIAL_POLAR[16][twa]);
@@ -457,7 +508,7 @@ function drawCanvas(canvasId, mode) {
     });
     ctx.stroke(); ctx.setLineDash([]);
 
-    // Draw best envelope per TWS band using OROBORO_BEST
+    // My Best solid curves, colored by TWS
     [4,6,8,10,12,14,16].forEach(tws=>{
       const col=getTWSColor(tws);
       const pts=TABLE_TWA.map(twa=>{
@@ -467,34 +518,44 @@ function drawCanvas(canvasId, mode) {
       if(pts.length<2) return;
       ctx.strokeStyle=col; ctx.lineWidth=2; ctx.setLineDash([]);
       ctx.beginPath();
-      pts.forEach((p,j)=>{
-        const pt=toXY(p.twa,p.spd);
+      pts.forEach((pp,j)=>{
+        const pt=toXY(pp.twa,pp.spd);
         j===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y);
       });
       ctx.stroke();
+      // Label at downwind end
+      const last=pts[pts.length-1];
+      const lp=toXY(last.twa,last.spd);
+      ctx.fillStyle=col; ctx.font=`${fs*0.8}px Rajdhani,sans-serif`;
+      ctx.textAlign='right'; ctx.fillText(tws,ox-3,lp.y);
     });
+    ctx.fillStyle='#ffffffaa'; ctx.font=`${fs*0.75}px Rajdhani,sans-serif`;
+    ctx.textAlign='right'; ctx.fillText('TWS →',ox-3,oy+maxSpd*scale*0.7);
   }
 
-  // Data dots (both modes)
+  // ── Data dots ─────────────────────────────────────────
   sailingData.forEach(d=>{
     const col=getTWSColor(d.tws); if(!col) return;
     const pt=toXY(d.twa,d.stw);
+    if(pt.x<ox) return; // only starboard
     ctx.beginPath(); ctx.arc(pt.x,pt.y,2.5,0,Math.PI*2);
     ctx.fillStyle=col+'90'; ctx.fill();
   });
 
-  // Live position
+  // ── Live position ring ─────────────────────────────────
   if(livePoint&&livePoint.stw>0.3) {
     const pt=toXY(livePoint.twa,livePoint.stw);
-    ctx.beginPath(); ctx.arc(pt.x,pt.y,7,0,Math.PI*2);
-    ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.8; ctx.stroke();
-    ctx.beginPath(); ctx.arc(pt.x,pt.y,3,0,Math.PI*2);
-    ctx.fillStyle='#ffffff'; ctx.fill();
+    if(pt.x>=ox) {
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,7,0,Math.PI*2);
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.8; ctx.stroke();
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,3,0,Math.PI*2);
+      ctx.fillStyle='#ffffff'; ctx.fill();
+    }
   }
 
-  // Label
-  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font=`bold 9px Rajdhani,sans-serif`;
-  ctx.textAlign='left'; ctx.fillText('S/V OROBORO',5,size-5);
+  // ── Boat name watermark ────────────────────────────────
+  ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.font=`bold 9px Rajdhani,sans-serif`;
+  ctx.textAlign='left'; ctx.fillText('S/V OROBORO',PAD_L+4,H-6);
 }
 
 function drawPolar() { drawCanvas('polarCanvas', activeTab); }
