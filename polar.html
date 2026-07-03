@@ -58,6 +58,10 @@ body{font-family:'Rajdhani','Segoe UI',sans-serif;background:var(--bg);color:var
 /* LEGEND */
 .legend{display:flex;flex-wrap:wrap;gap:6px 10px;padding:5px 12px;justify-content:center;}
 .leg{display:flex;align-items:center;gap:3px;font-size:9px;color:#ffffff;}
+.leg-toggle{cursor:pointer;padding:2px 5px;border-radius:8px;border:1px solid transparent;}
+.leg-toggle:has(input:checked){border-color:var(--border);}
+.leg-toggle input{margin:0;width:9px;height:9px;accent-color:var(--cyan);}
+.leg-toggle:has(input:not(:checked)){opacity:0.4;}
 .leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .leg-line{width:14px;height:1.5px;flex-shrink:0;}
 .leg-dash{width:14px;height:1.5px;flex-shrink:0;background:repeating-linear-gradient(90deg,#fff 0,#fff 4px,transparent 4px,transparent 7px);}
@@ -102,6 +106,7 @@ button.btn-sec{background:var(--card);color:#ffffff;border:1px solid var(--borde
 .stat .slbl{font-size:8px;color:#ffffff;text-transform:uppercase;opacity:0.5;}
 .stat .sval{font-size:15px;font-weight:500;}
 #status-line{text-align:center;padding:5px 12px;font-size:10px;color:#aabbcc;}
+body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, body.simple #raw-toggle-wrap {display:none;}
 </style>
 </head>
 <body>
@@ -109,6 +114,7 @@ button.btn-sec{background:var(--card);color:#ffffff;border:1px solid var(--borde
 <div id="top-bar">
   <a href="oroboro.html">← Dashboard</a>
   <h1>Polar Performance</h1>
+  <button id="mode-btn" style="background:var(--card);color:#aabbcc;border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:11px;font-family:inherit;cursor:pointer;margin-right:8px;">Analysis</button>
   <div id="conn-badge"><div id="conn-dot"></div><span id="conn-txt" style="color:#f59e0b;font-size:10px;">Connecting</span></div>
 </div>
 
@@ -128,6 +134,7 @@ button.btn-sec{background:var(--card);color:#ffffff;border:1px solid var(--borde
     <div class="vmg-cell"><div class="vmg-lbl">VPP Target</div><div class="vmg-val" id="l-tgt-twa" style="color:var(--blue)">—</div><div class="vmg-sub" id="l-twa-delta">—</div></div>
     <div class="vmg-cell"><div class="vmg-lbl">SOG</div><div class="vmg-val" id="l-sog" style="font-size:14px">—<span style="font-size:9px;color:#aabbcc"> kt</span></div><div class="vmg-sub" id="l-cog">COG —°</div></div>
   </div>
+  <div id="trim-banner" style="display:none;margin-top:8px;padding:7px 10px;border-radius:5px;font-size:13px;font-weight:500;text-align:center;"></div>
 </div>
 
 <!-- POLAR TABS -->
@@ -141,22 +148,22 @@ button.btn-sec{background:var(--card);color:#ffffff;border:1px solid var(--borde
 </div>
 
 <!-- LEGEND -->
-<div class="legend">
-  <div class="leg"><div class="leg-dot" style="background:#ff8c00"></div>4-6kt</div>
-  <div class="leg"><div class="leg-dot" style="background:#f59e0b"></div>6-8kt</div>
-  <div class="leg"><div class="leg-dot" style="background:#22c55e"></div>8-12kt</div>
-  <div class="leg"><div class="leg-dot" style="background:#00d4ff"></div>12-16kt</div>
-  <div class="leg"><div class="leg-dot" style="background:#a855f7"></div>16-20kt</div>
-  <div class="leg"><div class="leg-dot" style="background:#ef4444"></div>20+kt</div>
+<div class="legend" id="band-legend">
+  <label class="leg leg-toggle"><input type="checkbox" data-bucket="4-6" checked><div class="leg-dot" style="background:#ff8c00"></div>4-6kt</label>
+  <label class="leg leg-toggle"><input type="checkbox" data-bucket="6-8" checked><div class="leg-dot" style="background:#f59e0b"></div>6-8kt</label>
+  <label class="leg leg-toggle"><input type="checkbox" data-bucket="8-12" checked><div class="leg-dot" style="background:#22c55e"></div>8-12kt</label>
+  <label class="leg leg-toggle"><input type="checkbox" data-bucket="12-16" checked><div class="leg-dot" style="background:#00d4ff"></div>12-16kt</label>
+  <label class="leg leg-toggle"><input type="checkbox" data-bucket="16-20" checked><div class="leg-dot" style="background:#a855f7"></div>16-20kt</label>
+  <label class="leg leg-toggle"><input type="checkbox" data-bucket="20+" checked><div class="leg-dot" style="background:#ef4444"></div>20+kt</label>
   <div class="leg"><div class="leg-dash"></div>VPP</div>
-  <div class="leg"><div class="leg-line" style="background:var(--green)"></div>My best</div>
   <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>VMG tgt</div>
+  <label class="leg leg-toggle" id="raw-toggle-wrap"><input type="checkbox" id="toggle-raw" checked>Raw data</label>
 </div>
 
-<div class="divider"></div>
+<div class="divider" id="table-divider"></div>
 
 <!-- TABLE -->
-<div class="sec-label">▼ Table — VPP vs My Best</div>
+<div class="sec-label" id="table-label">▼ Table — VPP vs My Best</div>
 <div id="table-wrap">
   <table class="ptable" id="polar-table">
     <thead>
@@ -278,6 +285,7 @@ const OROBORO_BEST = {
 };
 
 const TWS_COLORS = {'4-6':'#ff8c00','6-8':'#f59e0b','8-12':'#22c55e','12-16':'#00d4ff','16-20':'#a855f7','20+':'#ef4444'};
+const ROW_TO_BUCKET = {4:'4-6',6:'6-8',8:'8-12',10:'8-12',12:'12-16',14:'12-16',16:'16-20'};
 
 function getTWSBucket(t) {
   if(t>=4&&t<6) return '4-6'; if(t>=6&&t<8) return '6-8';
@@ -315,11 +323,41 @@ function getOptimalVMG(tws,side) {
 // Data store
 // ═══════════════════════════════════════════════════════════
 let sailingData=[], trackData=[], livePoint=null;
+let activeBuckets=new Set(['4-6','6-8','8-12','12-16','16-20','20+']);
+let showRaw=true;
+document.querySelectorAll('#band-legend input[data-bucket]').forEach(cb=>{
+  cb.addEventListener('change',()=>{
+    if(cb.checked) activeBuckets.add(cb.dataset.bucket); else activeBuckets.delete(cb.dataset.bucket);
+    drawPolar();
+  });
+});
+document.getElementById('toggle-raw').addEventListener('change',e=>{ showRaw=e.target.checked; drawPolar(); });
+
+let uiMode=localStorage.getItem('polarMode')||'simple';
+function applyMode(){
+  document.body.classList.toggle('simple',uiMode==='simple');
+  document.getElementById('mode-btn').textContent=uiMode==='simple'?'Analysis':'Simple';
+  showRaw = uiMode==='analysis' && document.getElementById('toggle-raw').checked;
+  drawPolar();
+}
+document.getElementById('mode-btn').addEventListener('click',()=>{
+  uiMode=uiMode==='simple'?'analysis':'simple';
+  localStorage.setItem('polarMode',uiMode);
+  applyMode();
+});
+
+function angDiff(a,b){let d=Math.abs(a-b)%360;return d>180?360-d:d;}
 
 function updateBestFromData(pts) {
   const binTWA=twa=>TABLE_TWA.reduce((a,b)=>Math.abs(b-twa)<Math.abs(a-twa)?b:a);
   const binTWS=tws=>{for(const t of TABLE_TWS)if(tws<t+1)return t;return 16;};
-  pts.forEach(d=>{
+  pts.forEach((d,i)=>{
+    // Skip maneuvering transients: heading swing >25° across neighbors within 90s
+    const prev=pts[i-1],next=pts[i+1];
+    if(prev&&next&&prev.cog!=null&&next.cog!=null){
+      const span=(new Date(next.time)-new Date(prev.time))/1000;
+      if(span<=90&&angDiff(prev.cog,next.cog)>25) return;
+    }
     const ta=binTWA(d.twa),tw=binTWS(d.tws);
     if(Math.abs(d.twa-ta)<=10){
       if(!OROBORO_BEST[tw])OROBORO_BEST[tw]={};
@@ -474,7 +512,7 @@ function drawCanvas(canvasId, mode) {
   // ── Polar curves ──────────────────────────────────────
   if(mode==='vpp') {
     // White dashed VPP curves, labeled at downwind end
-    [4,6,8,10,12,14,16].forEach((tws,idx)=>{
+    [4,6,8,10,12,14,16].filter(tws=>activeBuckets.has(ROW_TO_BUCKET[tws])).forEach((tws,idx)=>{
       const twas=Object.keys(OFFICIAL_POLAR[tws]).map(Number).sort((a,b)=>a-b);
       ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.6; ctx.setLineDash([4,3]);
       ctx.beginPath();
@@ -506,14 +544,22 @@ function drawCanvas(canvasId, mode) {
     });
     ctx.stroke(); ctx.setLineDash([]);
 
-    // My Best solid curves, colored by TWS
-    [4,6,8,10,12,14,16].forEach(tws=>{
+    // My Best solid curves, colored by TWS — filtered by active bands, with gap-to-target shading
+    [4,6,8,10,12,14,16].filter(tws=>activeBuckets.has(ROW_TO_BUCKET[tws])).forEach(tws=>{
       const col=getTWSColor(tws);
       const pts=TABLE_TWA.map(twa=>{
         const spd=OROBORO_BEST[tws]?.[twa];
-        return spd?{twa,spd}:null;
+        const vpp=OFFICIAL_POLAR[tws]?.[twa];
+        return (spd&&vpp)?{twa,spd,vpp}:null;
       }).filter(Boolean);
       if(pts.length<2) return;
+      // Gap fill between VPP target and achieved
+      ctx.beginPath();
+      pts.forEach((pp,j)=>{const p=toXY(pp.twa,pp.spd); j===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y);});
+      for(let j=pts.length-1;j>=0;j--){const p=toXY(pts[j].twa,pts[j].vpp); ctx.lineTo(p.x,p.y);}
+      ctx.closePath();
+      ctx.fillStyle=col+'22'; ctx.fill();
+      // Achieved line
       ctx.strokeStyle=col; ctx.lineWidth=2; ctx.setLineDash([]);
       ctx.beginPath();
       pts.forEach((pp,j)=>{
@@ -532,8 +578,9 @@ function drawCanvas(canvasId, mode) {
   }
 
   // ── Data dots ─────────────────────────────────────────
-  sailingData.forEach(d=>{
-    const col=getTWSColor(d.tws); if(!col) return;
+  if(showRaw) sailingData.forEach(d=>{
+    const bucket=getTWSBucket(d.tws); if(!bucket||!activeBuckets.has(bucket)) return;
+    const col=TWS_COLORS[bucket];
     const pt=toXY(d.twa,d.stw);
     if(pt.x<ox) return; // only starboard
     ctx.beginPath(); ctx.arc(pt.x,pt.y,2.5,0,Math.PI*2);
@@ -558,7 +605,7 @@ function drawCanvas(canvasId, mode) {
 
 function drawPolar() { drawCanvas('polarCanvas', activeTab); }
 window.addEventListener('resize',drawPolar);
-drawPolar();
+applyMode();
 
 // ═══════════════════════════════════════════════════════════
 // Leaflet Track Map
@@ -683,8 +730,8 @@ async function loadData() {
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.speedApparent")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.angleApparent")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.speedThroughWater")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position.latitude")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position.longitude")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position")|>filter(fn:(r)=>r._field=="latitude")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position")|>filter(fn:(r)=>r._field=="longitude")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.courseOverGroundTrue")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`)
     ]);
 
@@ -718,6 +765,11 @@ async function loadData() {
       }
     });
     console.log(`Loaded: ${newPts.length} polar pts, ${newTrack.length} track pts`);
+    if(newPts.length>20 && newTrack.length===0) {
+      console.warn('[polar] Position query returned 0 usable points. Raw latitude CSV (first 400 chars):', latData.slice(0,400));
+      console.warn('[polar] Raw longitude CSV (first 400 chars):', lonData.slice(0,400));
+      console.warn('[polar] If both are empty, the measurement/field names for navigation.position in your InfluxDB bucket differ from "navigation.position" / latitude,longitude — check with a "schema.measurements()" query or your SignalK-to-InfluxDB plugin config and adjust the loadData() queries accordingly.');
+    }
 
     sailingData=sailingData.concat(newPts);
     trackData=trackData.concat(newTrack);
@@ -725,7 +777,8 @@ async function loadData() {
     updateStats();
     drawPolar();
     renderTrack();
-    document.getElementById('status-line').textContent=`Loaded ${newPts.length} new points (${sailingData.length} total)`;
+    const trackNote = newPts.length>20 && newTrack.length===0 ? ' — no GPS-tagged points found, check console' : '';
+    document.getElementById('status-line').textContent=`Loaded ${newPts.length} new points (${sailingData.length} total)${trackNote}`;
   } catch(e) {
     console.error(e);
     document.getElementById('status-line').textContent='Error: '+e.message;
@@ -863,10 +916,11 @@ function updateLive() {
 
   const polar=getOfficialSpeed(tws,twa);
   set('l-pbsp',polar>0?polar.toFixed(1)+'<span class="live-unit"> kt</span>':'—');
+  let perfPct=null;
   if(polar>0&&_stw>0){
-    const pct=_stw/polar*100;
-    const cls=pct>=90?'pg':pct>=75?'po':'pr';
-    set('l-perf',`<span class="perf-pill ${cls}">${pct.toFixed(0)}%</span>`);
+    perfPct=_stw/polar*100;
+    const cls=perfPct>=90?'pg':perfPct>=75?'po':'pr';
+    set('l-perf',`<span class="perf-pill ${cls}">${perfPct.toFixed(0)}%</span>`);
   } else set('l-perf','—');
 
   const upwind=twa<90;
@@ -880,6 +934,20 @@ function updateLive() {
   set('l-tgt-twa',vmgOpt.a.toFixed(0)+'<span style="font-size:9px;color:#aabbcc">°</span>');
   const delta=twa-vmgOpt.a;
   document.getElementById('l-twa-delta').textContent=Math.abs(delta)<1?'on target':delta>0?'+'+delta.toFixed(0)+'° bear away':delta.toFixed(0)+'° head up';
+
+  const banner=document.getElementById('trim-banner');
+  if(perfPct!==null && _stw>0.5 && perfPct<88){
+    const angleAction=Math.abs(delta)<2?'':(delta>0?`bear away ${Math.abs(delta).toFixed(0)}°`:`head up ${Math.abs(delta).toFixed(0)}°`);
+    const trimAction=upwind?'sheet in':'ease sheets or check the gennaker';
+    const suggestion=perfPct<70?trimAction:(angleAction||trimAction);
+    const severe=perfPct<70;
+    banner.style.display='block';
+    banner.style.background=severe?'#7f1d1d':'#78350f';
+    banner.style.color=severe?'#fca5a5':'#fcd34d';
+    banner.textContent=`${perfPct.toFixed(0)}% of target — try: ${suggestion}`;
+  } else {
+    banner.style.display='none';
+  }
 
   livePoint={twa,tws,stw:_stw};
   drawPolar();
