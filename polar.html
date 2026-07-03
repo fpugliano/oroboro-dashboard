@@ -100,6 +100,10 @@ table.ptable{border-collapse:collapse;font-size:10px;width:100%;min-width:480px;
 .ctrl-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;}
 .ctrl-field{display:flex;align-items:center;gap:5px;flex:1 1 175px;min-width:0;}
 .ctrl-field label{white-space:nowrap;}
+@media (max-width:480px){
+  .ctrl-field{flex:1 1 100%;}
+  .ctrl-field label{min-width:52px;}
+}
 .ctrl-row label{font-size:10px;color:#ffffff;text-transform:uppercase;opacity:0.6;}
 .ctrl-row select,.ctrl-row input[type="datetime-local"]{background:var(--bg);color:#ffffff;border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-size:11px;font-family:inherit;flex:1;min-width:0;color-scheme:dark;}
 button.btn-primary{background:var(--cyan);color:var(--bg);border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;}
