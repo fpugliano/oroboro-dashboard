@@ -173,6 +173,7 @@ body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, b
   <div class="leg"><div class="leg-dash"></div>VPP</div>
   <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>VMG tgt</div>
   <label class="leg leg-toggle" id="raw-toggle-wrap"><input type="checkbox" id="toggle-raw" checked>Raw data</label>
+  <label class="leg leg-toggle"><input type="checkbox" id="toggle-genn">Genn ref</label>
 </div>
 
 <div class="divider" id="table-divider"></div>
@@ -188,9 +189,9 @@ body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, b
     <tbody id="polar-table-body"></tbody>
   </table>
   <div class="tbl-note">
-    <span class="n-vpp">VPP = Leopard 40 theoretical (F02)</span>
+    <span class="n-vpp">VPP = Leopard 40 main+jib (F02)</span>
     <span class="n-best">Best = Oroboro achieved</span>
-    <span style="color:#aabbcc">* downwind VPP includes gennaker</span>
+    <span style="color:#aabbcc">* VPP target = main + jib (no gennaker) · no VPP data beyond 130° TWA</span>
   </div>
 </div>
 
@@ -269,21 +270,40 @@ const INFLUX_TOKEN  = '_ehS1A3X3dmlkDKZNNfZaOfrC2r1zD24HhMNiozyLd_t1Br9DX6T4Qqeb
 const WS_URL        = `ws://${HOST}:${SK_PORT}/signalk/v1/stream?subscribe=none`;
 
 // ═══════════════════════════════════════════════════════════
-// VPP Data
+// VPP Data — MAIN + JIB (no gennaker), Oroboro's actual sail plan.
+// 52–75° from CPT 224-F02 tabular VPP (jib is the upwind sail).
+// 80–130° digitized from the F02 vector polar chart, blue (no-genn)
+// curves, calibration RMS 0.003 kt vs 28 known anchors.
+// The designer's VPP does not compute main+jib beyond 130° TWA.
 // ═══════════════════════════════════════════════════════════
 const OFFICIAL_POLAR = {
-  4:  {52:2.40,60:2.79,70:3.07,75:3.14,80:3.61,90:3.77,100:3.74,110:3.53,120:3.21,130:2.86,135:2.68,140:2.50,150:2.21,160:2.04,165:1.97,170:1.91,180:1.82},
-  6:  {52:3.52,60:4.02,70:4.36,75:4.44,80:5.09,90:5.25,100:5.17,110:4.90,120:4.53,130:4.11,135:3.88,140:3.65,150:3.26,160:3.01,165:2.92,170:2.83,180:2.69},
-  8:  {52:4.48,60:5.05,70:5.43,75:5.52,80:6.39,90:6.55,100:6.43,110:6.09,120:5.67,130:5.18,135:4.92,140:4.67,150:4.23,160:3.94,165:3.83,170:3.72,180:3.54},
-  10: {52:5.33,60:5.98,70:6.42,75:6.52,80:7.52,90:7.65,100:7.50,110:7.17,120:6.73,130:6.17,135:5.88,140:5.59,150:5.11,160:4.79,165:4.66,170:4.54,180:4.34},
-  12: {52:6.13,60:6.86,70:7.30,75:7.39,80:8.48,90:8.59,100:8.40,110:8.07,120:7.64,130:7.09,135:6.79,140:6.48,150:5.94,160:5.60,165:5.45,170:5.31,180:5.08},
-  14: {52:6.88,60:7.61,70:8.04,75:8.13,80:9.46,90:9.57,100:9.32,110:8.92,120:8.44,130:7.89,135:7.59,140:7.28,150:6.75,160:6.38,165:6.21,170:6.06,180:5.80},
-  16: {52:7.53,60:8.27,70:8.73,75:8.84,80:10.67,90:10.82,100:10.43,110:9.87,120:9.26,130:8.62,135:8.31,140:8.00,150:7.48,160:7.11,165:6.95,170:6.78,180:6.49}
+  4:  {52:2.40,60:2.79,70:3.07,75:3.14,80:3.17,90:3.13,100:2.94,110:2.61,120:2.19,130:1.90},
+  6:  {52:3.52,60:4.02,70:4.36,75:4.44,80:4.47,90:4.41,100:4.17,110:3.74,120:3.19,130:2.80},
+  8:  {52:4.48,60:5.05,70:5.43,75:5.52,80:5.55,90:5.47,100:5.17,110:4.68,120:4.08,130:3.64},
+  10: {52:5.33,60:5.98,70:6.42,75:6.52,80:6.56,90:6.44,100:6.08,110:5.50,120:4.86,130:4.39},
+  12: {52:6.13,60:6.86,70:7.30,75:7.39,80:7.42,90:7.30,100:6.91,110:6.27,120:5.57,130:5.09},
+  14: {52:6.88,60:7.61,70:8.04,75:8.13,80:8.16,90:8.02,100:7.62,110:6.99,120:6.26,130:5.75},
+  16: {52:7.53,60:8.27,70:8.73,75:8.84,80:8.86,90:8.69,100:8.24,110:7.60,120:6.90,130:6.39}
 };
 
+// Gennaker composite from the F02 "at BEST" table — reference only,
+// Oroboro carries no gennaker. Shown as optional ghost curves.
+const GENN_POLAR = {
+  4:  {80:3.61,90:3.77,100:3.74,110:3.53,120:3.21,130:2.86,140:2.50,150:2.21,160:2.04,170:1.91,180:1.82},
+  6:  {80:5.09,90:5.25,100:5.17,110:4.90,120:4.53,130:4.11,140:3.65,150:3.26,160:3.01,170:2.83,180:2.69},
+  8:  {80:6.39,90:6.55,100:6.43,110:6.09,120:5.67,130:5.18,140:4.67,150:4.23,160:3.94,170:3.72,180:3.54},
+  10: {80:7.52,90:7.65,100:7.50,110:7.17,120:6.73,130:6.17,140:5.59,150:5.11,160:4.79,170:4.54,180:4.34},
+  12: {80:8.48,90:8.59,100:8.40,110:8.07,120:7.64,130:7.09,140:6.48,150:5.94,160:5.60,170:5.31,180:5.08},
+  14: {80:9.46,90:9.57,100:9.32,110:8.92,120:8.44,130:7.89,140:7.28,150:6.75,160:6.38,170:6.06,180:5.80},
+  16: {80:10.67,90:10.82,100:10.43,110:9.87,120:9.26,130:8.62,140:8.00,150:7.48,160:7.11,170:6.78,180:6.49}
+};
+
+// Upwind: unchanged (jib). Downwind: recomputed from the jib polar —
+// the VMG optimum sits at the 130° data boundary, i.e. without a
+// gennaker the fastest way downwind is ~130° TWA and gybe.
 const OPTIMAL_VMG = {
   upwind:  {4:{a:53.3,v:1.48},6:{a:52.6,v:2.17},8:{a:51.6,v:2.76},10:{a:51.3,v:3.28},12:{a:51.4,v:3.77},14:{a:51.0,v:4.24},16:{a:50.3,v:4.66}},
-  downwind:{4:{a:143.6,v:1.92},6:{a:147.5,v:2.82},8:{a:147.5,v:3.65},10:{a:147.5,v:4.40},12:{a:147.5,v:5.11},14:{a:147.5,v:5.79},16:{a:147.5,v:6.41}}
+  downwind:{4:{a:130,v:1.21},6:{a:130,v:1.78},8:{a:130,v:2.32},10:{a:130,v:2.82},12:{a:130,v:3.27},14:{a:130,v:3.69},16:{a:130,v:4.11}}
 };
 
 const TABLE_TWA = [52,60,70,90,110,130,150,170];
@@ -315,6 +335,7 @@ function getOfficialSpeed(tws, twa) {
   let tws1=twsKeys[0],tws2=twsKeys[twsKeys.length-1];
   for(let i=0;i<twsKeys.length-1;i++){if(tws>=twsKeys[i]&&tws<=twsKeys[i+1]){tws1=twsKeys[i];tws2=twsKeys[i+1];break;}}
   const twaKeys=Object.keys(OFFICIAL_POLAR[tws1]).map(Number).sort((a,b)=>a-b);
+  if(twa<twaKeys[0]-2||twa>twaKeys[twaKeys.length-1]+2) return 0; // outside jib VPP range (52–130°)
   let twa1=twaKeys[0],twa2=twaKeys[twaKeys.length-1];
   for(let i=0;i<twaKeys.length-1;i++){if(twa>=twaKeys[i]&&twa<=twaKeys[i+1]){twa1=twaKeys[i];twa2=twaKeys[i+1];break;}}
   const dTWS=tws2===tws1?0:(tws-tws1)/(tws2-tws1);
@@ -347,6 +368,8 @@ document.querySelectorAll('#band-legend input[data-bucket]').forEach(cb=>{
   });
 });
 document.getElementById('toggle-raw').addEventListener('change',e=>{ showRaw=e.target.checked; drawPolar(); });
+let showGenn=false;
+document.getElementById('toggle-genn').addEventListener('change',e=>{ showGenn=e.target.checked; drawPolar(); });
 
 let uiMode=localStorage.getItem('polarMode')||'simple';
 function applyMode(){
@@ -536,15 +559,25 @@ function drawCanvas(canvasId, mode) {
         j===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y);
       });
       ctx.stroke(); ctx.setLineDash([]);
-      // Label: place at 160-170° TWA end, staggered left of 0° axis
-      const labelTWA=170;
-      const labelSpd=OFFICIAL_POLAR[tws][170]||OFFICIAL_POLAR[tws][165]||OFFICIAL_POLAR[tws][160];
-      if(labelSpd) {
-        const lp=toXY(labelTWA,labelSpd);
-        ctx.fillStyle='#ffffff'; ctx.font=`${fs*0.8}px Rajdhani,sans-serif`;
-        ctx.textAlign='right'; ctx.fillText(tws,ox-3-idx*0,lp.y);
-      }
+      // Label at the curve's downwind end
+      const lastTWA=twas[twas.length-1];
+      const lp=toXY(lastTWA,OFFICIAL_POLAR[tws][lastTWA]);
+      ctx.fillStyle='#ffffff'; ctx.font=`${fs*0.8}px Rajdhani,sans-serif`;
+      ctx.textAlign='left'; ctx.fillText(tws,lp.x+3,lp.y+fs*0.8);
     });
+    // Gennaker reference ghost curves (optional)
+    if(showGenn){
+      [4,6,8,10,12,14,16].filter(tws=>activeBuckets.has(ROW_TO_BUCKET[tws])).forEach(tws=>{
+        const twas=Object.keys(GENN_POLAR[tws]).map(Number).sort((a,b)=>a-b);
+        ctx.strokeStyle='rgba(245,158,11,0.35)'; ctx.lineWidth=1; ctx.setLineDash([2,4]);
+        ctx.beginPath();
+        twas.forEach((twa,j)=>{
+          const pt=toXY(twa,GENN_POLAR[tws][twa]);
+          j===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y);
+        });
+        ctx.stroke(); ctx.setLineDash([]);
+      });
+    }
     // TWS axis label
     ctx.fillStyle='#ffffffaa'; ctx.font=`${fs*0.75}px Rajdhani,sans-serif`;
     ctx.textAlign='right'; ctx.fillText('TWS →',ox-3,oy+maxSpd*scale*0.7);
@@ -745,8 +778,8 @@ async function loadData() {
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.speedApparent")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.angleApparent")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.speedThroughWater")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position")|>filter(fn:(r)=>r._field=="latitude")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position")|>filter(fn:(r)=>r._field=="longitude")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position")|>filter(fn:(r)=>r._field=="lat")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position")|>filter(fn:(r)=>r._field=="lon")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.courseOverGroundTrue")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`)
     ]);
 
@@ -984,13 +1017,18 @@ function updateLive() {
   const banner=document.getElementById('trim-banner');
   if(perfPct!==null && _stw>0.5 && perfPct<88){
     const angleAction=Math.abs(delta)<2?'':(delta>0?`bear away ${Math.abs(delta).toFixed(0)}°`:`head up ${Math.abs(delta).toFixed(0)}°`);
-    const trimAction=upwind?'sheet in':'ease sheets or check the gennaker';
+    const trimAction=upwind?'sheet in':'ease sheets';
     const suggestion=perfPct<70?trimAction:(angleAction||trimAction);
     const severe=perfPct<70;
     banner.style.display='block';
     banner.style.background=severe?'#7f1d1d':'#78350f';
     banner.style.color=severe?'#fca5a5':'#fcd34d';
     banner.textContent=`${perfPct.toFixed(0)}% of target — try: ${suggestion}`;
+  } else if(_stw>1 && twa>135){
+    banner.style.display='block';
+    banner.style.background='#1e3a5f';
+    banner.style.color='#93c5fd';
+    banner.textContent='Beyond jib polar range — best downwind VMG is ~130° TWA, then gybe';
   } else {
     banner.style.display='none';
   }
