@@ -135,6 +135,21 @@ body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, b
     <div class="vmg-cell"><div class="vmg-lbl">SOG</div><div class="vmg-val" id="l-sog" style="font-size:14px">—<span style="font-size:9px;color:#aabbcc"> kt</span></div><div class="vmg-sub" id="l-cog">COG —°</div></div>
   </div>
   <div id="trim-banner" style="display:none;margin-top:8px;padding:7px 10px;border-radius:5px;font-size:13px;font-weight:500;text-align:center;"></div>
+  <div id="coach-row" style="display:flex;align-items:center;gap:14px;margin-top:8px;">
+    <svg viewBox="0 0 120 74" width="112" height="70" style="flex-shrink:0;">
+      <path d="M12,64 A48,48 0 0 1 108,64" fill="none" stroke="#1a2332" stroke-width="9" stroke-linecap="round" pathLength="100"/>
+      <path id="gauge-arc" d="M12,64 A48,48 0 0 1 108,64" fill="none" stroke="#22c55e" stroke-width="9" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/>
+      <text id="gauge-txt" x="60" y="52" text-anchor="middle" font-size="20" font-weight="600" fill="#ffffff">—</text>
+      <text x="60" y="66" text-anchor="middle" font-size="8" fill="#aabbcc">of polar target</text>
+    </svg>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:9px;color:#aabbcc;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Performance — last 5 min</div>
+      <svg viewBox="0 0 300 44" preserveAspectRatio="none" style="width:100%;height:44px;display:block;">
+        <line x1="0" y1="7.3" x2="300" y2="7.3" stroke="#4a5a6a" stroke-dasharray="4 3" stroke-width="1"/>
+        <polyline id="spark-line" fill="none" stroke="#22c55e" stroke-width="2" points=""/>
+      </svg>
+    </div>
+  </div>
 </div>
 
 <!-- POLAR TABS -->
@@ -862,6 +877,28 @@ function exportGPX() {
 let _aws=0,_awa=0,_stw=0,_sog=0,_cog=0,_lat=null,_lon=null;
 let wsConn=null,reconnTimer=null;
 
+// ── Trim coach: gauge + rolling 5-min performance sparkline ──
+const perfHistory=[];
+function updateGauge(pct){
+  const arc=document.getElementById('gauge-arc'), txt=document.getElementById('gauge-txt');
+  if(pct===null){ arc.setAttribute('stroke-dasharray','0 100'); txt.textContent='—'; return; }
+  const col=pct>=90?'#22c55e':pct>=75?'#f59e0b':'#ef4444';
+  arc.setAttribute('stroke',col);
+  arc.setAttribute('stroke-dasharray',`${Math.min(100,Math.max(0,pct)).toFixed(0)} 100`);
+  txt.textContent=pct.toFixed(0)+'%';
+}
+function drawSpark(){
+  if(perfHistory.length<2) return;
+  const now=Date.now(), win=300000;
+  const pts=perfHistory.map(s=>{
+    const x=(1-(now-s.t)/win)*300;
+    const p=Math.min(110,Math.max(50,s.p));
+    const y=(110-p)/(110-50)*44;
+    return x.toFixed(1)+','+y.toFixed(1);
+  }).join(' ');
+  document.getElementById('spark-line').setAttribute('points',pts);
+}
+
 function setConn(s) {
   const c={live:'#22c55e',connecting:'#f59e0b',offline:'#ef4444'};
   const l={live:'Live',connecting:'Connecting',offline:'Offline'};
@@ -922,6 +959,15 @@ function updateLive() {
     const cls=perfPct>=90?'pg':perfPct>=75?'po':'pr';
     set('l-perf',`<span class="perf-pill ${cls}">${perfPct.toFixed(0)}%</span>`);
   } else set('l-perf','—');
+  updateGauge(perfPct);
+  if(perfPct!==null&&_stw>0.5){
+    const now=Date.now();
+    if(!perfHistory.length||now-perfHistory[perfHistory.length-1].t>=5000){
+      perfHistory.push({t:now,p:perfPct});
+      while(perfHistory.length&&now-perfHistory[0].t>300000)perfHistory.shift();
+      drawSpark();
+    }
+  }
 
   const upwind=twa<90;
   const vmgOpt=getOptimalVMG(tws,upwind?'upwind':'downwind');
