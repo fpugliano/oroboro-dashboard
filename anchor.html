@@ -220,7 +220,7 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
 <script>
 // ─── Config (injected by server) ──────────────────────────────────────────
 const CFG        = (typeof DASHBOARD_CONFIG !== 'undefined') ? DASHBOARD_CONFIG : {};
-const SK_HOST    = (CFG.signalk && CFG.signalk.host) || window.location.hostname || '192.168.1.238';
+const SK_HOST    = (CFG.signalk && CFG.signalk.host) || window.location.hostname || 'localhost';
 const SK_PORT    = (CFG.signalk && CFG.signalk.port) || 3000;
 const PROXY_PORT = 3001;
 const SK_BASE    = 'http://' + SK_HOST + ':' + SK_PORT;

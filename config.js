@@ -1,12 +1,30 @@
 // Oroboro Dashboard — User Configuration
 // Edit this file to match your boat's setup
+//
+// ⚠️  SECRETS: the influx token and pushover keys below are
+// PLACEHOLDERS in the repository. Put your real values ONLY in the
+// copy of this file on the boat's Raspberry Pi. Never commit real
+// tokens/keys to GitHub — this repo is public.
 
 const DASHBOARD_CONFIG = {
 
   // Signal K server
   signalk: {
-    host: window.location.hostname || '192.168.1.238',
+    host: window.location.hostname || 'localhost',
     port: 3000,
+  },
+
+  // InfluxDB (historical data for the Polar Performance page)
+  // host: leave '' to use the same hostname as the page — this works
+  // on the boat LAN and over Tailscale without changes.
+  // token: create a READ-ONLY token for the signalk bucket in the
+  // InfluxDB UI (http://<pi>:8086 → Load Data → API Tokens).
+  influx: {
+    host: '',
+    port: 8086,
+    org: 'Oroboro',
+    bucket: 'signalk',
+    token: 'PASTE_YOUR_INFLUX_READ_TOKEN_HERE',
   },
 
   // Vessel
@@ -52,8 +70,8 @@ const DASHBOARD_CONFIG = {
   anchor: {
     defaultRadius: 30,
     pushover: {
-      userKey: 'uirif2gbor7m1jarpcrwhzgnntbxxq',
-      apiToken: 'amy9ojz9e7euc5gcgme5dcdd9j84ye',
+      userKey: 'PASTE_YOUR_PUSHOVER_USER_KEY_HERE',
+      apiToken: 'PASTE_YOUR_PUSHOVER_API_TOKEN_HERE',
       events: {
         dragging:     { enabled: true,  priority: 2,  title: "⚠️ Anchor Dragging!", message: "S/V Oroboro is dragging anchor. Check position immediately." },
         gpsLost:      { enabled: true,  priority: 2,  title: "⚠️ Anchor Alarm: GPS Lost", message: "No GPS position updates received." },

@@ -254,19 +254,24 @@ body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, b
   <div id="status-line">No data loaded — press Load Data.</div>
 </div>
 
+<script src="config.js"></script>
 <script>
 'use strict';
 
 // ═══════════════════════════════════════════════════════════
-// Config
+// Config — boat-specific values live in config.js (DASHBOARD_CONFIG).
+// No secrets in this file. Influx host defaults to the page's own
+// hostname so it works on the boat LAN and over Tailscale alike.
 // ═══════════════════════════════════════════════════════════
-const HOST          = window.location.hostname || '192.168.1.238';
-const INFLUX_HOST   = '192.168.1.238';
-const SK_PORT       = 3000;
-const INFLUX_BASE   = `http://${INFLUX_HOST}:8086`;
-const INFLUX_ORG    = 'Oroboro';
-const INFLUX_BUCKET = 'signalk';
-const INFLUX_TOKEN  = '_ehS1A3X3dmlkDKZNNfZaOfrC2r1zD24HhMNiozyLd_t1Br9DX6T4QqebV4nBEEgtSQlUkTBsSylA3_-xtY5PA==';
+const CFG           = (typeof DASHBOARD_CONFIG !== 'undefined') ? DASHBOARD_CONFIG : {};
+const HOST          = (CFG.signalk && CFG.signalk.host) || window.location.hostname || 'localhost';
+const SK_PORT       = (CFG.signalk && CFG.signalk.port) || 3000;
+const INFLUX_HOST   = (CFG.influx && CFG.influx.host) || window.location.hostname || 'localhost';
+const INFLUX_PORT   = (CFG.influx && CFG.influx.port) || 8086;
+const INFLUX_BASE   = `http://${INFLUX_HOST}:${INFLUX_PORT}`;
+const INFLUX_ORG    = (CFG.influx && CFG.influx.org) || 'Oroboro';
+const INFLUX_BUCKET = (CFG.influx && CFG.influx.bucket) || 'signalk';
+const INFLUX_TOKEN  = (CFG.influx && CFG.influx.token) || '';
 const WS_URL        = `ws://${HOST}:${SK_PORT}/signalk/v1/stream?subscribe=none`;
 
 // ═══════════════════════════════════════════════════════════
@@ -764,6 +769,10 @@ function parseInfluxCSV(csv) {
 
 async function loadData() {
   const btn=document.querySelector('.btn-primary');
+  if(!INFLUX_TOKEN){
+    document.getElementById('status-line').textContent='InfluxDB token not configured — add an influx section to config.js on the Pi (see repo README)';
+    return;
+  }
   btn.textContent='Loading…'; btn.disabled=true;
   document.getElementById('status-line').textContent='Fetching data from InfluxDB…';
 
