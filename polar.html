@@ -697,12 +697,14 @@ function showPointPopup(ll){
   });
   if(!best) return;
   const perf=ptPerf(best);
+  const tgt=getOfficialSpeed(best.tws,best.twa);
   const f=(v,dec)=>v==null?'—':(+v).toFixed(dec);
   const t=new Date(best.time);
   const rows=[
     ['STW',f(best.stw,1)+' kt'],['SOG',f(best.sog,1)+' kt'],
     ['TWS',f(best.tws,1)+' kt'],['AWS',f(best.aws,1)+' kt'],
     ['TWA',f(best.twa,0)+'°'],['AWA',f(best.awa,0)+'°'],
+    ['VPP tgt',tgt>0?tgt.toFixed(1)+' kt':'—'],
     ['Perf',perf==null?'— (no target)':(perf*100).toFixed(0)+'%']
   ];
   const html='<div style="font-family:Rajdhani,sans-serif;font-size:13px;min-width:130px;">'
