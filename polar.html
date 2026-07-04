@@ -87,6 +87,7 @@ table.ptable{border-collapse:collapse;font-size:10px;width:100%;min-width:480px;
 
 /* TRACK MAP */
 #map-container{height:340px;position:relative;}
+@media (min-width:900px){#map-container{height:64vh;min-height:500px;}}
 #track-map{height:100%;width:100%;}
 .leaflet-container{background:#0a0e14;}
 .map-stats-overlay{position:absolute;top:8px;right:8px;background:rgba(10,14,20,0.88);border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:9px;z-index:500;pointer-events:none;}
@@ -676,6 +677,7 @@ applyMode();
 // ═══════════════════════════════════════════════════════════
 // Leaflet Track Map
 // ═══════════════════════════════════════════════════════════
+window.addEventListener('resize',()=>{try{map.invalidateSize();}catch(e){}});
 const map=L.map('track-map',{zoomControl:true,attributionControl:true}).setView([37.09,25.15],12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
   attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -685,6 +687,31 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 let trackLayers=[], markerLayers=[], boatMarker=null;
 
 function ptPerf(pt){const o=getOfficialSpeed(pt.tws,pt.twa);return o>0?pt.stw/o:null;}
+
+function showPointPopup(ll){
+  let best=null,bd=Infinity;
+  trackData.forEach(p=>{
+    if(!p.lat||!p.lon) return;
+    const d=(p.lat-ll.lat)*(p.lat-ll.lat)+(p.lon-ll.lng)*(p.lon-ll.lng);
+    if(d<bd){bd=d;best=p;}
+  });
+  if(!best) return;
+  const perf=ptPerf(best);
+  const f=(v,dec)=>v==null?'—':(+v).toFixed(dec);
+  const t=new Date(best.time);
+  const rows=[
+    ['STW',f(best.stw,1)+' kt'],['SOG',f(best.sog,1)+' kt'],
+    ['TWS',f(best.tws,1)+' kt'],['AWS',f(best.aws,1)+' kt'],
+    ['TWA',f(best.twa,0)+'°'],['AWA',f(best.awa,0)+'°'],
+    ['Perf',perf==null?'— (no target)':(perf*100).toFixed(0)+'%']
+  ];
+  const html='<div style="font-family:Rajdhani,sans-serif;font-size:13px;min-width:130px;">'
+    +'<div style="font-weight:700;margin-bottom:5px;border-bottom:1px solid #ccc;padding-bottom:3px;">'
+    +t.toLocaleDateString([],{day:'numeric',month:'short'})+' '+t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div>'
+    +rows.map(r=>'<div style="display:flex;justify-content:space-between;gap:14px;line-height:1.5;"><span style="color:#556;">'+r[0]+'</span><span style="font-weight:600;">'+r[1]+'</span></div>').join('')
+    +'</div>';
+  L.popup({autoPan:true}).setLatLng([best.lat,best.lon]).setContent(html).openOn(map);
+}
 function getPerfColor(p){
   if(p==null) return '#64748b';   // gray — outside polar range (no target)
   if(p>=0.95) return '#22c55e';   // green — at/above polar
@@ -716,8 +743,12 @@ function renderTrack() {
     if(seg.pts.length<2) return;
     const coords=seg.pts.filter(p=>p.lat&&p.lon).map(p=>[p.lat,p.lon]);
     if(coords.length<2) return;
-    const pl=L.polyline(coords,{color:seg.color,weight:3,opacity:0.9}).addTo(map);
+    const pl=L.polyline(coords,{color:seg.color,weight:3,opacity:0.9,interactive:false}).addTo(map);
     trackLayers.push(pl);
+    // Invisible fat line on top = generous tap target (fingers on a phone)
+    const hit=L.polyline(coords,{color:'#000',opacity:0.001,weight:18}).addTo(map);
+    hit.on('click',e=>showPointPopup(e.latlng));
+    trackLayers.push(hit);
   });
 
   // Tack/jibe markers: large heading changes
@@ -806,25 +837,28 @@ async function loadData() {
   const minSOG=parseFloat(document.getElementById('minSOG').value);
 
   try {
-    const [wsData,waData,bsData,latData,lonData,cogData] = await Promise.all([
+    const [wsData,waData,bsData,latData,lonData,cogData,sogData] = await Promise.all([
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.speedApparent")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.angleApparent")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.speedThroughWater")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position")|>filter(fn:(r)=>r._field=="lat")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
       fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position")|>filter(fn:(r)=>r._field=="lon")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.courseOverGroundTrue")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`)
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.courseOverGroundTrue")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
+      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.speedOverGround")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`)
     ]);
 
     const awsRaw=parseInfluxCSV(wsData), awaRaw=parseInfluxCSV(waData), bsRaw=parseInfluxCSV(bsData);
     const latRaw=parseInfluxCSV(latData), lonRaw=parseInfluxCSV(lonData), cogRaw=parseInfluxCSV(cogData);
+    const sogRaw=parseInfluxCSV(sogData);
 
     const toEpoch=t=>Math.round(new Date(t).getTime()/30000)*30000;
-    const awsMap={},awaMap={},latMap={},lonMap={},cogMap={};
+    const awsMap={},awaMap={},latMap={},lonMap={},cogMap={},sogMap={};
     awsRaw.forEach(r=>{awsMap[toEpoch(r.time)]=r.value;});
     awaRaw.forEach(r=>{awaMap[toEpoch(r.time)]=r.value;});
     latRaw.forEach(r=>{latMap[toEpoch(r.time)]=r.value;});
     lonRaw.forEach(r=>{lonMap[toEpoch(r.time)]=r.value;});
     cogRaw.forEach(r=>{cogMap[toEpoch(r.time)]=r.value*(180/Math.PI);});
+    sogRaw.forEach(r=>{sogMap[toEpoch(r.time)]=r.value*1.94384;});
 
     const newPts=[], newTrack=[];
     bsRaw.forEach(r=>{
@@ -839,7 +873,7 @@ async function loadData() {
       const tws=Math.sqrt(twx*twx+twy*twy);
       const twa=Math.abs(Math.atan2(twy,twx)*(180/Math.PI));
       if(twa>=20&&twa<=180&&tws>2) {
-        const pt={twa,tws,stw,awa,aws,time:r.time,lat:latMap[epoch]||null,lon:lonMap[epoch]||null,cog:cogMap[epoch]||null};
+        const pt={twa,tws,stw,awa,aws,time:r.time,lat:latMap[epoch]||null,lon:lonMap[epoch]||null,cog:cogMap[epoch]||null,sog:sogMap[epoch]!=null?sogMap[epoch]:null};
         newPts.push(pt);
         if(pt.lat&&pt.lon) newTrack.push(pt);
       }
