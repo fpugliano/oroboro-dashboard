@@ -132,9 +132,15 @@ body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, b
     <div class="live-cell"><div class="live-lbl">TWS</div><div class="live-val" id="l-tws" style="color:var(--cyan)">—<span class="live-unit"> kt</span></div></div>
     <div class="live-cell"><div class="live-lbl">TWA</div><div class="live-val" id="l-twa">—<span class="live-unit">°</span></div></div>
     <div class="live-cell"><div class="live-lbl">AWA</div><div class="live-val" id="l-awa">—<span class="live-unit">°</span></div></div>
-    <div class="live-cell"><div class="live-lbl">STW</div><div class="live-val" id="l-stw">—<span class="live-unit"> kt</span></div></div>
-    <div class="live-cell"><div class="live-lbl">Polar BSP</div><div class="live-val" id="l-pbsp">—<span class="live-unit"> kt</span></div></div>
-    <div class="live-cell"><div class="live-lbl">Perf</div><div class="live-val" id="l-perf">—</div></div>
+    <div class="live-cell" style="flex:2;">
+      <div class="live-lbl">Speed / target</div>
+      <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;flex-wrap:wrap;">
+        <span class="live-val" id="l-stw" style="font-size:22px;">—</span>
+        <span id="l-tgt" style="font-size:13px;color:#8899aa;">/ — kt</span>
+        <span id="l-delta" style="display:none;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:600;"></span>
+      </div>
+      <div class="vmg-sub" id="l-perf">—</div>
+    </div>
   </div>
   <div class="vmg-row">
     <div class="vmg-cell"><div class="vmg-lbl">VMG</div><div class="vmg-val" id="l-vmg" style="color:var(--green)">—</div><div class="vmg-sub" id="l-vmg-tgt">target —</div></div>
@@ -1063,18 +1069,28 @@ function updateLive() {
   set('l-tws',tws.toFixed(1)+'<span class="live-unit"> kt</span>');
   set('l-twa',twa.toFixed(0)+'<span class="live-unit">°</span>');
   set('l-awa',awaDeg.toFixed(0)+'<span class="live-unit">°</span>');
-  set('l-stw',_stw.toFixed(1)+'<span class="live-unit"> kt</span>');
+  set('l-stw',_stw.toFixed(1));
   set('l-sog',_sog.toFixed(1)+'<span class="live-unit"> kt</span>');
   document.getElementById('l-cog').textContent='COG '+_cog.toFixed(0)+'°';
 
   const polar=getOfficialSpeed(tws,twa);
-  set('l-pbsp',polar>0?polar.toFixed(1)+'<span class="live-unit"> kt</span>':'—');
+  set('l-tgt',polar>0?'/ '+polar.toFixed(1)+' kt':'/ — kt');
+  const chip=document.getElementById('l-delta');
   let perfPct=null;
   if(polar>0&&_stw>0){
     perfPct=_stw/polar*100;
-    const cls=perfPct>=90?'pg':perfPct>=75?'po':'pr';
-    set('l-perf',`<span class="perf-pill ${cls}">${perfPct.toFixed(0)}%</span>`);
-  } else set('l-perf','—');
+    const delta=_stw-polar;
+    chip.style.display='inline-block';
+    if(delta>=0){ chip.style.background='#14532d'; chip.style.color='#86efac'; chip.textContent='+'+delta.toFixed(1)+' kt'; }
+    else if(delta>=-1.0){ chip.style.background='#78350f'; chip.style.color='#fcd34d'; chip.textContent=delta.toFixed(1)+' kt'; }
+    else { chip.style.background='#7f1d1d'; chip.style.color='#fca5a5'; chip.textContent=delta.toFixed(1)+' kt'; }
+    const col=perfPct>=90?'#22c55e':perfPct>=75?'#f59e0b':'#ef4444';
+    set('l-perf',`<span style="color:${col}">${perfPct.toFixed(0)}% of polar</span>`);
+  } else {
+    if(_stw>1&&twa>130){ chip.style.display='inline-block'; chip.style.background='#1e293b'; chip.style.color='#94a3b8'; chip.textContent='no target'; }
+    else chip.style.display='none';
+    set('l-perf','—');
+  }
   updateGauge(perfPct);
   if(perfPct!==null&&_stw>0.5){
     const now=Date.now();
