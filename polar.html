@@ -210,11 +210,11 @@ body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, b
   <div id="track-map"></div>
   <div class="map-stats-overlay" id="map-stats" style="display:none;"></div>
   <div class="map-legend-overlay">
-    <div><div class="mleg-line" style="background:#ff8c00"></div><span style="color:#fff">4-6kt TWS</span></div>
-    <div><div class="mleg-line" style="background:#f59e0b"></div><span style="color:#fff">6-8kt TWS</span></div>
-    <div><div class="mleg-line" style="background:#22c55e"></div><span style="color:#fff">8-12kt TWS</span></div>
-    <div><div class="mleg-line" style="background:#00d4ff"></div><span style="color:#fff">12-16kt TWS</span></div>
-    <div><div class="mleg-line" style="background:#a855f7"></div><span style="color:#fff">16-20kt TWS</span></div>
+    <div><div class="mleg-line" style="background:#22c55e"></div><span style="color:#fff">&ge;95% of polar</span></div>
+    <div><div class="mleg-line" style="background:#84cc16"></div><span style="color:#fff">85&ndash;95%</span></div>
+    <div><div class="mleg-line" style="background:#f59e0b"></div><span style="color:#fff">70&ndash;85%</span></div>
+    <div><div class="mleg-line" style="background:#ef4444"></div><span style="color:#fff">&lt;70%</span></div>
+    <div><div class="mleg-line" style="background:#64748b"></div><span style="color:#fff">no polar target</span></div>
     <div><div style="width:10px;height:10px;border-radius:50%;border:2px solid #fff;"></div><span style="color:#fff">Tack/Jibe</span></div>
   </div>
 </div>
@@ -684,23 +684,33 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 
 let trackLayers=[], markerLayers=[], boatMarker=null;
 
+function ptPerf(pt){const o=getOfficialSpeed(pt.tws,pt.twa);return o>0?pt.stw/o:null;}
+function getPerfColor(p){
+  if(p==null) return '#64748b';   // gray — outside polar range (no target)
+  if(p>=0.95) return '#22c55e';   // green — at/above polar
+  if(p>=0.85) return '#84cc16';   // lime
+  if(p>=0.70) return '#f59e0b';   // amber
+  return '#ef4444';               // red — well under target
+}
+function perfBand(p){return p==null?-1:p>=0.95?3:p>=0.85?2:p>=0.70?1:0;}
+
 function renderTrack() {
   trackLayers.forEach(l=>map.removeLayer(l)); trackLayers=[];
   markerLayers.forEach(l=>map.removeLayer(l)); markerLayers=[];
 
   if(!trackData.length) return;
 
-  // Group into segments by TWS color
+  // Group into segments by performance band
   let segs=[], cur=[trackData[0]];
   for(let i=1;i<trackData.length;i++) {
     const prev=trackData[i-1], pt=trackData[i];
     const gapSecs=(new Date(pt.time)-new Date(prev.time))/1000;
-    if(gapSecs>120||getTWSBucket(pt.tws)!==getTWSBucket(prev.tws)) {
-      segs.push({pts:cur,color:getTWSColor(cur[0].tws)});
+    if(gapSecs>120||perfBand(ptPerf(pt))!==perfBand(ptPerf(prev))) {
+      segs.push({pts:cur,color:getPerfColor(ptPerf(cur[0]))});
       cur=[pt];
     } else { cur.push(pt); }
   }
-  segs.push({pts:cur,color:getTWSColor(cur[0].tws)});
+  segs.push({pts:cur,color:getPerfColor(ptPerf(cur[0]))});
 
   segs.forEach(seg=>{
     if(seg.pts.length<2) return;
@@ -871,10 +881,25 @@ function updateStats() {
   document.getElementById('s-perf').textContent=avg.toFixed(0)+'%';
   document.getElementById('s-perf').style.color=avg>=90?'#22c55e':avg>=75?'#f59e0b':'#ef4444';
   document.getElementById('s-maxstw').textContent=Math.max(...sailingData.map(d=>d.stw)).toFixed(1)+' kt';
-  const up=sailingData.filter(d=>d.twa<90).map(d=>d.stw*Math.cos(d.twa*Math.PI/180));
-  const dn=sailingData.filter(d=>d.twa>90).map(d=>d.stw*Math.cos((180-d.twa)*Math.PI/180));
-  document.getElementById('s-vmgup').textContent=up.length?Math.max(...up).toFixed(1)+' kt':'—';
-  document.getElementById('s-vmgdn').textContent=dn.length?Math.max(...dn).toFixed(1)+' kt':'—';
+  // Best VMG: 60s sustained (avg of two consecutive 30s samples), gated to
+  // true beat (TWA<70°) / true run (TWA>120°) so reaching doesn't count.
+  function bestSustainedVMG(loGate,hiGate){
+    let best=null;
+    const vmg=d=>d.stw*Math.cos((d.twa<90?d.twa:180-d.twa)*Math.PI/180);
+    for(let i=1;i<sailingData.length;i++){
+      const a=sailingData[i-1],b=sailingData[i];
+      if(a.twa<=loGate||a.twa>=hiGate||b.twa<=loGate||b.twa>=hiGate) continue;
+      const dt=(new Date(b.time)-new Date(a.time))/1000;
+      if(dt<=0||dt>40) continue; // must be consecutive samples
+      const avg=(vmg(a)+vmg(b))/2;
+      if(best===null||avg>best) best=avg;
+    }
+    return best;
+  }
+  const up=bestSustainedVMG(0,70);
+  const dn=bestSustainedVMG(120,181);
+  document.getElementById('s-vmgup').textContent=up!==null?up.toFixed(1)+' kt':'—';
+  document.getElementById('s-vmgdn').textContent=dn!==null?dn.toFixed(1)+' kt':'—';
   document.getElementById('s-hrs').textContent=(n*30/3600).toFixed(1)+' hr';
 }
 
