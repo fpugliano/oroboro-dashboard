@@ -372,7 +372,7 @@ async function initialLoad() {
   // Parallel: SK anchor state + proxy config + own vessel identity
   const [skData, proxyCfg] = await Promise.all([
     loadSkAnchorState().catch(() => null),
-    loadProxyConfig(),
+    loadProxyConfig().catch(() => null),
     fetch(SELF_URL).then(r => r.ok ? r.json() : null).then(d => {
       if (!d) return;
       const mmsi = d.mmsi && d.mmsi.value;
@@ -605,7 +605,7 @@ function switchTab(tabId) {
     b.classList.toggle('active', b.dataset.tab === tabId);
   });
   S.activeTab = tabId;
-  if (tabId === 'tab-map') { setTimeout(invalidateMap, 50); }
+  if (tabId === 'tab-map') { setTimeout(() => { if (_map) invalidateMap(); else initMap(); }, 50); }
   if (tabId === 'tab-settings') renderSettings();
 }
 
