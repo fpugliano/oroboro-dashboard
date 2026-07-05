@@ -1323,7 +1323,6 @@ function scaleToFit() {
 window.addEventListener('resize', scaleToFit);
 
 window.addEventListener('load', () => {
-  document.getElementById('history-btn').href = 'http://' + window.location.hostname + ':3002/d/ajccmj/s-v-oroboro';
   // Defer one frame so bottom bar has a real offsetHeight before we subtract it
   requestAnimationFrame(scaleToFit);
   document.documentElement.requestFullscreen?.()?.catch(() => {});
@@ -1359,7 +1358,7 @@ window.addEventListener('load', () => {
           : location.protocol + '//' + location.hostname + ':' + (window.DASHBOARD_CONFIG && window.DASHBOARD_CONFIG.signalk && window.DASHBOARD_CONFIG.signalk.port ? window.DASHBOARD_CONFIG.signalk.port : '3000')))
       + "/signalk/v1/api/vessels/self/navigation/anchor";
     function updateAnchorBtn(set) {
-      var btn = document.getElementById("anchor-btn");
+      var btn = document.getElementById("anchor-btn") || document.getElementById("burger-btn");
       if (!btn) return;
       if (set) {
         btn.style.background  = "rgba(248,113,113,0.16)";
