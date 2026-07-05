@@ -115,6 +115,8 @@ button.btn-sec{background:var(--card);color:#ffffff;border:1px solid var(--borde
 .stat .sval{font-size:15px;font-weight:500;}
 #status-line{text-align:center;padding:5px 12px;font-size:10px;color:#aabbcc;}
 body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, body.simple #raw-toggle-wrap {display:none;}
+body.simple .stat-vmg{display:none;}
+body:not(.simple) .stat-trim{display:none;}
 </style>
 </head>
 <body>
@@ -122,6 +124,10 @@ body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, b
 <div id="top-bar">
   <a href="oroboro.html">← Dashboard</a>
   <h1>Polar Performance</h1>
+  <div id="ref-seg" style="display:flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-right:6px;font-size:11px;">
+    <button id="ref-vpp" style="background:var(--card);color:#aabbcc;border:none;padding:5px 8px;font-family:inherit;cursor:pointer;">VPP</button>
+    <button id="ref-best" style="background:var(--card);color:#aabbcc;border:none;padding:5px 8px;font-family:inherit;cursor:pointer;">My best</button>
+  </div>
   <button id="mode-btn" style="background:var(--card);color:#aabbcc;border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:11px;font-family:inherit;cursor:pointer;margin-right:8px;">Analysis</button>
   <div id="conn-badge"><div id="conn-dot"></div><span id="conn-txt" style="color:#f59e0b;font-size:10px;">Connecting</span></div>
 </div>
@@ -154,7 +160,7 @@ body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, b
       <path d="M12,64 A48,48 0 0 1 108,64" fill="none" stroke="#1a2332" stroke-width="9" stroke-linecap="round" pathLength="100"/>
       <path id="gauge-arc" d="M12,64 A48,48 0 0 1 108,64" fill="none" stroke="#22c55e" stroke-width="9" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/>
       <text id="gauge-txt" x="60" y="52" text-anchor="middle" font-size="20" font-weight="600" fill="#ffffff">—</text>
-      <text x="60" y="66" text-anchor="middle" font-size="8" fill="#aabbcc">of polar target</text>
+      <text x="60" y="66" text-anchor="middle" font-size="8" fill="#aabbcc" id="gauge-sub">of polar target</text>
     </svg>
     <div style="flex:1;min-width:0;">
       <div style="font-size:9px;color:#aabbcc;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Performance — last 5 min</div>
@@ -267,8 +273,10 @@ body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, b
     <div class="stat"><div class="slbl">Points</div><div class="sval" id="s-pts" style="color:var(--cyan)">—</div></div>
     <div class="stat"><div class="slbl">Avg Perf</div><div class="sval" id="s-perf" style="color:var(--orange)">—</div></div>
     <div class="stat"><div class="slbl">Max STW</div><div class="sval" id="s-maxstw" style="color:var(--green)">—</div></div>
-    <div class="stat"><div class="slbl">Best VMG↑</div><div class="sval" id="s-vmgup" style="color:var(--cyan)">—</div></div>
-    <div class="stat"><div class="slbl">Best VMG↓</div><div class="sval" id="s-vmgdn" style="color:var(--cyan)">—</div></div>
+    <div class="stat stat-vmg"><div class="slbl">Best VMG↑</div><div class="sval" id="s-vmgup" style="color:var(--cyan)">—</div></div>
+    <div class="stat stat-vmg"><div class="slbl">Best VMG↓</div><div class="sval" id="s-vmgdn" style="color:var(--cyan)">—</div></div>
+    <div class="stat stat-trim"><div class="slbl">Time on target</div><div class="sval" id="s-tot" style="color:var(--green)">—</div></div>
+    <div class="stat stat-trim"><div class="slbl">Avg gap</div><div class="sval" id="s-gap" style="color:var(--orange)">—</div></div>
     <div class="stat"><div class="slbl">Sail Hours</div><div class="sval" id="s-hrs" style="color:var(--orange)">—</div></div>
   </div>
   <div id="status-line">No data loaded — press Load Data.</div>
@@ -332,7 +340,7 @@ const OPTIMAL_VMG = {
 };
 
 const TABLE_TWA = [52,60,70,90,110,130,150,170];
-const TABLE_TWS = [4,6,8,10,12,14,16];
+const TABLE_TWS = [4,6,8,10,12,14,16,20,25];   // 20/25: achieved-only rows, no VPP data
 
 const OROBORO_BEST = {
   4:{52:null,60:null,70:null,90:null,110:null,130:null,150:null,170:null},
@@ -345,7 +353,7 @@ const OROBORO_BEST = {
 };
 
 const TWS_COLORS = {'4-6':'#ff8c00','6-8':'#f59e0b','8-12':'#22c55e','12-16':'#00d4ff','16-20':'#a855f7','20+':'#ef4444'};
-const ROW_TO_BUCKET = {4:'4-6',6:'6-8',8:'8-12',10:'8-12',12:'12-16',14:'12-16',16:'16-20'};
+const ROW_TO_BUCKET = {4:'4-6',6:'6-8',8:'8-12',10:'8-12',12:'12-16',14:'12-16',16:'16-20',20:'20+',25:'20+'};
 
 function getTWSBucket(t) {
   if(t>=4&&t<6) return '4-6'; if(t>=6&&t<8) return '6-8';
@@ -372,6 +380,40 @@ function getOfficialSpeed(tws, twa) {
   if(!b11||!b12||!b21||!b22) return 0;
   return b11*(1-dTWS)*(1-dTWA)+b12*(1-dTWS)*dTWA+b21*dTWS*(1-dTWA)+b22*dTWS*dTWA;
 }
+
+// ── Reference: VPP (theoretical) vs My Best (achieved) ──────
+// getBestSpeed interpolates over the sparse achieved table; returns 0
+// where you have no record yet (honest "no reference").
+function getBestSpeed(tws,twa){
+  const rows=TABLE_TWS.filter(t=>OROBORO_BEST[t]&&Object.keys(OROBORO_BEST[t]).length);
+  if(!rows.length) return 0;
+  const ctws=Math.max(rows[0],Math.min(tws,rows[rows.length-1]));
+  let lo=rows[0],hi=rows[rows.length-1];
+  for(let i=0;i<rows.length-1;i++){if(ctws>=rows[i]&&ctws<=rows[i+1]){lo=rows[i];hi=rows[i+1];break;}}
+  function rowSpeed(row){
+    const angs=Object.keys(OROBORO_BEST[row]).map(Number).sort((a,b)=>a-b);
+    if(!angs.length) return null;
+    if(twa<angs[0]-10||twa>angs[angs.length-1]+10) return null;
+    const cta=Math.max(angs[0],Math.min(twa,angs[angs.length-1]));
+    let a1=angs[0],a2=angs[angs.length-1];
+    for(let i=0;i<angs.length-1;i++){if(cta>=angs[i]&&cta<=angs[i+1]){a1=angs[i];a2=angs[i+1];break;}}
+    // don't bridge huge gaps in sparse data (e.g. only 52° and 170° recorded)
+    if(a2-a1>45) return null;
+    const f=a2===a1?0:(cta-a1)/(a2-a1);
+    return OROBORO_BEST[row][a1]*(1-f)+OROBORO_BEST[row][a2]*f;
+  }
+  const v1=rowSpeed(lo),v2=rowSpeed(hi);
+  if(v1==null&&v2==null) return 0;
+  if(v1==null) return v2;
+  if(v2==null) return v1;
+  const f=hi===lo?0:(ctws-lo)/(hi-lo);
+  return v1*(1-f)+v2*f;
+}
+
+let refMode=localStorage.getItem('polarRef')||null; // null = follow view mode
+function activeRef(){ return refMode || ((typeof uiMode!=='undefined'&&uiMode==='analysis')?'vpp':'best'); }
+function getRefSpeed(tws,twa){ return activeRef()==='best'?getBestSpeed(tws,twa):getOfficialSpeed(tws,twa); }
+function refLabel(){ return activeRef()==='best'?'my best':'polar'; }
 
 function getOptimalVMG(tws,side) {
   tws=Math.min(tws,16);
@@ -404,7 +446,9 @@ function applyMode(){
   document.body.classList.toggle('simple',uiMode==='simple');
   document.getElementById('mode-btn').textContent=uiMode==='simple'?'Analysis':'Simple';
   showRaw = uiMode==='analysis' && document.getElementById('toggle-raw').checked;
+  paintRefSeg();
   drawPolar();
+  if(typeof renderTrack==='function'&&trackData.length){renderTrack();updateStats();}
 }
 document.getElementById('mode-btn').addEventListener('click',()=>{
   uiMode=uiMode==='simple'?'analysis':'simple';
@@ -412,11 +456,24 @@ document.getElementById('mode-btn').addEventListener('click',()=>{
   applyMode();
 });
 
+function paintRefSeg(){
+  const r=activeRef();
+  const on={background:'#1e3a5f',color:'#60a5fa'}, off={background:'var(--card)',color:'#aabbcc'};
+  Object.assign(document.getElementById('ref-vpp').style, r==='vpp'?on:off);
+  Object.assign(document.getElementById('ref-best').style, r==='best'?on:off);
+}
+function refChanged(){
+  paintRefSeg();
+  drawPolar(); renderTrack(); updateStats();
+}
+document.getElementById('ref-vpp').addEventListener('click',()=>{refMode='vpp';localStorage.setItem('polarRef','vpp');refChanged();});
+document.getElementById('ref-best').addEventListener('click',()=>{refMode='best';localStorage.setItem('polarRef','best');refChanged();});
+
 function angDiff(a,b){let d=Math.abs(a-b)%360;return d>180?360-d:d;}
 
 function updateBestFromData(pts) {
   const binTWA=twa=>TABLE_TWA.reduce((a,b)=>Math.abs(b-twa)<Math.abs(a-twa)?b:a);
-  const binTWS=tws=>{for(const t of TABLE_TWS)if(tws<t+1)return t;return 16;};
+  const binTWS=tws=>{if(tws>28)return null;return TABLE_TWS.reduce((a,b)=>Math.abs(b-tws)<Math.abs(a-tws)?b:a);};
   pts.forEach((d,i)=>{
     // Skip maneuvering transients: heading swing >25° across neighbors within 90s
     const prev=pts[i-1],next=pts[i+1];
@@ -425,6 +482,7 @@ function updateBestFromData(pts) {
       if(span<=90&&angDiff(prev.cog,next.cog)>25) return;
     }
     const ta=binTWA(d.twa),tw=binTWS(d.tws);
+    if(tw===null) return;
     if(Math.abs(d.twa-ta)<=10){
       if(!OROBORO_BEST[tw])OROBORO_BEST[tw]={};
       if(!OROBORO_BEST[tw][ta]||d.stw>OROBORO_BEST[tw][ta]) OROBORO_BEST[tw][ta]=+d.stw.toFixed(2);
@@ -621,20 +679,23 @@ function drawCanvas(canvasId, mode) {
     ctx.stroke(); ctx.setLineDash([]);
 
     // My Best solid curves, colored by TWS — filtered by active bands, with gap-to-target shading
-    [4,6,8,10,12,14,16].filter(tws=>activeBuckets.has(ROW_TO_BUCKET[tws])).forEach(tws=>{
+    TABLE_TWS.filter(tws=>activeBuckets.has(ROW_TO_BUCKET[tws])).forEach(tws=>{
       const col=getTWSColor(tws);
       const pts=TABLE_TWA.map(twa=>{
         const spd=OROBORO_BEST[tws]?.[twa];
         const vpp=OFFICIAL_POLAR[tws]?.[twa];
-        return (spd&&vpp)?{twa,spd,vpp}:null;
+        return spd?{twa,spd,vpp:vpp||null}:null;
       }).filter(Boolean);
       if(pts.length<2) return;
-      // Gap fill between VPP target and achieved
-      ctx.beginPath();
-      pts.forEach((pp,j)=>{const p=toXY(pp.twa,pp.spd); j===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y);});
-      for(let j=pts.length-1;j>=0;j--){const p=toXY(pts[j].twa,pts[j].vpp); ctx.lineTo(p.x,p.y);}
-      ctx.closePath();
-      ctx.fillStyle=col+'22'; ctx.fill();
+      // Gap fill between VPP target and achieved (only over the VPP-covered span)
+      const shaded=pts.filter(pp=>pp.vpp);
+      if(shaded.length>1){
+        ctx.beginPath();
+        shaded.forEach((pp,j)=>{const p=toXY(pp.twa,pp.spd); j===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y);});
+        for(let j=shaded.length-1;j>=0;j--){const p=toXY(shaded[j].twa,shaded[j].vpp); ctx.lineTo(p.x,p.y);}
+        ctx.closePath();
+        ctx.fillStyle=col+'22'; ctx.fill();
+      }
       // Achieved line
       ctx.strokeStyle=col; ctx.lineWidth=2; ctx.setLineDash([]);
       ctx.beginPath();
@@ -695,7 +756,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 
 let trackLayers=[], markerLayers=[], boatMarker=null;
 
-function ptPerf(pt){const o=getOfficialSpeed(pt.tws,pt.twa);return o>0?pt.stw/o:null;}
+function ptPerf(pt){const o=getRefSpeed(pt.tws,pt.twa);return o>0?pt.stw/o:null;}
 
 function showPointPopup(ll){
   let best=null,bd=Infinity;
@@ -706,14 +767,15 @@ function showPointPopup(ll){
   });
   if(!best) return;
   const perf=ptPerf(best);
-  const tgt=getOfficialSpeed(best.tws,best.twa);
+  const tgt=getRefSpeed(best.tws,best.twa);
+  const tgtLabel=activeRef()==='best'?'Best tgt':'VPP tgt';
   const f=(v,dec)=>v==null?'—':(+v).toFixed(dec);
   const t=new Date(best.time);
   const rows=[
     ['STW',f(best.stw,1)+' kt'],['SOG',f(best.sog,1)+' kt'],
     ['TWS',f(best.tws,1)+' kt'],['AWS',f(best.aws,1)+' kt'],
     ['TWA',f(best.twa,0)+'°'],['AWA',f(best.awa,0)+'°'],
-    ['VPP tgt',tgt>0?tgt.toFixed(1)+' kt':'—'],
+    [tgtLabel,tgt>0?tgt.toFixed(1)+' kt':'—'],
     ['Perf',perf==null?'— (no target)':(perf*100).toFixed(0)+'%']
   ];
   const html='<div style="font-family:Rajdhani,sans-serif;font-size:13px;min-width:130px;">'
@@ -921,7 +983,20 @@ function updateStats() {
   const n=sailingData.length;
   document.getElementById('s-pts').textContent=n||'—';
   if(!n){['s-perf','s-maxstw','s-vmgup','s-vmgdn','s-hrs'].forEach(id=>document.getElementById(id).textContent='—');return;}
-  const perfs=sailingData.map(d=>{const o=getOfficialSpeed(d.tws,d.twa);return o>0?d.stw/o:0;}).filter(p=>p>0);
+  const perfs=sailingData.map(d=>{const o=getRefSpeed(d.tws,d.twa);return o>0?d.stw/o:0;}).filter(p=>p>0);
+  // Cruiser trim cards: only samples where the reference has a value
+  const refSamples=sailingData.map(d=>({d,o:getRefSpeed(d.tws,d.twa)})).filter(s=>s.o>0);
+  if(refSamples.length){
+    const onTgt=refSamples.filter(s=>s.d.stw/s.o>=0.85).length/refSamples.length*100;
+    const gap=refSamples.reduce((sum,s)=>sum+(s.d.stw-s.o),0)/refSamples.length;
+    document.getElementById('s-tot').textContent=onTgt.toFixed(0)+'%';
+    document.getElementById('s-tot').style.color=onTgt>=60?'var(--green)':onTgt>=35?'var(--orange)':'#f87171';
+    document.getElementById('s-gap').textContent=(gap>=0?'+':'−')+Math.abs(gap).toFixed(1)+' kt';
+    document.getElementById('s-gap').style.color=gap>=0?'var(--green)':gap>=-0.5?'var(--orange)':'#f87171';
+  } else {
+    document.getElementById('s-tot').textContent='—';
+    document.getElementById('s-gap').textContent='—';
+  }
   const avg=perfs.reduce((a,b)=>a+b,0)/perfs.length*100;
   document.getElementById('s-perf').textContent=avg.toFixed(0)+'%';
   document.getElementById('s-perf').style.color=avg>=90?'#22c55e':avg>=75?'#f59e0b':'#ef4444';
@@ -1006,6 +1081,8 @@ let wsConn=null,reconnTimer=null;
 const perfHistory=[];
 function updateGauge(pct){
   const arc=document.getElementById('gauge-arc'), txt=document.getElementById('gauge-txt');
+  const sub=document.getElementById('gauge-sub');
+  if(sub) sub.textContent=activeRef()==='best'?'of my best':'of polar target';
   if(pct===null){ arc.setAttribute('stroke-dasharray','0 100'); txt.textContent='—'; return; }
   const col=pct>=90?'#22c55e':pct>=75?'#f59e0b':'#ef4444';
   arc.setAttribute('stroke',col);
@@ -1076,7 +1153,7 @@ function updateLive() {
   set('l-sog',_sog.toFixed(1)+'<span class="live-unit"> kt</span>');
   document.getElementById('l-cog').textContent='COG '+_cog.toFixed(0)+'°';
 
-  const polar=getOfficialSpeed(tws,twa);
+  const polar=getRefSpeed(tws,twa);
   set('l-tgt',polar>0?'/ '+polar.toFixed(1)+' kt':'/ — kt');
   const chip=document.getElementById('l-delta');
   let perfPct=null;
@@ -1088,9 +1165,9 @@ function updateLive() {
     else if(delta>=-1.0){ chip.style.background='#78350f'; chip.style.color='#fcd34d'; chip.textContent=delta.toFixed(1)+' kt'; }
     else { chip.style.background='#7f1d1d'; chip.style.color='#fca5a5'; chip.textContent=delta.toFixed(1)+' kt'; }
     const col=perfPct>=90?'#22c55e':perfPct>=75?'#f59e0b':'#ef4444';
-    set('l-perf',`<span style="color:${col}">${perfPct.toFixed(0)}% of polar</span>`);
+    set('l-perf',`<span style="color:${col}">${perfPct.toFixed(0)}% of ${refLabel()}</span>`);
   } else {
-    if(_stw>1&&twa>130){ chip.style.display='inline-block'; chip.style.background='#1e293b'; chip.style.color='#94a3b8'; chip.textContent='no target'; }
+    if(_stw>1){ chip.style.display='inline-block'; chip.style.background='#1e293b'; chip.style.color='#94a3b8'; chip.textContent=activeRef()==='best'?'no record yet':'no target'; }
     else chip.style.display='none';
     set('l-perf','—');
   }
@@ -1126,7 +1203,7 @@ function updateLive() {
     banner.style.background=severe?'#7f1d1d':'#78350f';
     banner.style.color=severe?'#fca5a5':'#fcd34d';
     banner.textContent=`${perfPct.toFixed(0)}% of target — try: ${suggestion}`;
-  } else if(_stw>1 && twa>135){
+  } else if(_stw>1 && twa>135 && activeRef()==='vpp'){
     banner.style.display='block';
     banner.style.background='#1e3a5f';
     banner.style.color='#93c5fd';
