@@ -260,7 +260,7 @@ html, body {
   position: fixed;
   bottom: 0; left: 0; right: 0;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto;
   align-items: center;
   padding-top: 6px;
   padding-right: 12px;
@@ -519,36 +519,32 @@ html, body {
 <div id="bottom-bar">
   <div id="bar-left">
     <button id="fs-btn" title="Toggle fullscreen">⛶</button>
-    <a id="anchor-btn" href="anchor.html" title="Anchor Watch">&#9875;</a>
-    <a href="settings.html" id="settings-btn" title="Settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#7a9abf" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-    </a>
+    <button id="burger-btn" title="Menu" style="background:none;border:1px solid #2a3b5c;border-radius:8px;color:#7a9abf;font-size:18px;padding:4px 12px;cursor:pointer;font-family:inherit;">☰</button>
   </div>
-  <span id="bar-logo"><img src="oroboro-logo-16.jpg" alt="Oroboro"></span>
+  <div id="burger-menu" style="display:none;position:absolute;bottom:calc(100% + 8px);left:8px;background:#131e30;border:1px solid #2a3b5c;border-radius:10px;padding:6px;flex-direction:column;gap:2px;min-width:170px;z-index:200;">
+    <a class="bm-item" href="anchor.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:#c8d6e5;text-decoration:none;border-radius:7px;font-size:14px;">⚓ Anchor watch</a>
+    <a class="bm-item" href="polar.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:#c8d6e5;text-decoration:none;border-radius:7px;font-size:14px;">◔ Polar performance</a>
+    <a class="bm-item" href="#" onclick="event.preventDefault();var url='http://'+window.location.hostname+':3002/d/ajccmj/s-v-oroboro';var w=window.open(url,'_blank');if(!w)window.location.href=url;" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:#c8d6e5;text-decoration:none;border-radius:7px;font-size:14px;">▥ History (Grafana)</a>
+    <a class="bm-item" href="settings.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:#c8d6e5;text-decoration:none;border-radius:7px;font-size:14px;">⚙ Settings</a>
+  </div>
   <div id="bar-right">
-    <a id="polar-btn" href="polar.html" title="Polar">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#7a9abf" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="9"/>
-        <line x1="12" y1="12" x2="12" y2="3"/>
-        <line x1="12" y1="12" x2="19.5" y2="16.5"/>
-      </svg>
-    </a>
-    <a id="history-btn" title="History" target="_blank" onclick="event.preventDefault();var url='http://'+window.location.hostname+':3002/d/ajccmj/s-v-oroboro';var w=window.open(url,'_blank');if(!w)window.location.href=url;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#7a9abf" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="6" y1="20" x2="6" y2="14"/>
-        <line x1="12" y1="20" x2="12" y2="4"/>
-        <line x1="18" y1="20" x2="18" y2="10"/>
-      </svg>
-    </a>
     <div id="conn-status">
       <span class="dot" id="status-dot" style="background:#f87171"></span>
       <span id="status-txt" style="color:#f87171">Offline</span>
     </div>
   </div>
 </div>
+<script>
+(function(){
+  const btn=document.getElementById('burger-btn'), menu=document.getElementById('burger-menu');
+  btn.addEventListener('click',e=>{e.stopPropagation();menu.style.display=menu.style.display==='flex'?'none':'flex';});
+  document.addEventListener('click',e=>{if(!menu.contains(e.target))menu.style.display='none';});
+  menu.querySelectorAll('.bm-item').forEach(a=>{
+    a.addEventListener('mouseenter',()=>a.style.background='#1e3a5f');
+    a.addEventListener('mouseleave',()=>a.style.background='');
+  });
+})();
+</script>
 
 <script>
 'use strict';
@@ -871,6 +867,9 @@ function buildWindRose() {
   el('stop', {offset:'0%',   'stop-color':'#1a2540'}, grad);
   el('stop', {offset:'100%', 'stop-color':'#0a0e14'}, grad);
   el('circle', {r:'128', fill:'url(#wr-bg)', stroke:'#1e2a38', 'stroke-width':'0.5'}, svg);
+
+  // Oroboro logo watermark — faint, centered, behind everything
+  el('image', {href:'oroboro-rose-logo.svg', x:-58, y:-58, width:116, height:116, opacity:'0.10', 'pointer-events':'none'}, svg);
 
   // Ring guides
   el('circle', {r:'94',  fill:'none', stroke:'#1e2a38', 'stroke-dasharray':'3 4', 'stroke-width':'0.5'}, svg);

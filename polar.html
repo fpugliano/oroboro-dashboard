@@ -805,9 +805,12 @@ function renderTrack() {
   for(let i=1;i<trackData.length;i++) {
     const prev=trackData[i-1], pt=trackData[i];
     const gapSecs=(new Date(pt.time)-new Date(prev.time))/1000;
-    if(gapSecs>120||perfBand(ptPerf(pt))!==perfBand(ptPerf(prev))) {
+    if(gapSecs>120) {
       segs.push({pts:cur,color:getPerfColor(ptPerf(cur[0]))});
-      cur=[pt];
+      cur=[pt];                       // real gap: break the line
+    } else if(perfBand(ptPerf(pt))!==perfBand(ptPerf(prev))) {
+      segs.push({pts:cur,color:getPerfColor(ptPerf(cur[0]))});
+      cur=[prev,pt];                  // color change: new segment starts at the shared point
     } else { cur.push(pt); }
   }
   segs.push({pts:cur,color:getPerfColor(ptPerf(cur[0]))});
