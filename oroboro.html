@@ -438,9 +438,9 @@ html, body {
         <div class="stat-v" id="solar-stat" style="color:#f59e0b;font-size:32px">--</div>
         <div class="stat-l">Solar In</div>
       </div>
-      <div class="stat-cell">
-        <div class="stat-v green" id="voltage">--</div>
-        <div class="stat-l">Voltage</div>
+      <div class="stat-cell" id="net-cell">
+        <div class="stat-v green" id="net-power">--</div>
+        <div class="stat-l" id="net-label">Voltage</div>
       </div>
     </div>
   </div>
@@ -1072,6 +1072,40 @@ function silenceAllAlarms() {
 
 const PATH_HANDLERS = {};
 
+let _battV = null, _battA = null;
+
+function updateNetPower() {
+  const valEl  = document.getElementById('net-power');
+  const lblEl  = document.getElementById('net-label');
+  const cellEl = document.getElementById('net-cell');
+  if (!valEl) return;
+  if (_battA === null) {
+    valEl.className        = 'stat-v green';
+    valEl.style.color      = '';
+    valEl.textContent      = _battV !== null ? _battV.toFixed(2) + 'V' : '--';
+    if (lblEl)  lblEl.textContent       = 'Voltage';
+    if (cellEl) cellEl.style.background = '';
+    return;
+  }
+  const netW = _battV * _battA;
+  let color, bg, text;
+  if (netW > 10) {
+    color = '#4ade80'; bg = '#10261a';
+    text  = '+' + Math.round(netW) + ' W';
+  } else if (netW < -10) {
+    color = '#f87171'; bg = '#2a1414';
+    text  = '−' + Math.abs(Math.round(netW)) + ' W';
+  } else {
+    color = '#9ca3af'; bg = 'transparent';
+    text  = '±0 W';
+  }
+  valEl.className        = 'stat-v';
+  valEl.style.color      = color;
+  valEl.textContent      = text;
+  if (cellEl) cellEl.style.background = bg;
+  if (lblEl && _battV !== null) lblEl.textContent = 'NET · ' + _battV.toFixed(1) + ' V';
+}
+
 function buildHandlers() {
   const b   = CFG.battery.instance;
   const inv = CFG.inverter.instance;
@@ -1085,13 +1119,16 @@ function buildHandlers() {
   };
 
   PATH_HANDLERS[`electrical.batteries.${b}.voltage`] = (val) => {
-    document.getElementById('voltage').textContent = val.toFixed(2) + 'V';
+    _battV = val;
+    updateNetPower();
   };
 
   PATH_HANDLERS[`electrical.batteries.${b}.current`] = (val) => {
+    _battA = val;
     const cur = (val >= 0 ? '+' : '') + val.toFixed(1);
     const ba  = document.getElementById('batt-a');
     if (ba) ba.textContent = cur + 'A';
+    updateNetPower();
   };
 
   PATH_HANDLERS[`electrical.chargers.${inv}.chargingMode`] = (_val) => {
