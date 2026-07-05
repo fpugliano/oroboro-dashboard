@@ -356,6 +356,8 @@ function getTWSBucket(t) {
 function getTWSColor(tws) { return TWS_COLORS[getTWSBucket(tws)] || '#888'; }
 
 function getOfficialSpeed(tws, twa) {
+  if(tws>20) return 0;      // beyond polar wind range — reefed/heavy-air sailing has no VPP target
+  tws=Math.min(tws,16);      // 16–20 kt: judge against the 16 kt curve, never extrapolate
   const twsKeys=Object.keys(OFFICIAL_POLAR).map(Number).sort((a,b)=>a-b);
   let tws1=twsKeys[0],tws2=twsKeys[twsKeys.length-1];
   for(let i=0;i<twsKeys.length-1;i++){if(tws>=twsKeys[i]&&tws<=twsKeys[i+1]){tws1=twsKeys[i];tws2=twsKeys[i+1];break;}}
@@ -372,6 +374,7 @@ function getOfficialSpeed(tws, twa) {
 }
 
 function getOptimalVMG(tws,side) {
+  tws=Math.min(tws,16);
   const keys=[4,6,8,10,12,14,16];
   let lo=keys[0],hi=keys[keys.length-1];
   for(let i=0;i<keys.length-1;i++){if(tws>=keys[i]&&tws<=keys[i+1]){lo=keys[i];hi=keys[i+1];break;}}
