@@ -878,8 +878,7 @@ function buildWindRose() {
   const logoG = el('g', {transform:'scale(0.5574) translate(-297.5,-259)', fill:'#ffffff', 'pointer-events':'none'}, svg);
   el('path', {d:SERP_D, opacity:'0.45'}, logoG);
 
-  // Ring guides (outer guide removed — the serpent occupies that radius)
-  el('circle', {r:'94',  fill:'none', stroke:'#1e2a38', 'stroke-dasharray':'3 4', 'stroke-width':'0.5'}, svg);
+  // Ring guides removed — the serpent occupies that zone and the dashes read as outlines on it
 
   // Performance arcs — exactly 4, stroke-width 9
   function polarToXY(angleDeg, r) {
