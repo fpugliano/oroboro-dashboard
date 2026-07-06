@@ -549,6 +549,7 @@ const R2D = 180 / Math.PI;
 
 const twsSamples = [];
 const twsTrend   = [];
+const twsGust    = [];
 let _twsCur = 0;
 const activeAlarms = {};
 
@@ -621,6 +622,7 @@ function updateTrueWind() {
 
   if (twsTrend.length === 0 && twsKts > 0) {
     twsTrend.push(twsKts, twsKts);
+    twsGust.push(twsKts, twsKts);
     drawTrend();
   }
 
@@ -737,10 +739,11 @@ function drawTrend() {
   }
 
   const data = twsTrend;
+  const gdata = twsGust;
   if (data.length < 2) return;
 
-  // Y scale — auto with padding
-  const maxV = Math.max(...data);
+  // Y scale — auto with padding, covering gusts
+  const maxV = Math.max(...data, ...(gdata.length ? gdata : [0]));
   const minV = Math.min(...data);
   const rawRange = maxV - minV || 2;
   const yPad = rawRange * 0.25;
@@ -749,7 +752,8 @@ function drawTrend() {
   const yRange = yMax - yMin;
 
   const toY = v => cY + cH - ((v - yMin) / yRange) * cH;
-  const toX = i => cX + (i / (data.length - 1)) * cW;
+  // Right-anchored true timescale: newest at right edge, 360 samples = 1 hour
+  const toX = i => cX + cW * (1 - (data.length - 1 - i) / 359);
 
   // Y ticks — pick nice round values
   const step = niceStep(yRange / 2.5);
@@ -792,6 +796,21 @@ function drawTrend() {
   ctx.fillStyle = 'rgba(245,158,11,0.10)';
   ctx.fill();
 
+  // Gust line — per-10s-bucket maximum
+  if (gdata.length > 1) {
+    ctx.strokeStyle = '#e8506e';
+    ctx.lineWidth = 1;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    gdata.forEach((v, i) => i === 0 ? ctx.moveTo(toX(i), toY(v)) : ctx.lineTo(toX(i), toY(v)));
+    ctx.stroke();
+    ctx.font = 'bold 8px sans-serif';
+    ctx.fillStyle = '#e8506e';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('G ' + gdata[gdata.length - 1].toFixed(1), cX + cW, 17);
+  }
+
   // TWS line
   ctx.strokeStyle = '#f59e0b';
   ctx.lineWidth = 1.5;
@@ -808,18 +827,14 @@ function drawTrend() {
   ctx.textBaseline = 'middle';
   ticks.forEach(v => ctx.fillText(Math.round(v), cX + cW + 4, toY(v)));
 
-  // X-axis labels — minutes ago, every 20 minutes across 1-hour window
-  const n = data.length;
-  const samplesPerMin = 6; // 1 sample per 10 s → 6 per minute
+  // X-axis labels — fixed time positions across the 1-hour window
   ctx.font = '7px sans-serif';
   ctx.fillStyle = '#7a9abf';
   ctx.textBaseline = 'top';
-  [60, 40, 20, 0].forEach(min => {
-    const idx = n - 1 - Math.round(min * samplesPerMin);
-    if (idx < 0 || idx >= n) return;
-    const x = toX(idx);
-    ctx.textAlign = min === 0 ? 'right' : min === 60 ? 'left' : 'center';
-    ctx.fillText(min === 0 ? 'now' : min + "'", x, cY + cH + 2);
+  [['0',60],['15',45],['30',30],['45',15],['now',0]].forEach(([lbl, minAgo]) => {
+    const x = cX + cW * (1 - minAgo / 60);
+    ctx.textAlign = minAgo === 0 ? 'right' : minAgo === 60 ? 'left' : 'center';
+    ctx.fillText(lbl, x, cY + cH + 2);
   });
 }
 
@@ -1333,9 +1348,12 @@ window.addEventListener('load', () => {
   setInterval(() => {
     if (twsSamples.length === 0) return;
     const avg = twsSamples.reduce((a, b) => a + b, 0) / twsSamples.length;
+    const gust = Math.max(...twsSamples);
     twsSamples.length = 0;
     twsTrend.push(avg);
+    twsGust.push(gust);
     if (twsTrend.length > 360) twsTrend.shift();
+    if (twsGust.length > 360) twsGust.shift();
   }, 10000);
 });
 </script>
