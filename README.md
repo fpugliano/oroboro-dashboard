@@ -1,51 +1,108 @@
 # Oroboro Dashboard
 
-A real-time marine instrument dashboard that runs on a Raspberry Pi aboard your sailboat. It displays live data from your boat's instruments, Victron energy system, and water tanks — accessible from any phone, tablet, or screen connected to the boat's WiFi.
+A complete marine instrument panel that runs on a **Raspberry Pi** aboard your boat — wind, navigation, depth, batteries, solar, tanks, anchor watch with phone alarms, and a full sailing-performance (polar) analyzer. Viewable on any phone, tablet, laptop, or a mounted cockpit screen, on board or from anywhere in the world.
 
-Built with [Signal K](https://signalk.org), the open-source marine data server.
+Built on [Signal K](https://signalk.org), the open-source marine data standard. Total hardware cost: **roughly €150–300** — less than half the price of a Victron GX Touch panel, while showing your *whole boat* instead of only the electrical system.
 
----
-
-## What You'll See
-
-- **Wind** — true and apparent wind speed, wind angle, interactive wind rose with trend chart
-- **Navigation** — speed over ground, speed through water, heading, depth, water temperature
-- **House Battery** — state of charge, voltage, current, shore power status
-- **Solar Panels** — total watts plus individual array breakdown with progress bars
-- **Electrical** — AC loads, DC loads, solar input, inverter mode
-- **Water Tanks** — port and starboard tank levels in percentage and litres
-- **Anchor Watch** — set and monitor your anchor with alarm notifications sent to your phone via Pushover
-
-Works on any screen size — from a phone to a mounted 9-inch display in the cockpit.
+Live aboard S/V Oroboro, a Leopard 40 sailing the Aegean → [sailingoroboro.com](https://sailingoroboro.com)
 
 ---
 
-## Hardware You'll Need
+## What you get
+
+- **Wind** — true and apparent speed and angle, interactive wind rose, 1-hour trend with gusts
+- **Navigation** — SOG, depth, water temperature, heading
+- **House battery** — state of charge, net power in/out (green when charging, red when draining), shore status
+- **Solar** — total watts and per-array breakdown
+- **Electrical** — AC loads, DC loads, inverter mode
+- **Water tanks** — levels in percent and litres
+- **Anchor watch** — set an anchor and an allowed zone on a map; if the boat drifts out, your phone gets an alarm via Pushover — even when you're ashore
+- **Polar performance** — live "% of target" trim coach while sailing, GPS track colored by performance, your boat's theoretical polar (VPP) side by side with your own best achieved speeds, Expedition-style data table, CSV/GPX export
+- **History** — every reading stored in a database on the Pi; browse graphs of wind, battery, depth over days or months (Grafana)
+
+Everything updates live, works on any screen size, and needs no internet to function on board (internet is only needed for remote access and phone alarms).
+
+---
+
+## Why not just buy the Victron panel?
+
+Fair question — the Victron Cerbo GX + GX Touch is the standard answer, and it's good hardware. Here's the honest comparison:
+
+| | Victron Cerbo GX + GX Touch 50 | This project |
+|---|---|---|
+| Street price | ≈ €530–630 | ≈ €150–300 all-in |
+| Shows batteries, solar, inverter, tanks | ✔ | ✔ |
+| Shows wind, depth, SOG, heading | ✘ | ✔ |
+| Anchor watch with phone alarms | ✘ | ✔ |
+| Sailing performance / polar analysis | ✘ | ✔ |
+| Long-term data history and graphs | Via Victron's VRM cloud | On the boat, yours, no cloud needed |
+| View on your phone/tablet | ✔ (VictronConnect / VRM) | ✔ (any browser, no app) |
+| Remote access from anywhere | ✔ (VRM) | ✔ (Tailscale, free) |
+| Customizable | ✘ | Completely — it's plain HTML/JS you can edit |
+| Warranty and support | 5 years, dealer network | You are the support department |
+
+The one-line version: **the Victron panel shows you Victron. This shows you the boat.** The GX Touch is a fine electrical monitor, but it will never display your wind speed, your depth, your anchor circle, or how well you're sailing — and it costs 2–4× more.
+
+### "But I need a Cerbo for my Victron gear…" — actually, you don't
+
+Here's the part few people realize: **the Cerbo GX is just a small Linux computer running Venus OS — and Venus OS is open source.** Victron publishes an official Venus OS image for the Raspberry Pi. A €60 Pi running Venus OS does what a €300 Cerbo does: talks to your MPPTs, inverter, and battery monitor, feeds Victron's own VRM cloud portal, runs DVCC — the works.
+
+Three ways to get Victron data into this dashboard, cheapest last:
+
+1. **You already own a Cerbo (or any GX device):** keep it. It joins the boat WiFi and this dashboard reads it over the network. Zero extra cost.
+2. **No Cerbo? Run Venus OS on a second Pi (≈ €90–150 total).** Venus OS is a complete operating system, so it needs its own dedicated Pi (a Pi 3 or Pi 4 — flash the official image). The Cerbo's built-in sockets are replaced by Victron **VE.Direct-to-USB cables** (≈ €30 each — one per MPPT/BMV) plugged into the Pi's USB ports. You still get the VRM portal, firmware updates for your gear, everything. What you give up vs. real Cerbo hardware: the rugged fanless case, very low power draw, built-in VE.Can/VE.Bus sockets (VE.Bus needs the MK3-USB adapter, ≈ €65), and Victron's warranty/support. For a cruising boat on a budget, the trade is usually easy.
+3. **Skip Venus entirely (cheapest, fewest features):** Signal K can read VE.Direct devices *directly* over the same USB cables via a plugin — no second Pi, no Venus OS. You lose the VRM portal and DVCC coordination; you keep everything this dashboard shows. Good for simple systems (one MPPT + one shunt).
+
+---
+
+## What it costs
+
+Approximate street prices, mid-2026 — they drift, so treat as ballparks:
+
+| Item | Approx. cost | Needed? |
+|---|---|---|
+| Raspberry Pi 4 (4 GB) or Pi 5 | €60–90 | Yes |
+| Quality microSD card, 32 GB+ | €10 | Yes |
+| 12 V → 5 V USB-C converter, 3 A+ (powers the Pi from the boat's DC) | €10–20 | Yes |
+| NMEA 2000 interface — CAN HAT (MacArthur/PiCAN-M/Waveshare) | €20–90 | Yes, for a NMEA 2000 boat |
+| — or USB gateway (Actisense NGT-1, Yacht Devices YDNU) | €170–200 | Alternative to the HAT |
+| NMEA 0183 interface (older boats) — USB-RS422/RS485 adapter | €10–25 | Only for pre-N2K instruments |
+| 4G/LTE WiFi router + data SIM | €50–150 + SIM plan | For remote access and phone alarms |
+| Cockpit display, 7–9″ HDMI touchscreen (optional) | €60–120 | Optional |
+| Second Pi + VE.Direct-USB cables for Venus OS (optional, see above) | €90–150 | Only if no Cerbo and you want VRM |
+
+**Typical core build: €150–250.** With a cockpit touchscreen: €220–370. Compare with Cerbo GX + GX Touch 50 at ≈ €530–630 — which covers only the electrical column of the table above.
+
+All software is free and open source: OpenPlotter, Signal K, InfluxDB, Grafana, Tailscale (free tier), and this dashboard.
+
+---
+
+## Hardware you'll need
 
 ### The basics
 
 | Item | What it does | Notes |
 |------|-------------|-------|
-| **Raspberry Pi 4** (or newer) | Runs the Signal K server and serves the dashboard | 2GB RAM is sufficient; 4GB recommended |
-| **MicroSD card** (32GB+) | Stores the operating system and all software | Use a good quality card (SanDisk, Samsung) |
-| **Pi power supply** | Powers the Pi reliably | Must deliver a steady 5V/3A — **do not** share a single USB power source between the Pi and other devices like a router |
-| **NMEA 2000 interface** | Connects your boat's instrument network to the Pi | Two options: a CAN bus HAT (recommended) or a USB gateway — see below |
-| **WiFi router with SIM card** | Creates the boat's WiFi network and provides internet via cellular | Any 4G/LTE router with WiFi will work — make sure it has its own dedicated power supply |
-| **Display** (optional) | A screen attached to the Pi for cockpit viewing | A 7-9 inch HDMI touchscreen works well |
+| **Raspberry Pi 4** (or newer) | Runs the Signal K server and serves the dashboard | 2 GB RAM is sufficient; 4 GB recommended |
+| **MicroSD card** (32 GB+) | Stores the operating system and all software | Use a good quality card (SanDisk, Samsung) |
+| **12 V → 5 V converter** | Powers the Pi from the boat's DC system | Must deliver a steady 5 V/3 A — **do not** share a single power source between the Pi and other devices like a router |
+| **Instrument interface** | Connects your boat's instrument network to the Pi | See the next two sections — pick the one matching your boat |
+| **WiFi router with SIM card** | Creates the boat's WiFi network and provides internet via cellular | Any 4G/LTE router works — make sure it has its own dedicated power supply |
+| **Display** (optional) | A screen attached to the Pi for cockpit viewing | A 7–9″ HDMI touchscreen works well |
 
-### Connecting to NMEA 2000: choosing your interface
+### Connecting to NMEA 2000 (most boats from ~2008 onward)
 
-You need a way to get data from the boat's NMEA 2000 backbone into the Raspberry Pi. There are two options:
+You need a way to get data from the boat's NMEA 2000 backbone into the Raspberry Pi. Two options:
 
-**Option A — CAN bus HAT (recommended)**
+**Option A — CAN bus HAT (recommended, cheapest)**
 
-A HAT (Hardware Attached on Top) is a small circuit board that plugs directly onto the Pi's GPIO pins, turning the Pi itself into an NMEA 2000 device. This is the simplest, most compact, and cheapest option. Popular choices:
+A HAT (Hardware Attached on Top) is a small circuit board that plugs directly onto the Pi's GPIO pins, turning the Pi itself into an NMEA 2000 device. Popular choices:
 
 - **[OpenMarine MacArthur HAT](https://shop.wegmatt.com/products/openmarine-macarthur-hat)** — designed specifically for OpenPlotter, supports NMEA 2000, NMEA 0183, and Seatalk1 all in one board. Fully supported by OpenPlotter with just a few clicks to configure.
 - **[PiCAN-M](https://copperhilltech.com/pican-m-nmea-0183-nmea-2000-hat-for-raspberry-pi/)** — supports NMEA 2000 and NMEA 0183, can optionally power the Pi from the NMEA 2000 bus itself.
-- **[Waveshare 2-Channel CAN HAT](https://www.waveshare.com/2-ch-can-hat.htm)** — a general-purpose isolated CAN bus board that works well with NMEA 2000.
+- **[Waveshare 2-Channel CAN HAT](https://www.waveshare.com/2-ch-can-hat.htm)** — a general-purpose isolated CAN bus board that works well with NMEA 2000; the budget option.
 
-To connect a HAT to the NMEA 2000 backbone, you'll need to tap into the backbone cable. Here's how:
+To connect a HAT to the NMEA 2000 backbone, you tap into the backbone cable:
 
 1. **Get a spare NMEA 2000 drop cable** (or cut into an existing cable at a convenient point). The standard NMEA 2000 cable contains five wires:
 
@@ -54,130 +111,119 @@ To connect a HAT to the NMEA 2000 backbone, you'll need to tap into the backbone
    | **White** | CAN-H (Net-H) | Data signal — high |
    | **Blue** | CAN-L (Net-L) | Data signal — low |
    | Bare (no insulation) | Shield | Electromagnetic shielding |
-   | Red | Net-S | 12V power (not needed for the HAT) |
-   | Black | Net-C | 12V ground (not needed for the HAT) |
+   | Red | Net-S | 12 V power (not needed for the HAT) |
+   | Black | Net-C | 12 V ground (not needed for the HAT) |
 
-2. **Strip the white and blue wires** — these are the only two you need. The HAT has screw terminals labeled CAN-H and CAN-L (or similar). Connect:
-   - **White wire → CAN-H** terminal
-   - **Blue wire → CAN-L** terminal
+2. **Strip the white and blue wires** — these are the only two you need. The HAT has screw terminals labeled CAN-H and CAN-L. Connect **white → CAN-H**, **blue → CAN-L**.
 
-3. **Leave the red and black power wires disconnected** (or capped with electrical tape) — the Pi powers the HAT, you don't need power from the NMEA 2000 bus. The bare shield wire can be left disconnected or tied to a ground point on the boat if you want extra noise protection.
+3. **Leave the red and black power wires disconnected** (or capped with electrical tape) — the Pi powers the HAT. The bare shield wire can be left disconnected or tied to a boat ground for extra noise protection.
 
-4. **Plug the HAT onto the Pi's GPIO header**, boot up, and configure it in OpenPlotter's CAN Bus app — the HAT should appear automatically, and you just click "Add Connection" to link it to Signal K.
+4. **Plug the HAT onto the Pi's GPIO header**, boot, and configure it in OpenPlotter's CAN Bus app — the HAT appears automatically; click "Add Connection" to link it to Signal K.
 
-> **Important:** The NMEA 2000 backbone must have exactly two termination resistors (120Ω each), one at each physical end of the backbone. If your backbone is already properly terminated, adding the HAT tap doesn't change this — you're just adding a drop, not extending the backbone. You can verify termination by measuring resistance between the white and blue wires with a multimeter when the network is powered off — you should read approximately 60Ω (two 120Ω resistors in parallel).
+> **Important:** The NMEA 2000 backbone must have exactly two 120 Ω termination resistors, one at each physical end. Adding the HAT tap doesn't change this — you're adding a drop, not extending the backbone. Verify by measuring resistance between white and blue with the network powered off: ≈ 60 Ω means correct (two 120 Ω in parallel).
 
-**Option B — USB gateway (plug and play, but more expensive)**
+**Option B — USB gateway (plug and play, more expensive)**
 
-A standalone USB gateway is a small box that plugs into the NMEA 2000 backbone via a standard drop cable on one side, and connects to the Pi via USB on the other. No wiring, no soldering — just plug in both ends. Common options:
+A small box that plugs into the backbone via a standard drop cable on one side and into the Pi via USB on the other. No wiring, no soldering.
 
 - **[Actisense NGT-1](https://actisense.com/products/nmea-2000-to-pc-interface-ngt-1/)** — the most widely used and best-supported gateway in the Signal K community
 - **[Yacht Devices YDNU-02](https://www.yachtd.com/products/usb_gateway.html)** — compact, well-regarded alternative
 
-Signal K detects USB gateways automatically — no driver installation or configuration needed beyond plugging it in.
+Signal K detects USB gateways automatically — nothing to configure beyond plugging in.
 
-### For Victron energy monitoring (optional but recommended)
+### Older boats: NMEA 0183 and Seatalk (pre-~2008 instruments)
 
-| Item | What it does |
-|------|-------------|
-| **Victron Cerbo GX** | Central hub for your Victron system — connects to batteries, solar chargers, inverter |
-| **Victron solar chargers** (MPPT) | Charge batteries from solar panels — data flows through the Cerbo |
-| **Victron inverter/charger** (Multiplus, etc.) | Powers AC loads from batteries — data flows through the Cerbo |
-| **Victron battery monitor** (BMV-712 or similar) | Measures battery state of charge, voltage, current |
+If your instruments predate NMEA 2000, they likely speak **NMEA 0183** (a serial protocol) or Raymarine **Seatalk1**. Both are easy and *cheap* to connect:
 
-The Cerbo GX connects to the Pi's WiFi network and sends data via MQTT (a lightweight messaging protocol). The dashboard reads this data through a Signal K plugin.
+- **NMEA 0183:** a **USB-to-RS422/RS485 serial adapter** (€10–25) between the instrument's data wires and any Pi USB port. In OpenPlotter's Serial app, assign the port to Signal K, set the baud rate (usually 4800, or 38400 for AIS), done. One adapter per 0183 talker.
+- **Seatalk1:** the **MacArthur HAT** reads it natively — or a well-documented one-transistor DIY circuit into a GPIO pin, configured in OpenPlotter's Seatalk app.
+- **Mixed boats** (e.g. new N2K wind, old 0183 GPS) are fine: Signal K merges every source into one unified data model. That's its whole point.
+
+### Victron energy monitoring (optional but recommended)
+
+Whichever of the three integration paths you chose above ("But I need a Cerbo…"), the Victron side of your system is unchanged: MPPTs, inverter/charger, and a battery monitor (BMV/SmartShunt) connect to the GX device (Cerbo or Venus-on-Pi) via their normal VE.Direct/VE.Bus cables. The GX device joins the boat WiFi and publishes data via MQTT; this dashboard reads it through Signal K's Venus plugin.
+
+A battery **shunt** (BMV-712, SmartShunt) is what enables the dashboard's *net power* display — the single number telling you whether the bank is filling or draining right now.
 
 ---
 
-## How Everything Connects
+## How everything connects
 
 ```
 Boat Instruments (wind, depth, GPS, heading)
 │
-│  NMEA 2000 backbone (blue cable)
-│
-├──► CAN bus HAT (plugged onto Pi GPIO)  ──┐
-│    White wire → CAN-H                    │
-│    Blue wire  → CAN-L                    │
-│                                          ▼
-└──► USB Gateway (alternative) ──USB──▶ Raspberry Pi
+│  NMEA 2000 backbone (blue cable)      Older instruments (NMEA 0183 / Seatalk1)
+│                                        │
+├──► CAN bus HAT (on Pi GPIO)  ──┐       └──► USB-serial adapter ──┐
+│    White wire → CAN-H          │                                 │
+│    Blue wire  → CAN-L          ▼                                 ▼
+└──► USB Gateway (alt.) ──USB──▶ Raspberry Pi ◀────────────────────┘
                                     │
-                                    ├── Signal K server (reads instruments)
-                                    ├── Venus plugin (reads Victron via MQTT)
+                                    ├── Signal K server (unifies all instruments)
+                                    ├── InfluxDB (stores history) + Grafana (graphs)
                                     ├── Dashboard (oroboro.html)
-                                    ├── Anchor Watch (anchor.html)
-                                    ├── Settings (settings.html)
-                                    └── Anchor API proxy (handles secure writes)
+                                    ├── Polar performance (polar.html)
+                                    ├── Anchor watch (anchor.html) + proxy service
+                                    └── Settings (settings.html)
                                     │
                                     ▼  WiFi
-                                    │
                               WiFi Router (with SIM)
                               │           │
                               ▼           ▼
-                         Your phone    Cerbo GX
-                         / tablet      (Victron hub,
-                                        also on WiFi)
+                         Your phone    GX device (Cerbo,
+                         / tablet      or Venus OS on a Pi)
 ```
 
-### NMEA 2000 connections
+### The WiFi router
 
-Your boat's instruments (wind sensor, depth transducer, GPS, heading sensor) are connected to the **NMEA 2000 backbone** — a single cable that runs through the boat with T-connectors for each device.
+The router creates the boat's WiFi network and provides internet via its SIM. Every device — the Pi, the GX device, your phone — joins this network. **The router must have its own dedicated power supply.** Powering it from the Pi's USB port causes voltage drops that destabilize both devices.
 
-To get this data into the Pi, you either:
-- **With a CAN bus HAT:** tap into the backbone, strip the white (CAN-H) and blue (CAN-L) wires, and connect them to the screw terminals on the HAT board plugged into the Pi's GPIO header. See the detailed wiring guide above.
-- **With a USB gateway:** plug the gateway into the backbone via a standard NMEA 2000 drop cable, then connect it to the Pi via USB. No wiring needed — just two cables plugged in.
-
-Either way, Signal K detects the connection automatically and starts reading instrument data.
-
-### Victron connections
-
-The Cerbo GX communicates with Victron devices (solar chargers, inverter, battery monitor) via their own VE.Direct, VE.Can, or VE.Bus connections — all of which plug directly into the Cerbo. The Cerbo then joins the boat's WiFi network and makes this data available via MQTT. Signal K's Venus plugin reads from the Cerbo over WiFi — no physical cable needed between the Pi and the Cerbo.
-
-### WiFi router
-
-The router creates the boat's WiFi network and provides internet access via its SIM card. Every device — the Pi, the Cerbo, your phone, your tablet — connects to this same network. **Important:** the router must have its own dedicated power supply. Do not power it from the Pi's USB port — sharing power between the Pi and router causes voltage drops that destabilize both devices' WiFi.
+Internet is required only for: remote access (Tailscale), anchor alarms to your phone (Pushover), and Victron's VRM portal. Everything on-board works without it.
 
 ---
 
-## Software Setup
+## Software setup
 
 ### Step 1: Install OpenPlotter on the Raspberry Pi
 
-[OpenPlotter](https://openplotter.readthedocs.io/) is a ready-made operating system for Raspberry Pi that includes Signal K and all the marine software you need.
+[OpenPlotter](https://openplotter.readthedocs.io/) is a ready-made operating system for the Pi that includes Signal K and all the marine software you need.
 
 1. Download the latest OpenPlotter image from [openplotter.readthedocs.io](https://openplotter.readthedocs.io/)
-2. Flash it to your MicroSD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
-3. Insert the card into the Pi, connect a display and keyboard, and boot
-4. Follow the OpenPlotter setup wizard — it will configure Signal K automatically
-5. Connect the NMEA 2000 gateway to the Pi via USB — OpenPlotter should detect it
+2. Flash it to the microSD with [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
+3. Insert, connect display and keyboard, boot
+4. Follow the OpenPlotter setup wizard — it configures Signal K automatically
+5. Connect your NMEA interface (HAT or USB) — OpenPlotter detects it
 
-After setup, Signal K's admin interface is available at `http://<pi-ip-address>:3000` from any device on the same WiFi network.
+Signal K's admin interface is then at `http://<pi-ip-address>:3000` from any device on the boat WiFi.
 
 ### Step 2: Give the Pi a static IP address
 
-So the dashboard URL never changes, give the Pi a fixed IP address:
+So the dashboard URL never changes:
 
-1. Open a terminal on the Pi
-2. Run: `sudo nmcli connection modify "YourWiFiName" ipv4.method manual ipv4.addresses 192.168.1.238/24 ipv4.gateway 192.168.1.1 ipv4.dns 8.8.8.8`
-3. Restart networking: `sudo nmcli connection down "YourWiFiName" && sudo nmcli connection up "YourWiFiName"`
+```bash
+sudo nmcli connection modify "YourWiFiName" ipv4.method manual ipv4.addresses 192.168.1.238/24 ipv4.gateway 192.168.1.1 ipv4.dns 8.8.8.8
+sudo nmcli connection down "YourWiFiName" && sudo nmcli connection up "YourWiFiName"
+```
 
-Replace `192.168.1.238` with whatever IP you want, and `YourWiFiName` with your actual WiFi network name.
+Replace the IP and WiFi name with your own.
 
-### Step 3: Connect the Cerbo GX (if using Victron)
+### Step 3: Connect your Victron system (pick your path)
 
-1. On the Cerbo: **Settings → Services → MQTT on LAN → ON**
-2. Connect the Cerbo to the boat's WiFi network
-3. Note the Cerbo's IP address (visible on the Cerbo's own display or in the router's connected devices list)
-4. In Signal K admin (`http://<pi-ip>:3000`): go to **Server → Plugin Config → Victron Venus Plugin**
-5. Set the MQTT host to the Cerbo's IP address
-6. Also set the "Address for remote Venus device" field to `tcp:host=<cerbo-ip>`
-7. Save and restart Signal K
+**Path 1 — you have a Cerbo/GX device:**
+1. On the GX device: **Settings → Services → MQTT on LAN → ON**
+2. Join it to the boat WiFi, note its IP (give it a static IP too, via its own Settings)
+3. Signal K admin → **Server → Plugin Config → Victron Venus Plugin** → set the MQTT host to the GX IP, and "Address for remote Venus device" to `tcp:host=<gx-ip>` → save, restart Signal K
 
-**Tip:** Give the Cerbo a static IP too (via the Cerbo's own Settings → WiFi → your network → Manual IP config) so this address never changes.
+**Path 2 — Venus OS on a second Pi (no Cerbo):**
+1. Flash the official [Venus OS for Raspberry Pi](https://github.com/victronenergy/venus/wiki/raspberrypi-install-venus-image) image to a Pi 3/4
+2. Plug your VE.Direct-USB cables (one per MPPT/BMV) into that Pi
+3. From there it *is* a GX device — follow Path 1's steps against its IP
+
+**Path 3 — no Venus at all:** install a Signal K VE.Direct plugin (Appstore tab in Signal K admin), plug VE.Direct-USB cables directly into the OpenPlotter Pi, assign the serial ports. Simplest wiring, no VRM.
 
 ### Step 4: Install the PNA header plugin
 
-Chrome on iOS blocks certain connections to local network devices unless the server sends a specific header. This small plugin adds that header to Signal K:
+Chrome on iOS blocks certain local-network connections unless the server sends a specific header:
 
 ```bash
 sudo mkdir -p /home/pi/.signalk/node_modules/signalk-pna-header
@@ -194,174 +240,148 @@ sudo systemctl restart signalk
 ### Step 5: Deploy the dashboard files
 
 ```bash
-sudo wget -q -O /usr/lib/node_modules/signalk-server/public/oroboro.html \
-  https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/oroboro.html
-sudo wget -q -O /usr/lib/node_modules/signalk-server/public/anchor.html \
-  https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/anchor.html
-sudo wget -q -O /usr/lib/node_modules/signalk-server/public/settings.html \
-  https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/settings.html
-sudo wget -q -O /usr/lib/node_modules/signalk-server/public/config.js \
-  https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/config.js
-sudo chown pi:pi /usr/lib/node_modules/signalk-server/public/config.js
-echo "deploy ok"
+cd /usr/lib/node_modules/signalk-server/public
+sudo wget -q -O oroboro.html  https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/oroboro.html
+sudo wget -q -O anchor.html   https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/anchor.html
+sudo wget -q -O polar.html    https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/polar.html
+sudo wget -q -O settings.html https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/settings.html
+sudo wget -q -O oroboro-rose-logo.svg https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/oroboro-rose-logo.svg
+sudo wget -q -O config.js     https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/config.js
+sudo chown pi:pi config.js
 ```
 
-The `chown` command gives the Pi user permission to save settings changes from the Settings page.
+> ⚠️ **config.js is special — download it ONCE.** It's the file where *your* boat's private values live: tank capacities, Pushover keys, database token. The copy on GitHub contains only placeholders. After this first download you'll edit it on the Pi (Step 7 and Step 8), and you must **never wget it again** — that would overwrite your real values with placeholders. Update commands later in this README deliberately exclude it.
 
 ### Step 6: Set up the Anchor Watch proxy
 
-The anchor watch feature needs a small background service to handle secure communication with Signal K:
+The anchor watch needs a small background service for secure communication with Signal K:
 
 ```bash
-# Create the directory and download the proxy
 mkdir -p /home/pi/anchor-api
 wget -O /home/pi/anchor-api/anchor-api.js \
   https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/anchor-api.js
 wget -O /home/pi/anchor-api/anchor-api-config.json \
   https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/anchor-api-config.json
 
-# Edit the config with your Signal K login
 nano /home/pi/anchor-api/anchor-api-config.json
-# Fill in "username" and "password" with your Signal K admin credentials, then save (Ctrl+X, Y, Enter)
+# Fill in "username" and "password" with your Signal K admin credentials, save (Ctrl+O, Enter, Ctrl+X)
 
-# Install the service so it starts automatically on boot
 sudo wget -O /etc/systemd/system/anchor-api.service \
   https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/anchor-api.service
 sudo systemctl daemon-reload
 sudo systemctl enable anchor-api
 sudo systemctl start anchor-api
 
-# Verify it's running
 sudo systemctl status anchor-api
 # You should see "Authenticated to Signal K" and "Listening on port 3001"
 ```
 
-### Step 7: Configure your boat's specifics
+### Step 7: History and polar performance — InfluxDB + Grafana
 
-Open the dashboard in a browser: `http://<pi-ip>:3000/oroboro.html`
+This step powers the polar page's track and statistics, and the Grafana history graphs. All three tools install from OpenPlotter/apt or their official docs; the short version:
 
-Tap the **⚙ Settings** icon in the bottom bar to configure:
+1. **Install InfluxDB 2** on the Pi and create an organization (e.g. `Oroboro`) and a bucket (e.g. `signalk`) during its setup wizard at `http://<pi-ip>:8086`.
+2. **Install the `signalk-to-influxdb2` plugin** from Signal K's Appstore. In its config, point it at `http://<pi-ip>:8086`, your org and bucket. **Token:** create an **All Access API token** in the InfluxDB UI (Load Data → API Tokens) for the plugin — it needs to look up the organization, which bucket-scoped tokens can't do. Choose which Signal K paths to log (position, wind, speeds, battery at minimum).
+3. **Dashboard read token:** create a **second, read-only token** scoped to the bucket, and put it in the Pi's `config.js` under the `influx:` section (`sudo nano /usr/lib/node_modules/signalk-server/public/config.js`). The dashboard only ever reads — never give the page a write-capable token.
+4. **Grafana (optional):** install, add InfluxDB as a data source with a third read token, build panels or import a community marine dashboard. Tip: set `enable_gzip = true` in `/etc/grafana/grafana.ini` — it makes remote loading several times faster.
 
-- **Vessel name**
-- **Solar panels** — add your arrays with their Signal K instance IDs and maximum wattage (use "Scan Signal K" to auto-discover available chargers)
-- **Battery monitor** — set the instance ID (use "Scan Signal K" to find it)
-- **Inverter/charger** — set the instance ID
-- **Water tanks** — set Signal K paths and tank capacities in litres
+> Security note: the tokens live **only on the Pi** — in the plugin config and in the Pi's config.js. Never commit real tokens to a public repository. The repo's config.js ships with placeholders for exactly this reason.
 
-All changes are saved automatically and take effect when the dashboard is reloaded.
+### Step 8: Configure your boat's specifics
 
-### Step 8: Set up Pushover notifications (optional)
+Open `http://<pi-ip>:3000/oroboro.html` and tap **☰ → Settings** to configure vessel name, solar arrays (use "Scan Signal K" to auto-discover), battery monitor instance, inverter instance, and tank paths/capacities. Changes save automatically.
 
-To receive anchor alarm alerts on your phone:
+For the polar page, the theoretical polar (VPP) in `polar.html` is Oroboro's — a Leopard 40, main + jib. If your boat differs, edit the `OFFICIAL_POLAR` table in the file with your boat's VPP numbers (your designer or class association usually has them); everything else adapts automatically.
 
-1. Install the **Pushover** app on your phone ([iOS](https://apps.apple.com/app/pushover-notifications/id506088175) / [Android](https://play.google.com/store/apps/details?id=net.superblock.pushover))
-2. Create an account at [pushover.net](https://pushover.net)
-3. Your **User Key** is shown on the main dashboard after logging in
-4. Go to [pushover.net/apps](https://pushover.net/apps/build) and create a new application — the **API Token** is shown after creation
-5. In the dashboard, tap ⚓ → Settings → enter both keys and save
+### Step 9: Pushover notifications (optional)
 
----
+To receive anchor alarms on your phone:
 
-## Using the Dashboard
-
-### Viewing instruments
-
-Open `http://<pi-ip>:3000/oroboro.html` on any device connected to the boat's WiFi. The dashboard updates every second automatically — no need to refresh.
-
-### Anchor Watch
-
-1. Tap the **⚓** icon in the bottom bar
-2. Tap **Set Allowed Distance** to configure the alarm radius (Normal mode for a simple circle, Advanced mode for a directional sector)
-3. Tap **Set Anchor** → choose Current Location (uses GPS) or Relative Location (enter distance and bearing to the anchor)
-4. The map shows your boat's position, the anchor, the allowed zone, nearby AIS vessels, and your swing track
-5. If the boat drifts outside the allowed zone, you'll get a Pushover notification on your phone
-6. The anchor state syncs across all devices — set it on the Pi, check it on your phone
-
-### Settings
-
-Tap the **⚙** icon in the bottom bar to view and edit the dashboard configuration. Changes are saved to the Pi and take effect on the next page reload.
+1. Install the **Pushover** app ([iOS](https://apps.apple.com/app/pushover-notifications/id506088175) / [Android](https://play.google.com/store/apps/details?id=net.superblock.pushover))
+2. Create an account at [pushover.net](https://pushover.net) — your **User Key** is on the main page
+3. Create an application at [pushover.net/apps/build](https://pushover.net/apps/build) — this gives the **API Token**
+4. Enter both in the Pi's `config.js` (pushover section), or via ⚓ → Settings
 
 ---
 
-## Remote Access via Tailscale
+## Using the dashboard
 
-You can access the dashboard from anywhere in the world — not just when connected to the boat's WiFi — using Tailscale, a free VPN service that creates a private, encrypted connection between your devices and the Pi.
+### Instruments
+
+Open `http://<pi-ip>:3000/oroboro.html` on any device on the boat WiFi. Updates every second, no refresh needed. The ⛶ button toggles fullscreen (ideal for a mounted cockpit screen); ☰ opens the menu to the other pages.
+
+### Anchor watch
+
+1. ☰ → **Anchor watch**
+2. **Set Allowed Distance** — a simple circle, or a directional sector in Advanced mode
+3. **Set Anchor** — Current Location (GPS) or Relative (distance + bearing to where the hook actually is)
+4. The map shows boat, anchor, allowed zone, nearby AIS targets, and your swing track
+5. Drift outside the zone → Pushover alarm on your phone. Alarms are sent directly from the Pi and work whether or not you're connected to the boat — only the Pi's internet matters
+6. Anchor state syncs across all devices
+
+### Polar performance
+
+☰ → **Polar performance**. While sailing, the live strip shows boat speed against a target with a colored gap chip and a plain-language trim hint. The **VPP / My best** switch decides what "target" means:
+
+- **VPP** — the designer's theoretical polar (full sail). The racer's yardstick.
+- **My best** — the best *you* have actually sailed at that wind speed and angle. This is the cruiser's yardstick: it automatically accounts for your real sail choices (reefed in 25 knots? your 25-knot bests were reefed too).
+
+**Load Data** fetches your recent sailing from InfluxDB: the map draws your track colored by performance (green = at your polar, red = well under, gray = no reference), tap any point for the full numbers at that moment. Simple view shows cruiser stats (time on target, average gap); Analysis view adds VMG records, the raw data cloud, and the full VPP-vs-best table. Export CSV/GPX to take data anywhere.
+
+### History (Grafana)
+
+☰ → **History** opens Grafana for long-term graphs — wind over the last week, battery over the season. Tip: add a dashboard link in Grafana pointing back to `oroboro.html` for easy two-way navigation.
+
+---
+
+## Remote access via Tailscale
+
+Access everything from anywhere in the world — not just on the boat WiFi — using [Tailscale](https://tailscale.com), a free VPN that creates a private encrypted network between your devices and the Pi.
 
 ### How it works
 
-Tailscale gives each device a private IP address (like `100.x.x.x`) that only your devices can see. When you're at a café, airport, or onshore, you access the dashboard at `http://100.x.x.x:3000/oroboro.html` — exactly like being on the boat's WiFi, but over an encrypted tunnel through the internet. Nobody else can see or reach the Pi.
+Each device gets a private `100.x.x.x` address that only your devices can reach. From a café or home, `http://100.x.x.x:3000/oroboro.html` behaves exactly like being aboard. Nobody else can see or reach the Pi.
 
 ### Setting it up
 
 **On the Pi:**
 
 ```bash
-# Remove any broken apt sources that might interfere
 sudo rm -f /etc/apt/sources.list.d/nodesource* /etc/apt/sources.list.d/openplotterNodejs.list /etc/apt/preferences.d/99nodesource
-
-# Install Tailscale
 sudo apt-get update && sudo apt-get install -y tailscale
-
-# Start Tailscale — this prints a URL to open in your browser
 sudo tailscale up
 ```
 
-Open the URL it prints, sign in (you can use Google, GitHub, or create a Tailscale account), and approve the device.
+Open the URL it prints, sign in (Google, GitHub, Microsoft, or Apple — **remember which one you pick**, every device must use the same), approve the device. Get the Pi's address with `tailscale ip -4`.
 
-Get the Pi's Tailscale IP:
-```bash
-tailscale ip -4
-```
+**On phones/laptops:** install the Tailscale app, sign in with the *same* account and provider, allow the VPN prompt. If a device can't be signed in easily, the admin console at [login.tailscale.com](https://login.tailscale.com/admin/machines) can generate a share link/QR code to enroll it without provider credentials.
 
-**On your phone/tablet:**
-
-1. Install the **Tailscale** app from the App Store (iOS) or Play Store (Android)
-2. Sign in with the same account you used for the Pi
-3. Allow the VPN configuration when prompted (this is normal — Tailscale IS a VPN)
-
-**Accessing the dashboard remotely:**
-
-From anywhere in the world, open these URLs on your phone:
-- Dashboard: `http://<tailscale-ip>:3000/oroboro.html`
-- Anchor Watch: `http://<tailscale-ip>:3000/anchor.html`
-- Settings: `http://<tailscale-ip>:3000/settings.html`
-
-Replace `<tailscale-ip>` with the IP from `tailscale ip -4` (e.g. `100.77.158.12`).
-
-### Preventing key expiry
-
-By default, Tailscale keys expire after 180 days, which would require re-authenticating the Pi. To prevent this:
-
-1. Go to [login.tailscale.com/admin/machines](https://login.tailscale.com/admin/machines)
-2. Find your Pi (shown as "openplotter")
-3. Click the three-dot menu → **Disable key expiry**
+**Two settings worth doing once** in the admin console: **Disable key expiry** on the Pi (three-dot menu next to the machine — otherwise it needs re-authentication every 180 days), and note the Pi's MagicDNS name (usually `openplotter`) — then `http://openplotter:3000/oroboro.html` works and is easier to remember than the IP.
 
 ### Anchor alarms work independently
 
-Pushover anchor alarm notifications are sent directly from the Pi to Pushover's cloud servers — they work regardless of whether you have Tailscale connected or not. As long as the Pi has internet via the router's SIM card, you'll receive alarm notifications on your phone even without Tailscale active. Tailscale is only needed for viewing the dashboard and managing anchor settings remotely.
+Pushover alarms go straight from the Pi to Pushover's servers — they need the Pi's internet, not Tailscale. You'll get the alarm on your phone ashore even with Tailscale off.
 
 ---
 
-## Updating the Dashboard
+## Updating the dashboard
 
-When a new version is available, run these commands on the Pi:
+When new versions are published:
 
 ```bash
-sudo wget -q -O /usr/lib/node_modules/signalk-server/public/oroboro.html \
-  https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/oroboro.html
-sudo wget -q -O /usr/lib/node_modules/signalk-server/public/anchor.html \
-  https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/anchor.html
-sudo wget -q -O /usr/lib/node_modules/signalk-server/public/settings.html \
-  https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/settings.html
-echo "update ok"
+cd /usr/lib/node_modules/signalk-server/public
+sudo wget -q -O oroboro.html  https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/oroboro.html
+sudo wget -q -O anchor.html   https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/anchor.html
+sudo wget -q -O polar.html    https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/polar.html
+sudo wget -q -O settings.html https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/settings.html
+grep -c "DASHBOARD_CONFIG" oroboro.html && echo "update ok"
 ```
 
-If the browser shows an old version after updating, clear the cache:
+**Never re-download config.js** — it holds your boat's real values (see Step 5). If the browser shows an old version afterwards, hard-refresh; on the Pi's own Chromium:
+
 ```bash
 pkill -9 chromium
-rm -rf /home/pi/.config/chromium/Default/Cache
-rm -rf "/home/pi/.config/chromium/Default/Code Cache"
-rm -rf /home/pi/.config/chromium/Default/Service\ Worker
+rm -rf /home/pi/.config/chromium/Default/Cache "/home/pi/.config/chromium/Default/Code Cache" /home/pi/.config/chromium/Default/Service\ Worker
 chromium-browser --incognito http://<pi-ip>:3000/oroboro.html &
 ```
 
@@ -370,64 +390,62 @@ chromium-browser --incognito http://<pi-ip>:3000/oroboro.html &
 ## Troubleshooting
 
 ### Dashboard shows no data
-- Check that Signal K is running: `sudo systemctl status signalk`
-- Check that the Pi is connected to WiFi: `nmcli connection show --active`
-- Open Signal K admin (`http://<pi-ip>:3000`) and check the Data Browser for live values
+- Signal K running? `sudo systemctl status signalk`
+- Pi on WiFi? `nmcli connection show --active`
+- Live values in Signal K admin → Data Browser?
 
-### Battery/solar data missing but wind/depth work
-- Wind and depth come from NMEA 2000 (direct USB connection) — if these work, the Pi and gateway are fine
-- Battery and solar come from the Cerbo GX via MQTT over WiFi — check:
-  - Is the Cerbo connected to the same WiFi network?
-  - Is MQTT enabled on the Cerbo? (Settings → Services → MQTT on LAN → ON)
-  - Is the Venus plugin configured with the correct Cerbo IP? (Signal K admin → Plugin Config → Venus)
-  - Did the Cerbo's IP change? Check the router's connected devices list for its current address
+### Battery/solar missing but wind/depth work
+- Wind/depth come via NMEA — if these work, the Pi side is fine
+- Battery/solar come from the GX device via MQTT over WiFi: is it on the same WiFi, is MQTT on LAN enabled, is the Venus plugin pointed at the right IP, did its IP change?
 
-### Anchor Watch not working
-- Check the proxy is running: `sudo systemctl status anchor-api`
-- Check the proxy logs: `sudo journalctl -u anchor-api -n 20`
-- You should see "Authenticated to Signal K" and "Listening on port 3001"
-- If authentication fails, check the credentials in `/home/pi/anchor-api/anchor-api-config.json`
+### Polar page loads no historical data / empty track
+- "Token not configured" in the status line → the `influx:` section is missing or wrong in the Pi's config.js (Step 7.3)
+- Data loads but no track → check the browser console; the page prints exactly which position field came back empty
+- Verify the logger writes: InfluxDB UI → Data Explorer, or check `sudo journalctl -u signalk | grep -i influx` for plugin errors (a bucket-scoped token in the *plugin* causes "No organization named … found" — the plugin needs the all-access token)
 
-### Browser shows old version after update
-- The Pi's Chromium aggressively caches pages. Use the cache-clearing commands in the Updating section above
-- On phones/tablets, a hard refresh (pull down to refresh, or clear browser cache) usually works
+### Anchor watch not working
+- Proxy running? `sudo systemctl status anchor-api`, logs via `sudo journalctl -u anchor-api -n 20`
+- "Authenticated to Signal K" and "Listening on port 3001" expected; auth failures → check `/home/pi/anchor-api/anchor-api-config.json`
+
+### Browser shows an old version after update
+- Cache. Hard refresh; on stubborn mobile browsers append `?v=2` to the URL; on the Pi use the cache-clearing block above
 
 ### WiFi keeps disconnecting
-- Make sure the router has its own dedicated power supply — not powered from the Pi's USB
-- Check the Pi isn't trying to connect to other saved networks: `nmcli -f NAME,AUTOCONNECT connection show` — disable autoconnect on any networks except your boat's WiFi
+- Router must have its own power supply — never the Pi's USB port
+- `nmcli -f NAME,AUTOCONNECT connection show` — disable autoconnect on every network except the boat's
 
 ---
 
-## Files in This Project
+## Files in this project
 
 | File | Purpose |
 |------|---------|
 | `oroboro.html` | Main dashboard — instruments, wind rose, battery, solar, tanks |
-| `anchor.html` | Anchor watch — set/monitor anchor with map, alarms, and notifications |
-| `settings.html` | Settings page — configure solar, tanks, battery, inverter, vessel |
-| `config.js` | Dashboard configuration — edited via Settings page or manually |
-| `anchor-api.js` | Background proxy service — handles secure writes to Signal K |
-| `anchor-api-config.json` | Proxy credentials (Signal K login) — stays on the Pi, never sent to browsers |
-| `anchor-api.service` | Systemd unit file — starts the proxy automatically on boot |
+| `polar.html` | Polar performance — live trim coach, track, VPP vs achieved analysis |
+| `anchor.html` | Anchor watch — map, alarm zones, notifications |
+| `settings.html` | Settings page — solar, tanks, battery, inverter, vessel |
+| `config.js` | Boat configuration — placeholders in the repo, **real values live only on your Pi** |
+| `oroboro-rose-logo.svg` | Logo artwork used by the wind rose |
+| `anchor-api.js` / `anchor-api-config.json` / `anchor-api.service` | Anchor watch background service, its credentials (Pi-only), and its systemd unit |
+| `signalk-plugin/` | The PNA header plugin (Step 4) |
 
----
+## Signal K plugins required
 
-## Signal K Plugins Required
-
-| Plugin | Purpose | Must stay enabled? |
-|--------|---------|-------------------|
-| **Victron Venus Plugin** | Bridges Cerbo GX battery/solar/inverter data into Signal K via MQTT | Yes, if using Victron |
-| **signalk-anchoralarm-plugin** | Manages anchor position storage in Signal K — the anchor watch depends on this for reading and writing anchor state | Yes |
-| **signalk-pna-header** | Adds network access headers so iOS browsers can connect to Signal K | Yes |
+| Plugin | Purpose | Needed for |
+|--------|---------|-----------|
+| **Victron Venus Plugin** | Bridges GX-device battery/solar/inverter data into Signal K via MQTT | Battery, solar, tanks (Paths 1–2) |
+| **signalk-anchoralarm-plugin** | Stores anchor position state in Signal K | Anchor watch |
+| **signalk-pna-header** | Network-access headers for iOS browsers | iPhone/iPad access |
+| **signalk-to-influxdb2** | Logs selected paths to InfluxDB | Polar history, Grafana |
 
 ---
 
 ## License
 
-Copyright © 2024-2026 S/V Oroboro. All rights reserved. See [LICENSE](LICENSE) for details.
+Licensed under [CC BY-NC 4.0](LICENSE) — free for sailors. Install it on your boat, modify it, share it with the fleet, credit S/V Oroboro. **Commercial use — selling it, bundling it into paid products, or charging for installations — requires written permission.** No warranty of any kind: **this software must never be your only anchor watch or navigation source.** A postcard from a nice anchorage is always welcome.
 
 ---
 
 ## About
 
-Part of the Oroboro sailing project → [sailingoroboro.com](https://sailingoroboro.com)
+Built and sailed in earnest aboard S/V Oroboro, a Leopard 40 in the Aegean → [sailingoroboro.com](https://sailingoroboro.com)
