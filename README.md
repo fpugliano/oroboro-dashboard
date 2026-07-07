@@ -6,6 +6,8 @@ Built on [Signal K](https://signalk.org), the open-source marine data standard. 
 
 Live aboard S/V Oroboro, a Leopard 40 sailing the Aegean → [sailingoroboro.com](https://sailingoroboro.com)
 
+![Oroboro Dashboard — main view](screenshots/dashboard-main.jpg)
+
 ---
 
 ## What you get
@@ -291,6 +293,8 @@ This step powers the polar page's track and statistics, and the Grafana history 
 
 Open `http://<pi-ip>:3000/oroboro.html` and tap **☰ → Settings** to configure vessel name, solar arrays (use "Scan Signal K" to auto-discover), battery monitor instance, inverter instance, and tank paths/capacities. Changes save automatically.
 
+<p align="center"><img src="screenshots/settings.png" width="35%" alt="Settings page"></p>
+
 For the polar page, the theoretical polar (VPP) in `polar.html` is Oroboro's — a Leopard 40, main + jib. If your boat differs, edit the `OFFICIAL_POLAR` table in the file with your boat's VPP numbers (your designer or class association usually has them); everything else adapts automatically.
 
 ### Step 9: Pushover notifications (optional)
@@ -319,6 +323,12 @@ Open `http://<pi-ip>:3000/oroboro.html` on any device on the boat WiFi. Updates 
 5. Drift outside the zone → Pushover alarm on your phone. Alarms are sent directly from the Pi and work whether or not you're connected to the boat — only the Pi's internet matters
 6. Anchor state syncs across all devices
 
+<p align="center">
+  <img src="screenshots/anchor-watch-main.png" width="30%" alt="Anchor watch main view">&nbsp;
+  <img src="screenshots/anchor-set-distance.png" width="30%" alt="Setting the allowed distance — simple circle">&nbsp;
+  <img src="screenshots/anchor-advanced-zone.png" width="30%" alt="Advanced mode — directional sector zone">
+</p>
+
 ### Polar performance
 
 ☰ → **Polar performance**. While sailing, the live strip shows boat speed against a target with a colored gap chip and a plain-language trim hint. The **VPP / My best** switch decides what "target" means:
@@ -331,6 +341,8 @@ Open `http://<pi-ip>:3000/oroboro.html` on any device on the boat WiFi. Updates 
 ### History (Grafana)
 
 ☰ → **History** opens Grafana for long-term graphs — wind over the last week, battery over the season. Tip: add a dashboard link in Grafana pointing back to `oroboro.html` for easy two-way navigation.
+
+<p align="center"><img src="screenshots/history-grafana.png" width="35%" alt="Grafana history — wind and gusts"></p>
 
 ---
 
