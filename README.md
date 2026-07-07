@@ -55,6 +55,23 @@ Three ways to get Victron data into this dashboard, cheapest last:
 2. **No Cerbo? Run Venus OS on a second Pi (≈ €90–150 total).** Venus OS is a complete operating system, so it needs its own dedicated Pi (a Pi 3 or Pi 4 — flash the official image). The Cerbo's built-in sockets are replaced by Victron **VE.Direct-to-USB cables** (≈ €30 each — one per MPPT/BMV) plugged into the Pi's USB ports. You still get the VRM portal, firmware updates for your gear, everything. What you give up vs. real Cerbo hardware: the rugged fanless case, very low power draw, built-in VE.Can/VE.Bus sockets (VE.Bus needs the MK3-USB adapter, ≈ €65), and Victron's warranty/support. For a cruising boat on a budget, the trade is usually easy.
 3. **Skip Venus entirely (cheapest, fewest features):** Signal K can read VE.Direct devices *directly* over the same USB cables via a plugin — no second Pi, no Venus OS. You lose the VRM portal and DVCC coordination; you keep everything this dashboard shows. Good for simple systems (one MPPT + one shunt).
 
+### What about all the Cerbo's sockets?
+
+Fair objection: the Cerbo isn't just a computer, it's also an interface board — VE.Direct ports, VE.Bus, tank inputs, temperature inputs. A Pi replaces the computer for €60; the sockets are replaced piecemeal, and only where your boat actually uses them:
+
+| Cerbo socket | What plugs into it | Pi-world replacement | Approx. cost |
+|---|---|---|---|
+| 3× VE.Direct | MPPTs, BMV/SmartShunt | One VE.Direct-to-USB cable per device | €30 each |
+| VE.Bus | MultiPlus / Quattro inverter-charger | Victron MK3-USB interface | ≈ €65 |
+| (not enough USB ports?) | — | Powered USB hub — a Pi has 4 ports, a hub adds more | €15–25 |
+| 4× tank level inputs | Resistive tank senders | See below — the one genuine gap | €10–200 |
+| 4× temperature inputs | Temp sensors | DS18B20 1-Wire sensors straight into the OpenPlotter Pi's GPIO (natively supported) | €2–3 each |
+| Relays / digital inputs | Genset start, alarms | Pi relay HAT (DIY territory) | €10–20 |
+
+**Tanks are the honest gap:** the Cerbo's tank inputs are *analog*, and a bare Pi has no analog inputs. Three real routes, by budget: **(a)** an ESP32 microcontroller running [SensESP](https://signalk.org/SensESP/) (€10–20) wired to your existing senders, feeding Signal K over WiFi — the Signal K community's favorite; **(b)** NMEA 2000 tank senders (€150–200 each) that bypass Victron entirely — cleanest if you're wiring tanks from scratch; **(c)** an MCP3208 ADC chip (≈ €5) soldered to the Venus-OS Pi — supported per the Venus-on-Pi wiki, most DIY.
+
+**When the Cerbo *is* the right answer:** if your boat leans on several of those sockets — four tanks, temp sensors, VE.Bus, three MPPTs — the ≈ €200 premium over a Pi buys an integrated, ruggedized, supported interface board, and that's a fair trade. The point of this section isn't “Cerbo bad”; it's *know what you're paying for*, and know that every one of its functions has an open-source path.
+
 ---
 
 ## What it costs
