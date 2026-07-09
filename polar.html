@@ -269,6 +269,16 @@ body:not(.simple) .stat-trim{display:none;}
     <button class="btn-sec" onclick="exportCSV()">Export CSV</button>
     <button class="btn-sec" onclick="exportGPX()">Export GPX</button>
   </div>
+  <div class="ctrl-row" id="motoring-row">
+    <button id="motor-btn" class="btn-sec" onclick="toggleMotoring()" title="Mark this period as motoring — excluded from polar data">🚤 Motoring</button>
+    <span id="motor-status" style="font-size:11px;color:#94a3b8;min-width:120px;"></span>
+    <span style="color:#333;margin:0 4px;">|</span>
+    <label style="white-space:nowrap;">Delete range:</label>
+    <input type="datetime-local" id="del-from" style="flex:1;min-width:130px;">
+    <label style="white-space:nowrap;">to</label>
+    <input type="datetime-local" id="del-to" style="flex:1;min-width:130px;">
+    <button class="btn-sec" style="color:#f87171;border-color:#7f1d1d;" onclick="deleteRange()">Delete</button>
+  </div>
   <div class="stats-row">
     <div class="stat"><div class="slbl">Points</div><div class="sval" id="s-pts" style="color:var(--cyan)">—</div></div>
     <div class="stat"><div class="slbl">Avg Perf</div><div class="sval" id="s-perf" style="color:var(--orange)">—</div></div>
@@ -755,6 +765,27 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 }).addTo(map);
 
 let trackLayers=[], markerLayers=[], boatMarker=null;
+let liveTrackPts=[], liveTrackLayer=null, liveBoatMarker=null;
+let _lastLivePush=0;
+
+function addLivePoint() {
+  if(!_lat||!_lon) return;
+  const now=Date.now();
+  if(now-_lastLivePush<5000) return; // max 1 point every 5 s
+  _lastLivePush=now;
+  liveTrackPts.push([_lat,_lon]);
+  if(liveTrackPts.length>2000) liveTrackPts.shift();
+  // update/create dashed live track line
+  if(liveTrackLayer) map.removeLayer(liveTrackLayer);
+  if(liveTrackPts.length>1) liveTrackLayer=L.polyline(liveTrackPts,{color:'#22d3ee',weight:2,opacity:0.85,dashArray:'6 5'}).addTo(map);
+  // update/create boat marker
+  if(!liveBoatMarker) {
+    liveBoatMarker=L.circleMarker([_lat,_lon],{radius:6,color:'#fff',fillColor:'#22d3ee',fillOpacity:1,weight:2}).addTo(map);
+    liveBoatMarker.bindTooltip('Current position',{permanent:false,direction:'top'});
+  } else {
+    liveBoatMarker.setLatLng([_lat,_lon]);
+  }
+}
 
 function ptPerf(pt){const o=getRefSpeed(pt.tws,pt.twa);return o>0?pt.stw/o:null;}
 
@@ -961,8 +992,10 @@ async function loadData() {
       console.warn('[polar] If both are empty, the measurement/field names for navigation.position in your InfluxDB bucket differ from "navigation.position" / latitude,longitude — check with a "schema.measurements()" query or your SignalK-to-InfluxDB plugin config and adjust the loadData() queries accordingly.');
     }
 
-    sailingData=sailingData.concat(newPts);
-    trackData=trackData.concat(newTrack);
+    const filteredPts=excludedRanges.length?newPts.filter(p=>!inExcludedRange(new Date(p.time))):newPts;
+    const filteredTrack=excludedRanges.length?newTrack.filter(p=>!inExcludedRange(new Date(p.time))):newTrack;
+    sailingData=sailingData.concat(filteredPts);
+    trackData=trackData.concat(filteredTrack);
     updateBestFromData(newPts);
     updateStats();
     drawPolar();
@@ -1067,11 +1100,61 @@ function exportGPX() {
       `</extensions></trkpt>`);
   });
   lines.push('</trkseg></trk></gpx>');
+  const blob=new Blob([lines.join('\n')],{type:'application/xml'});
+  const blobUrl=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'application/gpx+xml'}));
+  a.href=blobUrl;
   a.download=`oroboro_track_${new Date().toISOString().slice(0,10)}.gpx`;
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(blobUrl),1000);
   document.getElementById('status-line').textContent=`Exported ${pts.length} track points as GPX.`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Motoring exclusion & range delete
+// ═══════════════════════════════════════════════════════════
+let excludedRanges=[], motoringStart=null;
+
+function inExcludedRange(t) {
+  return excludedRanges.some(r=>t>=r.start&&t<=r.end);
+}
+
+function toggleMotoring() {
+  const btn=document.getElementById('motor-btn');
+  const status=document.getElementById('motor-status');
+  if(!motoringStart) {
+    motoringStart=new Date();
+    btn.style.background='#7f1d1d'; btn.style.color='#fca5a5'; btn.style.borderColor='#7f1d1d';
+    status.textContent='Motoring since '+motoringStart.toLocaleTimeString();
+  } else {
+    const r={start:motoringStart, end:new Date()};
+    excludedRanges.push(r);
+    const before=sailingData.length;
+    sailingData=sailingData.filter(p=>!inExcludedRange(new Date(p.time)));
+    trackData  =trackData.filter(p=>!inExcludedRange(new Date(p.time)));
+    const removed=before-sailingData.length;
+    motoringStart=null;
+    btn.style.background=''; btn.style.color=''; btn.style.borderColor='';
+    status.textContent=`${excludedRanges.length} range(s) excluded (${removed} pts removed)`;
+    updateStats(); drawPolar(); renderTrack();
+  }
+}
+
+function deleteRange() {
+  const f=document.getElementById('del-from').value;
+  const t=document.getElementById('del-to').value;
+  if(!f||!t){document.getElementById('status-line').textContent='Set both From and To dates first.';return;}
+  const r={start:new Date(f),end:new Date(t)};
+  if(r.start>=r.end){document.getElementById('status-line').textContent='From must be before To.';return;}
+  excludedRanges.push(r);
+  const before=sailingData.length;
+  sailingData=sailingData.filter(p=>!inExcludedRange(new Date(p.time)));
+  trackData  =trackData.filter(p=>!inExcludedRange(new Date(p.time)));
+  const removed=before-sailingData.length;
+  document.getElementById('status-line').textContent=`Deleted ${removed} pts from ${f} → ${t}.`;
+  updateStats(); drawPolar(); renderTrack();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1137,7 +1220,7 @@ function onWSValue(path,val) {
   else if(path==='navigation.speedThroughWater') _stw=val*1.94384;
   else if(path==='navigation.speedOverGround') _sog=val*1.94384;
   else if(path==='navigation.courseOverGroundTrue') _cog=val*(180/Math.PI);
-  else if(path==='navigation.position'&&val){_lat=val.latitude;_lon=val.longitude;}
+  else if(path==='navigation.position'&&val){_lat=val.latitude;_lon=val.longitude;addLivePoint();}
   updateLive();
 }
 
