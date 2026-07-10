@@ -274,10 +274,13 @@ const S = {
     userKey:  pvCfg.userKey  || '',
     apiToken: pvCfg.apiToken || '',
     events: Object.assign({
-      dragging:     { enabled: true,  priority: 2,  title: '⚠️ Anchor Dragging!',        message: 'S/V Oroboro is dragging anchor.' },
+      dragging:     { enabled: true,  priority: 2,  title: '⚠️ Anchor Dragging!',        message: 'Your vessel is dragging anchor.' },
       gpsLost:      { enabled: true,  priority: 2,  title: '⚠️ Anchor Alarm: GPS Lost',  message: 'No GPS position updates received.' },
-      anchorSet:    { enabled: true,  priority: 0,  title: 'Anchor Set',                 message: 'Anchor alarm armed on S/V Oroboro.' },
-      anchorRaised: { enabled: true,  priority: 0,  title: 'Anchor Raised',              message: 'Anchor alarm disarmed on S/V Oroboro.' },
+      anchorSet:    { enabled: true,  priority: 0,  title: 'Anchor Set',                 message: 'Anchor alarm is now armed.' },
+      anchorRaised:    { enabled: true,  priority: 0, title: 'Anchor Raised',               message: 'Anchor alarm disarmed.' },
+      guardianEntry:   { enabled: true,  priority: 1, title: 'Guardian: Vessel in zone',    message: 'A vessel has entered your proximity zone.' },
+      guardianClosing: { enabled: true,  priority: 2, title: 'Guardian: Vessel closing',    message: 'A vessel inside your zone is getting closer.' },
+      guardianCleared: { enabled: false, priority: 0, title: 'Guardian: Zone cleared',      message: 'Vessel has left your proximity zone.' },
     }, (pvCfg.events || {})),
   },
 
@@ -1097,7 +1100,7 @@ async function updateAIS() {
         if(dist2<=_guardianRadius){
           if(!_encounters[id]){
             _encounters[id]={name:name||'Unknown',mmsi:mmsi||'',entered:new Date().toISOString(),minDist:dist2,maxSog:sog2,track:[],note:''};
-            sendGuardianPushover({vessel:name||'Unknown',mmsi:mmsi||'',minDistM:Math.round(dist2),maxSogKt:sog2?sog2.toFixed(1):'—'},'Vessel entered zone: '+Math.round(dist2)+'m away');
+            sendGuardianPushover({vessel:name||'Unknown',mmsi:mmsi||'',minDistM:Math.round(dist2),maxSogKt:sog2?sog2.toFixed(1):'—'},'guardianEntry');
           }
           var enc2=_encounters[id];
           var prevDist=enc2.lastDist||dist2;
@@ -1110,8 +1113,7 @@ async function updateAIS() {
           var CLOSE_ALERT=40;
           if(enc2.closing&&dist2<CLOSE_ALERT&&(!enc2.lastCloseAlert||Date.now()-enc2.lastCloseAlert>120000)){
             enc2.lastCloseAlert=Date.now();
-            sendGuardianPushover({vessel:enc2.name||'Unknown',mmsi:enc2.mmsi||'',minDistM:Math.round(dist2),maxSogKt:sog2?sog2.toFixed(1):'—'},
-              'Closing: now '+Math.round(dist2)+'m (was '+Math.round(prevDist)+'m)');
+            sendGuardianPushover({vessel:enc2.name||'Unknown',mmsi:enc2.mmsi||'',minDistM:Math.round(dist2),maxSogKt:sog2?sog2.toFixed(1):'—'},'guardianClosing');
           }
           drawEncounterTracks();
           renderEncounterCard();
@@ -1178,13 +1180,17 @@ function haversineM(a,b,c,d){
 }
 function guardianActive(){return S.anchorSet&&_guardianRadius>0;}
 
-function sendGuardianPushover(r,evt){
-  if(!CFG.pushover||!CFG.pushover.userKey) return;
-  var msg=(r.vessel||'Unknown')+(r.mmsi?' MMSI '+r.mmsi:'')+' — min '+r.minDistM+'m';
+function sendGuardianPushover(r, eventKey){
+  if(!S.pushover||!S.pushover.userKey) return;
+  var ev=(S.pushover.events||{})[eventKey];
+  if(ev&&!ev.enabled) return;
+  var pri=ev!=null?ev.priority:1;
+  var title=ev?ev.title:'Guardian alert';
+  var msg=(r.vessel||'Unknown')+(r.mmsi?' (MMSI '+r.mmsi+')':'')+' — '+r.minDistM+'m away'+(r.maxSogKt&&r.maxSogKt!=='—'?', max '+r.maxSogKt+'kt':'');
+  var body={token:S.pushover.apiToken,user:S.pushover.userKey,title:title,message:msg,priority:pri};
+  if(pri>=2){body.retry=60;body.expire=3600;}
   fetch('https://api.pushover.net/1/messages.json',{method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({token:CFG.pushover.apiToken,user:CFG.pushover.userKey,
-      title:'Oroboro Guardian: '+evt,message:msg,priority:r.minDistM<GUARDIAN_ALERT_M?1:0})
+    headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
   }).catch(function(){});
 }
 
@@ -1197,7 +1203,7 @@ function saveEncounterReport(enc){
   if(_savedReports.length>50) _savedReports=_savedReports.slice(0,50);
   localStorage.setItem('guardianReports',JSON.stringify(_savedReports));
   renderGuardianReports();
-  sendGuardianPushover(r,'Zone cleared');
+  sendGuardianPushover(r,'guardianCleared');
   return r;
 }
 
@@ -1442,7 +1448,7 @@ function renderSettings() {
   el.querySelector('#pv-test')?.addEventListener('click', () => {
     const cfg = S.pushover;
     if (!cfg.userKey || !cfg.apiToken) { showToast('Set Pushover credentials first'); return; }
-    const params = new URLSearchParams({ token: cfg.apiToken, user: cfg.userKey, title: 'Anchor Watch Test', message: 'Test notification from S/V Oroboro.', priority: '0' });
+    const params = new URLSearchParams({ token: cfg.apiToken, user: cfg.userKey, title: 'Anchor Watch Test', message: 'Test notification from '+( (typeof S!=='undefined'&&S.selfName)||'your vessel')+'.', priority: '0' });
     fetch('https://api.pushover.net/1/messages.json', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params.toString() }).catch(()=>{});
   });
   el.querySelectorAll('[data-pv-toggle]').forEach(cb => {
