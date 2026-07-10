@@ -1086,7 +1086,12 @@ async function updateAIS() {
       var nav2=v.navigation||{};
       var sog2=nav2.speedOverGround&&nav2.speedOverGround.value!=null?nav2.speedOverGround.value*1.94384:null;
       var cog2=nav2.courseOverGroundTrue&&nav2.courseOverGroundTrue.value!=null?nav2.courseOverGroundTrue.value*(180/Math.PI):null;
-      if(guardianActive()&&S.anchorLat!=null&&id!=='self'&&!(S.selfMmsi&&mmsi===S.selfMmsi)){
+      var isSelf2=(id==='self')||(S.selfMmsi&&mmsi===S.selfMmsi);
+      if(!isSelf2&&S.anchorLat!=null){
+        var d2a=haversineM(pos.latitude,pos.longitude,S.anchorLat,S.anchorLon);
+        if(d2a<10) isSelf2=true;
+      }
+      if(guardianActive()&&S.anchorLat!=null&&!isSelf2){
         var dist2=haversineM(pos.latitude,pos.longitude,S.anchorLat,S.anchorLon);
         if(dist2<=_guardianRadius){
           if(!_encounters[id]){
@@ -1094,10 +1099,20 @@ async function updateAIS() {
             if(dist2<GUARDIAN_ALERT_M) sendGuardianPushover({vessel:name||'Unknown',mmsi:mmsi||'',minDistM:Math.round(dist2),maxSogKt:sog2?sog2.toFixed(1):'—'},'Alert: vessel within '+GUARDIAN_ALERT_M+'m');
           }
           var enc2=_encounters[id];
+          var prevDist=enc2.lastDist||dist2;
+          enc2.lastDist=dist2;
+          enc2.closing=(dist2<prevDist-2);
           if(dist2<enc2.minDist) enc2.minDist=dist2;
           if(sog2!=null&&(enc2.maxSog==null||sog2>enc2.maxSog)) enc2.maxSog=sog2;
-          enc2.track.push({t:new Date().toISOString(),lat:pos.latitude,lon:pos.longitude,sog:sog2,cog:cog2});
+          enc2.track.push({t:new Date().toISOString(),lat:pos.latitude,lon:pos.longitude,sog:sog2,cog:cog2,dist:Math.round(dist2)});
           if(enc2.track.length>200) enc2.track=enc2.track.slice(-200);
+          var CLOSE_ALERT=40;
+          if(enc2.closing&&dist2<CLOSE_ALERT&&(!enc2.lastCloseAlert||Date.now()-enc2.lastCloseAlert>120000)){
+            enc2.lastCloseAlert=Date.now();
+            sendGuardianPushover({vessel:enc2.name||'Unknown',mmsi:enc2.mmsi||'',minDistM:Math.round(dist2),maxSogKt:sog2?sog2.toFixed(1):'—'},
+              'Closing: now '+Math.round(dist2)+'m (was '+Math.round(prevDist)+'m)');
+          }
+          drawEncounterTracks();
           renderEncounterCard();
         } else if(_encounters[id]){
           saveEncounterReport(_encounters[id]);
@@ -1209,6 +1224,28 @@ function exportReport(r){
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
+function drawEncounterTracks(){
+  if(!_map) return;
+  if(!window._encLyrs) window._encLyrs={};
+  Object.keys(window._encLyrs).forEach(function(k){
+    if(!_encounters[k.replace('_mk','')]){try{_map.removeLayer(window._encLyrs[k]);}catch(e){} delete window._encLyrs[k];}
+  });
+  Object.keys(_encounters).forEach(function(id){
+    var enc=_encounters[id];
+    if(enc.track.length<2) return;
+    var coords=enc.track.map(function(p){return[p.lat,p.lon];});
+    var col=enc.closing?'#ef4444':'#f59e0b';
+    if(window._encLyrs[id]){try{_map.removeLayer(window._encLyrs[id]);}catch(e){}}
+    if(window._encLyrs[id+'_mk']){try{_map.removeLayer(window._encLyrs[id+'_mk']);}catch(e){}}
+    window._encLyrs[id]=L.polyline(coords,{color:col,weight:2.5,opacity:0.9,dashArray:enc.closing?'':'5 4'}).addTo(_map);
+    var last=enc.track[enc.track.length-1];
+    var age=Math.round((Date.now()-new Date(last.t).getTime())/1000);
+    window._encLyrs[id+'_mk']=L.circleMarker([last.lat,last.lon],{radius:5,color:col,fillColor:col,fillOpacity:1,weight:2})
+      .bindTooltip((enc.name||'Unknown')+' — last seen '+(age<60?age+'s':Math.round(age/60)+'min')+' ago',{permanent:false,direction:'top'})
+      .addTo(_map);
+  });
+}
+
 function renderEncounterCard(){
   var card=document.getElementById('encounter-card');
   var det=document.getElementById('encounter-details');
@@ -1230,6 +1267,12 @@ function renderEncounterCard(){
   grid.appendChild(row('MIN DIST',Math.round(enc.minDist)+'m',dc));
   grid.appendChild(row('MAX SPEED',enc.maxSog!=null?enc.maxSog.toFixed(1)+' kt':'\u2014','#c8d4e2'));
   grid.appendChild(row('TRACK',enc.track.length+' pts','#c8d4e2'));
+  if(enc.closing!==undefined){
+    var trend=document.createElement('div');
+    trend.style.cssText='grid-column:1/-1;margin-top:3px;font-size:10px;font-weight:500;color:'+(enc.closing?'#ef4444':'#22c55e');
+    trend.textContent=enc.closing?'↓ Closing — getting nearer':'→ Stable / opening';
+    grid.appendChild(trend);
+  }
   var hdr=document.createElement('div');
   hdr.innerHTML='<div style="color:#f59e0b;font-size:13px;font-weight:500;">'+(enc.name||'Unknown')+'</div>'+(enc.mmsi?'<div style="color:#64748b;font-size:11px;">MMSI '+enc.mmsi+'</div>':'');
   det.appendChild(hdr); det.appendChild(grid);
@@ -1239,13 +1282,32 @@ function renderEncounterCard(){
   inp.id='enc-note'; inp.placeholder='add note\u2026'; inp.value=enc.note||'';
   inp.style.cssText='flex:1;background:#0d1420;border:1px solid #2a3b5c;border-radius:5px;color:#c8d4e2;padding:4px 8px;font-size:11px;';
   var sav=document.createElement('button');
-  sav.textContent='Save';
+  sav.textContent='Save note';
   sav.style.cssText='background:transparent;border:1px solid #2a3b5c;border-radius:5px;color:#60a5fa;padding:4px 8px;font-size:11px;cursor:pointer;';
   sav.addEventListener('click',function(){
     var k=Object.keys(_encounters)[0];
     if(k){_encounters[k].note=inp.value; renderEncounterCard();}
   });
-  noteRow.appendChild(inp); noteRow.appendChild(sav); det.appendChild(noteRow);
+  var bsn=document.createElement('button');
+  bsn.textContent='Save now';
+  bsn.style.cssText='background:#7f1d1d;border:none;border-radius:5px;color:#fca5a5;padding:4px 8px;font-size:11px;cursor:pointer;';
+  bsn.addEventListener('click',function(){
+    var k=Object.keys(_encounters)[0]; if(!k) return;
+    _encounters[k].note=inp.value;
+    var enc=_encounters[k];
+    var r={id:Date.now(),saved:new Date().toISOString(),vessel:enc.name||'Unknown',mmsi:enc.mmsi||'',
+      entered:enc.entered,left:new Date().toISOString(),minDistM:Math.round(enc.minDist),
+      maxSogKt:enc.maxSog!=null?enc.maxSog.toFixed(1):'—',note:enc.note||'',
+      anchorLat:S.anchorLat,anchorLon:S.anchorLon,track:enc.track.slice(),savedManually:true};
+    _savedReports.unshift(r);
+    if(_savedReports.length>50)_savedReports=_savedReports.slice(0,50);
+    localStorage.setItem('guardianReports',JSON.stringify(_savedReports));
+    renderGuardianReports();
+    bsn.textContent='✓ Saved';
+    bsn.style.background='#14532d';
+    setTimeout(function(){bsn.textContent='Save now';bsn.style.background='#7f1d1d';},3000);
+  });
+  noteRow.appendChild(inp); noteRow.appendChild(sav); noteRow.appendChild(bsn); det.appendChild(noteRow);
 }
 
 function renderGuardianReports(){
