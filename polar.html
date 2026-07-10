@@ -1539,6 +1539,17 @@ function updateLive() {
 }
 
 connectWS();
+
+// Keep screen awake while page is visible (iOS 16.4+ / Safari)
+let wakeLock = null;
+async function acquireWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try { wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+}
+acquireWakeLock();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') acquireWakeLock();
+});
 </script>
 </body>
 </html>
