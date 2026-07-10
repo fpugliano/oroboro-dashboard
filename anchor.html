@@ -1086,17 +1086,18 @@ async function updateAIS() {
       var nav2=v.navigation||{};
       var sog2=nav2.speedOverGround&&nav2.speedOverGround.value!=null?nav2.speedOverGround.value*1.94384:null;
       var cog2=nav2.courseOverGroundTrue&&nav2.courseOverGroundTrue.value!=null?nav2.courseOverGroundTrue.value*(180/Math.PI):null;
-      var isSelf2=(id==='self')||(S.selfMmsi&&mmsi===S.selfMmsi);
-      if(!isSelf2&&S.anchorLat!=null){
-        var d2a=haversineM(pos.latitude,pos.longitude,S.anchorLat,S.anchorLon);
-        if(d2a<10) isSelf2=true;
+      var isSelf2=(id==='self')||(S.selfMmsi&&String(mmsi)===String(S.selfMmsi));
+      if(!isSelf2&&S.selfName&&(name||'').toUpperCase()===S.selfName.toUpperCase()) isSelf2=true;
+      if(!isSelf2&&S.curLat!=null){
+        var d2self=haversineM(pos.latitude,pos.longitude,S.curLat,S.curLon);
+        if(d2self<15) isSelf2=true;
       }
       if(guardianActive()&&S.anchorLat!=null&&!isSelf2){
         var dist2=haversineM(pos.latitude,pos.longitude,S.anchorLat,S.anchorLon);
         if(dist2<=_guardianRadius){
           if(!_encounters[id]){
             _encounters[id]={name:name||'Unknown',mmsi:mmsi||'',entered:new Date().toISOString(),minDist:dist2,maxSog:sog2,track:[],note:''};
-            if(dist2<GUARDIAN_ALERT_M) sendGuardianPushover({vessel:name||'Unknown',mmsi:mmsi||'',minDistM:Math.round(dist2),maxSogKt:sog2?sog2.toFixed(1):'—'},'Alert: vessel within '+GUARDIAN_ALERT_M+'m');
+            sendGuardianPushover({vessel:name||'Unknown',mmsi:mmsi||'',minDistM:Math.round(dist2),maxSogKt:sog2?sog2.toFixed(1):'—'},'Vessel entered zone: '+Math.round(dist2)+'m away');
           }
           var enc2=_encounters[id];
           var prevDist=enc2.lastDist||dist2;
@@ -1118,6 +1119,7 @@ async function updateAIS() {
           saveEncounterReport(_encounters[id]);
           delete _encounters[id];
           renderEncounterCard();
+          drawEncounterTracks();
         }
       }
       const isSelf = id === 'self' || (S.selfMmsi && mmsi === S.selfMmsi);
@@ -1160,6 +1162,7 @@ async function updateAIS() {
       _aisLyrs.push(mk);
     }));
   } catch(e) {}
+  setTimeout(function(){drawEncounterTracks();},0);
 }
 
 
