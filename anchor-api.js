@@ -47,8 +47,11 @@ const _guardian = {
   selfUrn:     null,
   encounters:  {},
   reports:     (function(){ try { return JSON.parse(fs.readFileSync(GUARDIAN_FILE,'utf8')).reports || []; } catch(e){ return []; } })(),
+  nbTrails:    {},
   _loop:       null,
 };
+const NB_RADIUS_M = 926;
+const NB_MAX_PTS  = 240;
 const GUARDIAN_ALERT_M = 40;
 
 function saveGuardian() {
@@ -222,6 +225,20 @@ async function guardianTick() {
         const dSelf = haversine(pos.latitude, pos.longitude, _mon.curLat, _mon.curLon);
         if (dSelf < 25) return;
       }
+
+      // ── Neighbourhood trail (within 0.5nm, every tick, no movement gate) ──
+      const refLat = _mon.curLat != null ? _mon.curLat : _mon.anchorLat;
+      const refLon = _mon.curLon != null ? _mon.curLon : _mon.anchorLon;
+      const nbDist = haversine(pos.latitude, pos.longitude, refLat, refLon);
+      if (nbDist <= NB_RADIUS_M) {
+        if (!_guardian.nbTrails[id]) _guardian.nbTrails[id] = { name: (typeof v.name === 'string' ? v.name : (v.name && v.name.value)) || null, pts: [] };
+        const tr = _guardian.nbTrails[id];
+        tr.pts.push({ lat: pos.latitude, lon: pos.longitude, t: now });
+        if (tr.pts.length > NB_MAX_PTS) tr.pts = tr.pts.slice(-NB_MAX_PTS);
+      }
+
+      // ── Guardian zone / encounter logic (only when armed) ──
+      if (!guardianOn) return;
       const dist = haversine(pos.latitude, pos.longitude, _mon.anchorLat, _mon.anchorLon);
       if (dist > _guardian.radius) return;
       seen[id] = true;
@@ -249,7 +266,19 @@ async function guardianTick() {
         sendGuardianPush(pvCfg, 'guardianClosing', enc.name, enc.mmsi, Math.round(dist), sogKt);
       }
     });
-    Object.keys(_guardian.encounters).forEach(id => { if (!seen[id]) finalizeEncounter(id); });
+
+    // Prune neighbourhood trails: drop vessels no longer within 0.5nm this tick
+    const nbSeen = {};
+    Object.entries(vessels).forEach(([vid, vv]) => {
+      const p = vv.navigation && vv.navigation.position && vv.navigation.position.value;
+      if (!p || p.latitude == null) return;
+      const rLat = _mon.curLat != null ? _mon.curLat : _mon.anchorLat;
+      const rLon = _mon.curLon != null ? _mon.curLon : _mon.anchorLon;
+      if (haversine(p.latitude, p.longitude, rLat, rLon) <= NB_RADIUS_M) nbSeen[vid] = true;
+    });
+    Object.keys(_guardian.nbTrails).forEach(id => { if (!nbSeen[id]) delete _guardian.nbTrails[id]; });
+
+    if (guardianOn) Object.keys(_guardian.encounters).forEach(id => { if (!seen[id]) finalizeEncounter(id); });
   } catch(e) { console.error('[anchor-api] guardianTick error:', e.message); }
 }
 
@@ -474,6 +503,7 @@ http.createServer(async (req, res) => {
         lastPos: e.track.length ? e.track[e.track.length-1] : null, track: e.track,
       })),
       reports: _guardian.reports.slice(0, 20),
+      nbTrails: Object.entries(_guardian.nbTrails).map(([id, t]) => ({ id, name: t.name, pts: t.pts })),
     });
     return;
   }

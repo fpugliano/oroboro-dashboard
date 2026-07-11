@@ -1111,18 +1111,11 @@ async function updateAIS() {
         });
         mk.addTo(_map);
         _aisLyrs.push(mk);
-        // Track own vessel swing for neighbourhood display
-        if(window._nbTrails) _nbTrails_update('self',[pos.latitude,pos.longitude]);
         return;  // own vessel — never a Guardian encounter
       }
 
-      // ── Neighbourhood trail (all vessels within 0.5 nm) ──────────────────
-      if(S.curLat!=null){
-        var nbDist=haversineM(pos.latitude,pos.longitude,S.curLat,S.curLon);
-        if(nbDist<926) _nbTrails_update(id,[pos.latitude,pos.longitude],name||id);
-      }
-
-      // NOTE: Guardian proximity detection now runs 24/7 in the anchor-api
+      // NOTE: Neighbourhood trails + Guardian detection now run 24/7 in the
+      // anchor-api service on the Pi. The browser only DISPLAYS them.
       // service on the Pi. The browser only DISPLAYS what the Pi records
       // (see pollGuardian). Neighbourhood trails above stay client-side.
 
@@ -1154,32 +1147,21 @@ var GUARDIAN_ALERT_M=40;
 
 function haversineM(a,b,c,d){var R=6371000,p1=a*Math.PI/180,p2=c*Math.PI/180,dp=(c-a)*Math.PI/180,dl=(d-b)*Math.PI/180,x=Math.sin(dp/2)*Math.sin(dp/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);return 2*R*Math.asin(Math.sqrt(x));}
 
-// Neighbourhood trails — all vessels within 0.5nm
-window._nbTrails={};
+// Neighbourhood trails — recorded 24/7 on the Pi, fed here by pollGuardian().
+window._nbTrails={};   // id -> {name, pts:[[lat,lon],...]}  (from Pi)
 window._nbLayers={};
-var NB_MAX_PTS=120, NB_MIN_MOVE=5; // record if moved >5m
-
-function _nbTrails_update(id, latlng, label){
-  if(!window._nbTrails[id]) window._nbTrails[id]={pts:[],label:label||id};
-  var tr=window._nbTrails[id];
-  if(tr.pts.length){
-    var last=tr.pts[tr.pts.length-1];
-    var dm=haversineM(latlng[0],latlng[1],last[0],last[1]);
-    if(dm<NB_MIN_MOVE) return;
-  }
-  tr.pts.push(latlng);
-  if(tr.pts.length>NB_MAX_PTS) tr.pts=tr.pts.slice(-NB_MAX_PTS);
-}
 
 function drawNbTrails(){
   if(!_map) return;
-  var col_self='#4a9eff', col_other='#94a3b8';
+  // Remove layers for trails no longer present
+  Object.keys(window._nbLayers).forEach(function(id){
+    if(!window._nbTrails[id]){try{_map.removeLayer(window._nbLayers[id]);}catch(e){} delete window._nbLayers[id];}
+  });
   Object.keys(window._nbTrails).forEach(function(id){
     var tr=window._nbTrails[id];
-    if(tr.pts.length<2) return;
+    if(!tr.pts||tr.pts.length<2) return;
     if(window._nbLayers[id]){try{_map.removeLayer(window._nbLayers[id]);}catch(e){}}
-    var col=id==='self'?col_self:col_other;
-    window._nbLayers[id]=L.polyline(tr.pts,{color:col,weight:1.5,opacity:0.6,dashArray:'3 4'}).addTo(_map);
+    window._nbLayers[id]=L.polyline(tr.pts,{color:'#94a3b8',weight:1.5,opacity:0.55,dashArray:'3 4'}).addTo(_map);
   });
 }
 
@@ -1209,7 +1191,12 @@ function pollGuardian(){
       return {saved:r.saved,vessel:r.vessel,mmsi:r.mmsi,entered:r.entered,left:r.left,
         minDistM:r.minDistM,maxSogKt:r.maxSogKt,anchorLat:r.anchorLat,anchorLon:r.anchorLon,track:r.track||[],note:''};
     });
-    renderEncounterCard(); drawEncounterTracks(); renderGuardianReports();
+    // Neighbourhood trails from the Pi (recorded 24/7, every 15s, within 0.5nm)
+    window._nbTrails={};
+    (d.nbTrails||[]).forEach(function(t){
+      window._nbTrails[t.id]={name:t.name,pts:(t.pts||[]).map(function(p){return [p.lat,p.lon];})};
+    });
+    renderEncounterCard(); drawEncounterTracks(); renderGuardianReports(); drawNbTrails();
   }).catch(function(){});
 }
 setInterval(pollGuardian, 10000);
