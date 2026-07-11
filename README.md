@@ -1,6 +1,6 @@
 # Oroboro Dashboard
 
-A complete marine instrument panel that runs on a **Raspberry Pi** aboard your boat — wind, navigation, depth, batteries, solar, tanks, anchor watch with phone alarms, and a full sailing-performance (polar) analyzer. Viewable on any phone, tablet, laptop, or a mounted cockpit screen, on board or from anywhere in the world.
+A complete marine instrument panel that runs on a **Raspberry Pi** aboard your boat — wind, navigation, depth, batteries, solar, tanks, anchor watch with phone alarms, AIS collision/anchor-drag monitoring, and a full sailing-performance (polar) analyzer. Viewable on any phone, tablet, laptop, or a mounted cockpit screen, on board or from anywhere in the world.
 
 Built on [Signal K](https://signalk.org), the open-source marine data standard. Total hardware cost: **roughly €150–300** — less than half the price of a Victron GX Touch panel, while showing your *whole boat* instead of only the electrical system.
 
@@ -19,6 +19,7 @@ Live aboard S/V Oroboro, a Leopard 40 sailing the Aegean → [sailingoroboro.com
 - **Electrical** — AC loads, DC loads, inverter mode
 - **Water tanks** — levels in percent and litres
 - **Anchor watch** — set an anchor and an allowed zone on a map; if the boat drifts out, your phone gets an alarm via Pushover — even when you're ashore
+- **Guardian (AIS proximity watch)** — a configurable safety zone around your anchor that watches AIS-equipped vessels 24/7. If another boat enters the zone — or drags toward you in the night — it records a full breadcrumb track (position, speed, closest approach) and sends a Pushover alert, even with every screen closed. Every encounter is saved as a timestamped incident report you can export for a harbourmaster or insurer. Nearby boats also leave visible swing-arcs on the map so you can see at a glance how the whole anchorage is lying. Runs as a background service on the Pi, so it keeps watching whether or not the app is open.
 - **Polar performance** — live "% of target" trim coach while sailing, GPS track colored by performance, your boat's theoretical polar (VPP) side by side with your own best achieved speeds, Expedition-style data table, CSV/GPX export
 - **History** — every reading stored in a database on the Pi; browse graphs of wind, battery, depth over days or months (Grafana)
 
@@ -36,6 +37,7 @@ Fair question — the Victron Cerbo GX + GX Touch is the standard answer, and it
 | Shows batteries, solar, inverter, tanks | ✔ | ✔ |
 | Shows wind, depth, SOG, heading | ✘ | ✔ |
 | Anchor watch with phone alarms | ✘ | ✔ |
+| AIS proximity watch + incident recording (Guardian) | ✘ | ✔ |
 | Sailing performance / polar analysis | ✘ | ✔ |
 | Long-term data history and graphs | Via Victron's VRM cloud | On the boat, yours, no cloud needed |
 | View on your phone/tablet | ✔ (VictronConnect / VRM) | ✔ (any browser, no app) |
@@ -105,13 +107,17 @@ All software is free and open source: OpenPlotter, Signal K, InfluxDB, Grafana, 
 | **Raspberry Pi 4** (or newer) | Runs the Signal K server and serves the dashboard | 2 GB RAM is sufficient; 4 GB recommended |
 | **MicroSD card** (32 GB+) | Stores the operating system and all software | Use a good quality card (SanDisk, Samsung) |
 | **12 V → 5 V converter** | Powers the Pi from the boat's DC system | Must deliver a steady 5 V/3 A — **do not** share a single power source between the Pi and other devices like a router |
-| **Instrument interface** | Connects your boat's instrument network to the Pi | See the next two sections — pick the one matching your boat |
+| **Instrument interface** | Connects your boat's instrument network to the Pi | For a **NMEA 2000** boat this is a **CAN bus HAT** (not RS485 — see note below); for older **NMEA 0183** boats it's a USB-RS422/RS485 adapter. See the next two sections. |
 | **WiFi router with SIM card** | Creates the boat's WiFi network and provides internet via cellular | Any 4G/LTE router works — make sure it has its own dedicated power supply |
 | **Display** (optional) | A screen attached to the Pi for cockpit viewing | A 7–9″ HDMI touchscreen works well |
 
 ### Connecting to NMEA 2000 (most boats from ~2008 onward)
 
-You need a way to get data from the boat's NMEA 2000 backbone into the Raspberry Pi. Two options:
+You need a way to get data from the boat's NMEA 2000 backbone into the Raspberry Pi. The Raspberry Pi has no NMEA 2000 port of its own, so you add a small interface board — and it must be the right *kind* of board.
+
+> **A common point of confusion — CAN vs RS485.** NMEA 2000 runs on the **CAN bus** physical layer, so you need a **CAN HAT** (or a CAN/USB gateway). It does **not** use RS485. RS485/RS422 is the physical layer of the *older* NMEA 0183 and Seatalk standards — a USB-RS485 adapter is only for pre-N2K instruments (covered in the section below). Wiring an RS485 board to an NMEA 2000 backbone will not work: wrong signalling. If your boat has a NMEA 2000 backbone (most boats from ~2008 on, including Raymarine SeaTalkng, Garmin, B&G, Simrad networks), you want a **CAN HAT**.
+
+Two options:
 
 **Option A — CAN bus HAT (recommended, cheapest)**
 
@@ -346,6 +352,23 @@ Open `http://<pi-ip>:3000/oroboro.html` on any device on the boat WiFi. Updates 
   <img src="screenshots/anchor-advanced-zone.png" width="30%" alt="Advanced mode — directional sector zone">
 </p>
 
+### Guardian — AIS proximity watch
+
+Guardian watches the water around you for other vessels, day and night, and keeps a record you can use if something goes wrong — a boat that bumps you at anchor and motors off, or one that drags down onto you at 3 a.m.
+
+**Turn it on:** on the anchor page's **Map** tab, the *Guardian* toggle and a zone-radius slider sit below the map. Arm it and set a radius (80–100 m for a crowded town quay, more for an open bay). The amber dashed circle on the map is your zone. The toggle remembers your last radius, so switching it off and on doesn't lose your setting.
+
+**What it does, 24/7:**
+
+- **Watches every AIS-equipped vessel** and records any that enter your zone — a breadcrumb track of their position, plus their closest approach and top speed while inside.
+- **Alerts you by Pushover** the moment a vessel enters, and again — at higher priority — if a vessel already inside is *closing* on you (the dragging-neighbour case). Because the watch runs as a background service on the Pi, these alerts reach you even if your phone is locked, the browser is closed, or you're ashore.
+- **Saves every encounter** as a timestamped incident report (vessel name, MMSI, entry/exit times, minimum distance, full GPS track). Browse them in the **History** tab and **Export** any one as a text report for a harbourmaster or insurance claim.
+- **Draws neighbourhood swing-arcs** — every boat within half a nautical mile leaves a faint trail on the map as it swings on its own anchor, so you can see at a glance how the whole anchorage is lying and who's ranging around.
+
+**Arm/disarm and alert priorities** live alongside the anchor-drag settings in **Settings → Notifications** — you can enable or disable Guardian's entry, closing, and cleared alerts independently and set each one's urgency.
+
+> **Honest limits.** Guardian sees **AIS-equipped** vessels only. A small boat, dinghy, or jet-ski with no AIS transponder is invisible to it — that's a limitation shared by every AIS anchor-watch product, not unique to this one. Radar-based tracking would close that gap but requires a radar that puts targets on the NMEA 2000 bus (many WiFi-only radars, such as Garmin's Quantum series, keep radar data inside their own app ecosystem and cannot feed it to Signal K). Also note AIS position updates from an anchored boat can be up to a few minutes apart, so in a very tight anchorage a generous zone radius gives you more useful warning time.
+
 ### Polar performance
 
 ☰ → **Polar performance**. While sailing, the live strip shows boat speed against a target with a colored gap chip and a plain-language trim hint. The **VPP / My best** switch decides what "target" means:
@@ -436,6 +459,12 @@ chromium-browser --incognito http://<pi-ip>:3000/oroboro.html &
 - Proxy running? `sudo systemctl status anchor-api`, logs via `sudo journalctl -u anchor-api -n 20`
 - "Authenticated to Signal K" and "Listening on port 3001" expected; auth failures → check `/home/pi/anchor-api/anchor-api-config.json`
 
+### Guardian shows no vessels or no swing-arcs
+- Guardian only records while the anchor is **set** — arm it and confirm the anchor is down
+- Check the service is seeing traffic: `curl -s http://localhost:3001/api/guardian/state | python3 -m json.tool | head -30` — you should see your radius, `armed`, and an `nbTrails` array once boats are within half a mile
+- Swing-arcs need at least two recorded points and visible movement — give an anchored boat 20–30 minutes of swinging before the arc is obvious
+- No AIS targets at all anywhere? Then Signal K isn't receiving AIS — check your AIS receiver/transponder is on the NMEA 2000 bus and appears in Signal K's Data Browser under `vessels`
+
 ### Browser shows an old version after update
 - Cache. Hard refresh; on stubborn mobile browsers append `?v=2` to the URL; on the Pi use the cache-clearing block above
 
@@ -451,11 +480,12 @@ chromium-browser --incognito http://<pi-ip>:3000/oroboro.html &
 |------|---------|
 | `oroboro.html` | Main dashboard — instruments, wind rose, battery, solar, tanks |
 | `polar.html` | Polar performance — live trim coach, track, VPP vs achieved analysis |
-| `anchor.html` | Anchor watch — map, alarm zones, notifications |
+| `anchor.html` | Anchor watch + Guardian — map, alarm zones, AIS proximity display, notifications |
 | `settings.html` | Settings page — solar, tanks, battery, inverter, vessel |
 | `config.js` | Boat configuration — placeholders in the repo, **real values live only on your Pi** |
 | `oroboro-rose-logo.svg` | Logo artwork used by the wind rose |
-| `anchor-api.js` / `anchor-api-config.json` / `anchor-api.service` | Anchor watch background service, its credentials (Pi-only), and its systemd unit |
+| `anchor-api.js` / `anchor-api-config.json` / `anchor-api.service` | Anchor watch **and Guardian** background service (runs the 24/7 drag-alarm and AIS proximity watch), its credentials (Pi-only), and its systemd unit |
+| `guardian-state.json` | Auto-created on the Pi at `/home/pi/anchor-api/` — stores the Guardian zone radius, armed state, and saved encounter reports. Not in the repo; the service creates it. |
 | `signalk-plugin/` | The PNA header plugin (Step 4) |
 
 ## Signal K plugins required
