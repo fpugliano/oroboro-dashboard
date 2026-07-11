@@ -6,6 +6,7 @@ const path  = require('path');
 const vm    = require('vm');
 
 const STATE_FILE      = '/home/pi/anchor-api/anchor-state.json';
+const GUARDIAN_FILE   = '/home/pi/anchor-api/guardian-state.json';
 const CONFIG_JS_PATH  = '/usr/lib/node_modules/signalk-server/public/config.js';
 
 const cfg      = JSON.parse(fs.readFileSync(path.join(__dirname, 'anchor-api-config.json'), 'utf8'));
@@ -37,6 +38,20 @@ const _mon = {
   _loop:          null,
   _trail:         null,
 };
+
+// ─── Guardian state (runs 24/7 regardless of any open browser) ────────────
+const _guardian = {
+  radius:      parseInt((function(){ try { return JSON.parse(fs.readFileSync(GUARDIAN_FILE,'utf8')).radius; } catch(e){ return 100; } })() || 100),
+  selfUrn:     null,
+  encounters:  {},
+  reports:     (function(){ try { return JSON.parse(fs.readFileSync(GUARDIAN_FILE,'utf8')).reports || []; } catch(e){ return []; } })(),
+  _loop:       null,
+};
+const GUARDIAN_ALERT_M = 40;
+
+function saveGuardian() {
+  try { fs.writeFileSync(GUARDIAN_FILE, JSON.stringify({ radius: _guardian.radius, reports: _guardian.reports.slice(0,50) })); } catch(e) {}
+}
 
 // ─── Math ─────────────────────────────────────────────────────────────────
 function haversine(lat1, lon1, lat2, lon2) {
@@ -176,6 +191,97 @@ async function trailTick() {
   }
 }
 
+async function guardianTick() {
+  try {
+    if (!_mon.running || _mon.anchorLat == null || _guardian.radius <= 0) {
+      Object.keys(_guardian.encounters).forEach(id => finalizeEncounter(id));
+      return;
+    }
+    const r = await skRequest('GET', '/signalk/v1/api/vessels', null, null);
+    if (r.status !== 200) return;
+    const vessels = JSON.parse(r.body);
+    if (!_guardian.selfUrn) {
+      try {
+        const selfR = await skRequest('GET', '/signalk/v1/api/self', null, null);
+        if (selfR.status === 200) {
+          let u = selfR.body.trim().replace(/^"|"$/g, '');
+          _guardian.selfUrn = u.replace(/^vessels\./, '');
+        }
+      } catch(e) {}
+    }
+    const now = Date.now();
+    const seen = {};
+    Object.entries(vessels).forEach(([id, v]) => {
+      if (id === 'self') return;
+      if (_guardian.selfUrn && (id === _guardian.selfUrn || id === 'vessels.' + _guardian.selfUrn)) return;
+      const pos = v.navigation && v.navigation.position && v.navigation.position.value;
+      if (!pos || pos.latitude == null) return;
+      if (_mon.curLat != null) {
+        const dSelf = haversine(pos.latitude, pos.longitude, _mon.curLat, _mon.curLon);
+        if (dSelf < 25) return;
+      }
+      const dist = haversine(pos.latitude, pos.longitude, _mon.anchorLat, _mon.anchorLon);
+      if (dist > _guardian.radius) return;
+      seen[id] = true;
+      const name = (typeof v.name === 'string' ? v.name : (v.name && v.name.value)) || null;
+      const mmsi = (v.mmsi || (id.match(/(\d{9})/) ? id.match(/(\d{9})/)[1] : '')) || '';
+      const sog  = v.navigation && v.navigation.speedOverGround && v.navigation.speedOverGround.value;
+      const sogKt = sog != null ? sog * 1.94384 : null;
+      const cog  = v.navigation && v.navigation.courseOverGroundTrue && v.navigation.courseOverGroundTrue.value;
+      const cogDeg = cog != null ? cog * 180/Math.PI : null;
+      const pvCfg = readState().pushover;
+      if (!_guardian.encounters[id]) {
+        _guardian.encounters[id] = { name: name||'Unknown', mmsi, entered: new Date().toISOString(),
+          minDist: dist, maxSog: sogKt, lastDist: dist, closing: false, lastCloseAlert: 0, track: [] };
+        sendGuardianPush(pvCfg, 'guardianEntry', name||'Unknown', mmsi, Math.round(dist), sogKt);
+      }
+      const enc = _guardian.encounters[id];
+      const prev = enc.lastDist; enc.lastDist = dist;
+      enc.closing = dist < prev - 2;
+      if (dist < enc.minDist) enc.minDist = dist;
+      if (sogKt != null && (enc.maxSog == null || sogKt > enc.maxSog)) enc.maxSog = sogKt;
+      enc.track.push({ t: new Date().toISOString(), lat: pos.latitude, lon: pos.longitude, sog: sogKt, cog: cogDeg, dist: Math.round(dist) });
+      if (enc.track.length > 300) enc.track = enc.track.slice(-300);
+      if (enc.closing && dist < GUARDIAN_ALERT_M && now - enc.lastCloseAlert > 120000) {
+        enc.lastCloseAlert = now;
+        sendGuardianPush(pvCfg, 'guardianClosing', enc.name, enc.mmsi, Math.round(dist), sogKt);
+      }
+    });
+    Object.keys(_guardian.encounters).forEach(id => { if (!seen[id]) finalizeEncounter(id); });
+  } catch(e) { console.error('[anchor-api] guardianTick error:', e.message); }
+}
+
+function finalizeEncounter(id) {
+  const enc = _guardian.encounters[id];
+  if (!enc) return;
+  const report = {
+    id: Date.now() + '_' + id, saved: new Date().toISOString(),
+    vessel: enc.name, mmsi: enc.mmsi, entered: enc.entered, left: new Date().toISOString(),
+    minDistM: Math.round(enc.minDist), maxSogKt: enc.maxSog != null ? enc.maxSog.toFixed(1) : '—',
+    anchorLat: _mon.anchorLat, anchorLon: _mon.anchorLon, track: enc.track.slice(),
+  };
+  _guardian.reports.unshift(report);
+  if (_guardian.reports.length > 50) _guardian.reports = _guardian.reports.slice(0, 50);
+  saveGuardian();
+  sendGuardianPush(readState().pushover, 'guardianCleared', enc.name, enc.mmsi, report.minDistM, null);
+  delete _guardian.encounters[id];
+  console.log('[anchor-api] Guardian encounter finalized:', enc.name, report.minDistM + 'm');
+}
+
+function sendGuardianPush(pvCfg, eventKey, vessel, mmsi, distM, sogKt) {
+  if (!pvCfg || !pvCfg.apiToken || !pvCfg.userKey) return;
+  const ev = (pvCfg.events || {})[eventKey];
+  if (!ev || !ev.enabled) return;
+  const detail = (vessel||'Unknown') + (mmsi ? ' (MMSI '+mmsi+')' : '') + ' — ' + distM + 'm away' + (sogKt ? ', '+sogKt.toFixed(1)+'kt' : '');
+  const payload = { token: pvCfg.apiToken, user: pvCfg.userKey, title: ev.title, message: detail, priority: ev.priority };
+  if (ev.priority === 2) { payload.retry = 60; payload.expire = 3600; payload.sound = 'siren'; }
+  const body = JSON.stringify(payload);
+  const req = https.request({ hostname:'api.pushover.net', port:443, path:'/1/messages.json', method:'POST',
+    headers:{'Content-Type':'application/json','Content-Length':Buffer.byteLength(body)} }, r => r.resume());
+  req.on('error', e => console.error('[anchor-api] Guardian pushover error:', e.message));
+  req.write(body); req.end();
+}
+
 function startMonitoring(armMs) {
   if (_mon.running) { clearInterval(_mon._loop); clearInterval(_mon._trail); }
   _mon.running     = true;
@@ -183,11 +289,16 @@ function startMonitoring(armMs) {
   _mon.armingUntil = Date.now() + (armMs || 0);
   _mon._loop  = setInterval(monitorTick, 5000);
   _mon._trail = setInterval(trailTick,  60000);
+  if (_guardian._loop) clearInterval(_guardian._loop);
+  _guardian._loop = setInterval(guardianTick, 15000);
   monitorTick(); // immediate first tick
+  guardianTick();
 }
 
 function stopMonitoring() {
   clearInterval(_mon._loop); clearInterval(_mon._trail);
+  if (_guardian._loop) { clearInterval(_guardian._loop); _guardian._loop = null; }
+  Object.keys(_guardian.encounters).forEach(id => finalizeEncounter(id));
   _mon.running    = false;  _mon.alarmState = 'ok';
   _mon.distance   = null;   _mon.bearing    = null;
   _mon._loop      = null;   _mon._trail     = null;
@@ -349,6 +460,28 @@ http.createServer(async (req, res) => {
     return;
   }
 
+  if (method === 'GET' && url === '/api/guardian/state') {
+    json(res, 200, {
+      ok: true,
+      radius: _guardian.radius,
+      active: Object.entries(_guardian.encounters).map(([id, e]) => ({
+        id, vessel: e.name, mmsi: e.mmsi, entered: e.entered,
+        minDistM: Math.round(e.minDist), maxSogKt: e.maxSog != null ? e.maxSog.toFixed(1) : '—',
+        closing: e.closing, trackPts: e.track.length,
+        lastPos: e.track.length ? e.track[e.track.length-1] : null, track: e.track,
+      })),
+      reports: _guardian.reports.slice(0, 20),
+    });
+    return;
+  }
+  if (method === 'POST' && url === '/api/guardian/config') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      if (typeof body.radius === 'number') { _guardian.radius = body.radius; saveGuardian(); }
+      json(res, 200, { ok: true, radius: _guardian.radius });
+    } catch(e) { json(res, 500, { ok: false, error: e.message }); }
+    return;
+  }
   if (method === 'GET' && url === '/api/anchor/status') {
     json(res, 200, {
       ok:             true,
