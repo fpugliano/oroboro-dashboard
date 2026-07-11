@@ -198,9 +198,15 @@ async function trailTick() {
 
 async function guardianTick() {
   try {
-    if (!_mon.running || _mon.anchorLat == null || _guardian.radius <= 0 || !_guardian.armed) {
+    // Neighbourhood trails record whenever anchored; encounter/alarm logic needs armed + radius.
+    if (!_mon.running || _mon.anchorLat == null) {
       Object.keys(_guardian.encounters).forEach(id => finalizeEncounter(id));
+      _guardian.nbTrails = {};
       return;
+    }
+    const guardianOn = _guardian.armed && _guardian.radius > 0;
+    if (!guardianOn) {
+      Object.keys(_guardian.encounters).forEach(id => finalizeEncounter(id));
     }
     const r = await skRequest('GET', '/signalk/v1/api/vessels', null, null);
     if (r.status !== 200) return;
