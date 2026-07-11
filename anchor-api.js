@@ -42,6 +42,8 @@ const _mon = {
 // ─── Guardian state (runs 24/7 regardless of any open browser) ────────────
 const _guardian = {
   radius:      parseInt((function(){ try { return JSON.parse(fs.readFileSync(GUARDIAN_FILE,'utf8')).radius; } catch(e){ return 100; } })() || 100),
+  armed:       (function(){ try { var a = JSON.parse(fs.readFileSync(GUARDIAN_FILE,'utf8')).armed; return a !== false; } catch(e){ return true; } })(),
+  lastRadius:  parseInt((function(){ try { return JSON.parse(fs.readFileSync(GUARDIAN_FILE,'utf8')).lastRadius; } catch(e){ return 100; } })() || 100),
   selfUrn:     null,
   encounters:  {},
   reports:     (function(){ try { return JSON.parse(fs.readFileSync(GUARDIAN_FILE,'utf8')).reports || []; } catch(e){ return []; } })(),
@@ -50,7 +52,7 @@ const _guardian = {
 const GUARDIAN_ALERT_M = 40;
 
 function saveGuardian() {
-  try { fs.writeFileSync(GUARDIAN_FILE, JSON.stringify({ radius: _guardian.radius, reports: _guardian.reports.slice(0,50) })); } catch(e) {}
+  try { fs.writeFileSync(GUARDIAN_FILE, JSON.stringify({ radius: _guardian.radius, armed: _guardian.armed, lastRadius: _guardian.lastRadius, reports: _guardian.reports.slice(0,50) })); } catch(e) {}
 }
 
 // ─── Math ─────────────────────────────────────────────────────────────────
@@ -193,7 +195,7 @@ async function trailTick() {
 
 async function guardianTick() {
   try {
-    if (!_mon.running || _mon.anchorLat == null || _guardian.radius <= 0) {
+    if (!_mon.running || _mon.anchorLat == null || _guardian.radius <= 0 || !_guardian.armed) {
       Object.keys(_guardian.encounters).forEach(id => finalizeEncounter(id));
       return;
     }
@@ -464,6 +466,7 @@ http.createServer(async (req, res) => {
     json(res, 200, {
       ok: true,
       radius: _guardian.radius,
+      armed: _guardian.armed,
       active: Object.entries(_guardian.encounters).map(([id, e]) => ({
         id, vessel: e.name, mmsi: e.mmsi, entered: e.entered,
         minDistM: Math.round(e.minDist), maxSogKt: e.maxSog != null ? e.maxSog.toFixed(1) : '—',
@@ -477,8 +480,19 @@ http.createServer(async (req, res) => {
   if (method === 'POST' && url === '/api/guardian/config') {
     try {
       const body = JSON.parse(await readBody(req));
-      if (typeof body.radius === 'number') { _guardian.radius = body.radius; saveGuardian(); }
-      json(res, 200, { ok: true, radius: _guardian.radius });
+      if (typeof body.radius === 'number') {
+        _guardian.radius = body.radius;
+        if (body.radius > 0) _guardian.lastRadius = body.radius;  // remember for re-arm
+      }
+      if (typeof body.armed === 'boolean') {
+        _guardian.armed = body.armed;
+        if (body.armed && _guardian.radius <= 0) _guardian.radius = _guardian.lastRadius || 100;  // restore radius on re-arm
+        if (!body.armed) {
+          Object.keys(_guardian.encounters).forEach(id => finalizeEncounter(id));  // close open encounters when disarming
+        }
+      }
+      saveGuardian();
+      json(res, 200, { ok: true, radius: _guardian.radius, armed: _guardian.armed });
     } catch(e) { json(res, 500, { ok: false, error: e.message }); }
     return;
   }

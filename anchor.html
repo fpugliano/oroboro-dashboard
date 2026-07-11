@@ -191,7 +191,11 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
       <div id="encounter-details"></div>
     </div>
     <div style="padding:7px 12px;display:flex;align-items:center;gap:10px;background:#0d1420;border-top:1px solid #1e2a38;">
-      <span style="font-size:10px;color:#7a9abf;white-space:nowrap;">GUARDIAN ZONE</span>
+      <span style="font-size:10px;color:#7a9abf;white-space:nowrap;">GUARDIAN</span>
+      <button id="guardian-toggle" onclick="toggleGuardian()" style="position:relative;width:40px;height:22px;border:none;padding:0;background:none;cursor:pointer;flex-shrink:0;">
+        <span id="gt-track" style="position:absolute;inset:0;background:#22c55e44;border-radius:11px;transition:.2s;"></span>
+        <span id="gt-thumb" style="position:absolute;top:3px;left:21px;width:16px;height:16px;background:#22c55e;border-radius:50%;transition:.2s;"></span>
+      </button>
       <input type="range" id="guardian-slider" min="0" max="300" step="10" value="100" style="flex:1;" oninput="setGuardianRadius(+this.value)">
       <span id="guardian-val" style="font-size:11px;color:#c8d4e2;min-width:36px;">100m</span>
     </div>
@@ -1013,7 +1017,7 @@ function drawZone() {
 function updateMap() {
   if (!_map) return;
   if(_guardianLyr){_map.removeLayer(_guardianLyr);_guardianLyr=null;}
-  if(S.anchorSet&&_guardianRadius>0&&S.anchorLat!=null) _guardianLyr=L.circle([S.anchorLat,S.anchorLon],{radius:_guardianRadius,color:'#f59e0b',weight:1,fill:true,fillColor:'#f59e0b',fillOpacity:0.05,dashArray:'6 4'}).addTo(_map);
+  if(S.anchorSet&&_guardianRadius>0&&_guardianArmed&&S.anchorLat!=null) _guardianLyr=L.circle([S.anchorLat,S.anchorLon],{radius:_guardianRadius,color:'#f59e0b',weight:1,fill:true,fillColor:'#f59e0b',fillOpacity:0.05,dashArray:'6 4'}).addTo(_map);
   if (S.anchorLat !== null) {
     if (!_anchorMark) {
       _anchorMark = L.marker([S.anchorLat, S.anchorLon], {
@@ -1191,6 +1195,9 @@ function pollGuardian(){
       var gs=document.getElementById('guardian-slider'),gv=document.getElementById('guardian-val');
       if(gs){gs.value=d.radius;} if(gv){gv.textContent=d.radius>0?d.radius+'m':'off';}
     }
+    if(typeof d.armed==='boolean' && d.armed!==_guardianArmed){
+      _guardianArmed=d.armed; renderGuardianToggle();
+    }
     // Rebuild _encounters from Pi's active list (keyed by id)
     _encounters={};
     (d.active||[]).forEach(function(e){
@@ -1207,6 +1214,24 @@ function pollGuardian(){
 }
 setInterval(pollGuardian, 10000);
 setTimeout(pollGuardian, 1500);
+
+var _guardianArmed=true;
+
+function renderGuardianToggle(){
+  var track=document.getElementById('gt-track'), thumb=document.getElementById('gt-thumb');
+  var slider=document.getElementById('guardian-slider'), val=document.getElementById('guardian-val');
+  if(track){track.style.background=_guardianArmed?'#22c55e44':'#1e2a38';}
+  if(thumb){thumb.style.left=_guardianArmed?'21px':'3px'; thumb.style.background=_guardianArmed?'#22c55e':'#7a9abf';}
+  if(slider){slider.style.opacity=_guardianArmed?'1':'0.4'; slider.disabled=!_guardianArmed;}
+  if(val){val.style.opacity=_guardianArmed?'1':'0.4';}
+}
+
+function toggleGuardian(){
+  _guardianArmed=!_guardianArmed;
+  renderGuardianToggle();
+  if(_map)updateMap();
+  fetch(PROXY_BASE + '/api/guardian/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({armed:_guardianArmed})}).catch(function(){});
+}
 
 function setGuardianRadius(v){
   _guardianRadius=v;
