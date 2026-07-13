@@ -124,19 +124,6 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
 .spinner{width:36px;height:36px;border:3px solid #1e2a38;border-top-color:#22d3ee;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
-<link rel="stylesheet" href="sunlight.css">
-<script>
-(function(){
-  if(localStorage.getItem('oroboroTheme')==='sunlight'){
-    document.documentElement.classList.add('sunlight');
-  }
-  // Listen for theme changes from Settings page
-  try{
-    var _thCh=new BroadcastChannel('oroboro_theme');
-    _thCh.onmessage=function(e){document.documentElement.classList.toggle('sunlight',e.data==='sunlight');};
-  }catch(e){}
-})();
-</script>
 </head>
 <body>
 
@@ -199,31 +186,12 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
   <!-- ── Map tab ── -->
   <div id="tab-map" class="tab">
     <div id="leaflet-map"></div>
-    <div id="encounter-card" style="display:none;background:#0d1420;border-top:1px solid #7f1d1d;padding:8px 12px;">
-      <div style="color:#fca5a5;font-weight:500;font-size:11px;margin-bottom:4px;">⚠ Vessel in proximity zone</div>
-      <div id="encounter-details"></div>
-    </div>
-    <div style="padding:7px 12px;display:flex;align-items:center;gap:10px;background:#0d1420;border-top:1px solid #1e2a38;">
-      <span style="font-size:10px;color:#7a9abf;white-space:nowrap;">GUARDIAN</span>
-      <button id="guardian-toggle" onclick="toggleGuardian()" style="position:relative;width:40px;height:22px;border:none;padding:0;background:none;cursor:pointer;flex-shrink:0;">
-        <span id="gt-track" style="position:absolute;inset:0;background:#22c55e44;border-radius:11px;transition:.2s;"></span>
-        <span id="gt-thumb" style="position:absolute;top:3px;left:21px;width:16px;height:16px;background:#22c55e;border-radius:50%;transition:.2s;"></span>
-      </button>
-      <input type="range" id="guardian-slider" min="0" max="300" step="10" value="100" style="flex:1;" oninput="setGuardianRadius(+this.value)">
-      <span id="guardian-val" style="font-size:11px;color:#c8d4e2;min-width:36px;">100m</span>
-    </div>
   </div>
 
   <!-- ── History tab ── -->
   <div id="tab-history" class="tab">
     <div style="font-size:20px;font-weight:700;text-align:center;padding:18px 0 12px;flex-shrink:0">History</div>
-    <div style="flex:1;overflow-y:auto;">
-      <div id="history-list"></div>
-      <div style="padding:12px 16px;">
-        <div style="font-size:10px;letter-spacing:0.08em;color:#7a9abf;margin:4px 0 8px;">GUARDIAN ENCOUNTERS</div>
-        <div id="guardian-reports"></div>
-      </div>
-    </div>
+    <div id="history-list" style="flex:1;overflow-y:auto"></div>
   </div>
 
   <!-- ── Settings tab ── -->
@@ -291,13 +259,10 @@ const S = {
     userKey:  pvCfg.userKey  || '',
     apiToken: pvCfg.apiToken || '',
     events: Object.assign({
-      dragging:     { enabled: true,  priority: 2,  title: '⚠️ Anchor Dragging!',        message: 'Your vessel is dragging anchor.' },
+      dragging:     { enabled: true,  priority: 2,  title: '⚠️ Anchor Dragging!',        message: 'S/V Oroboro is dragging anchor.' },
       gpsLost:      { enabled: true,  priority: 2,  title: '⚠️ Anchor Alarm: GPS Lost',  message: 'No GPS position updates received.' },
-      anchorSet:    { enabled: true,  priority: 0,  title: 'Anchor Set',                 message: 'Anchor alarm is now armed.' },
-      anchorRaised:    { enabled: true,  priority: 0, title: 'Anchor Raised',            message: 'Anchor alarm disarmed.' },
-      guardianEntry:   { enabled: true,  priority: 1, title: 'Guardian: Vessel in zone', message: 'A vessel has entered your proximity zone.' },
-      guardianClosing: { enabled: true,  priority: 2, title: 'Guardian: Vessel closing',  message: 'A vessel inside your zone is getting closer.' },
-      guardianCleared: { enabled: false, priority: 0, title: 'Guardian: Zone cleared',    message: 'Vessel has left your proximity zone.' },
+      anchorSet:    { enabled: true,  priority: 0,  title: 'Anchor Set',                 message: 'Anchor alarm armed on S/V Oroboro.' },
+      anchorRaised: { enabled: true,  priority: 0,  title: 'Anchor Raised',              message: 'Anchor alarm disarmed on S/V Oroboro.' },
     }, (pvCfg.events || {})),
   },
 
@@ -642,9 +607,6 @@ function switchTab(tabId) {
   S.activeTab = tabId;
   if (tabId === 'tab-map') { setTimeout(() => { if (_map) invalidateMap(); else initMap(); }, 50); }
   if (tabId === 'tab-settings') renderSettings();
-  if (tabId === 'tab-history') renderGuardianReports();
-  var gs=document.getElementById('guardian-slider'),gv=document.getElementById('guardian-val');
-  if(gs){gs.value=_guardianRadius;if(gv)gv.textContent=_guardianRadius>0?_guardianRadius+'m':'off';}
 }
 
 document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1029,8 +991,6 @@ function drawZone() {
 
 function updateMap() {
   if (!_map) return;
-  if(_guardianLyr){_map.removeLayer(_guardianLyr);_guardianLyr=null;}
-  if(S.anchorSet&&_guardianRadius>0&&_guardianArmed&&S.anchorLat!=null) _guardianLyr=L.circle([S.anchorLat,S.anchorLon],{radius:_guardianRadius,color:'#f59e0b',weight:1,fill:true,fillColor:'#f59e0b',fillOpacity:0.05,dashArray:'6 4'}).addTo(_map);
   if (S.anchorLat !== null) {
     if (!_anchorMark) {
       _anchorMark = L.marker([S.anchorLat, S.anchorLon], {
@@ -1101,9 +1061,6 @@ async function updateAIS() {
         _vesselNameCache[id] = name;
       }
 
-      const nav2=v.navigation||{};
-      const sog2=nav2.speedOverGround&&nav2.speedOverGround.value!=null?nav2.speedOverGround.value*1.94384:null;
-      const cog2=nav2.courseOverGroundTrue&&nav2.courseOverGroundTrue.value!=null?nav2.courseOverGroundTrue.value*(180/Math.PI):null;
       const isSelf = id === 'self' || (S.selfMmsi && mmsi === S.selfMmsi);
 
       if (isSelf) {
@@ -1124,13 +1081,8 @@ async function updateAIS() {
         });
         mk.addTo(_map);
         _aisLyrs.push(mk);
-        return;  // own vessel — never a Guardian encounter
+        return;
       }
-
-      // NOTE: Neighbourhood trails + Guardian detection now run 24/7 in the
-      // anchor-api service on the Pi. The browser only DISPLAYS them.
-      // service on the Pi. The browser only DISPLAYS what the Pi records
-      // (see pollGuardian). Neighbourhood trails above stay client-side.
 
       // Other vessels: amber triangle + name (bold) + full MMSI below
       const line1 = name || 'Unknown';
@@ -1149,182 +1101,6 @@ async function updateAIS() {
       _aisLyrs.push(mk);
     }));
   } catch(e) {}
-  setTimeout(function(){drawEncounterTracks();renderEncounterCard();drawNbTrails();},0);
-}
-
-
-// ── Guardian + Neighbourhood Trails ─────────────────────────────────────
-var _guardianRadius=parseInt(localStorage.getItem('guardianRadius')||'100');
-var _guardianLyr=null, _encounters={}, _savedReports=[];  // populated from Pi via pollGuardian()
-var GUARDIAN_ALERT_M=40;
-
-function haversineM(a,b,c,d){var R=6371000,p1=a*Math.PI/180,p2=c*Math.PI/180,dp=(c-a)*Math.PI/180,dl=(d-b)*Math.PI/180,x=Math.sin(dp/2)*Math.sin(dp/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);return 2*R*Math.asin(Math.sqrt(x));}
-
-// Neighbourhood trails — recorded 24/7 on the Pi, fed here by pollGuardian().
-window._nbTrails={};   // id -> {name, pts:[[lat,lon],...]}  (from Pi)
-window._nbLayers={};
-
-function drawNbTrails(){
-  if(!_map) return;
-  // Remove layers for trails no longer present
-  Object.keys(window._nbLayers).forEach(function(id){
-    if(!window._nbTrails[id]){try{_map.removeLayer(window._nbLayers[id]);}catch(e){} delete window._nbLayers[id];}
-  });
-  Object.keys(window._nbTrails).forEach(function(id){
-    var tr=window._nbTrails[id];
-    if(!tr.pts||tr.pts.length<2) return;
-    if(window._nbLayers[id]){try{_map.removeLayer(window._nbLayers[id]);}catch(e){}}
-    window._nbLayers[id]=L.polyline(tr.pts,{color:'#94a3b8',weight:1.5,opacity:0.55,dashArray:'3 4'}).addTo(_map);
-  });
-}
-
-// Guardian detection now runs 24/7 on the Pi (anchor-api service).
-// The browser polls the Pi's state and just DISPLAYS it — no detection,
-// no localStorage, no browser-side Pushover. This works even when this
-// tab was closed: the Pi was watching and alerting the whole time.
-function pollGuardian(){
-  fetch(PROXY_BASE + '/api/guardian/state').then(function(r){return r.ok?r.json():null;}).then(function(d){
-    if(!d||!d.ok) return;
-    if(typeof d.radius==='number' && d.radius!==_guardianRadius){
-      _guardianRadius=d.radius;
-      var gs=document.getElementById('guardian-slider'),gv=document.getElementById('guardian-val');
-      if(gs){gs.value=d.radius;} if(gv){gv.textContent=d.radius>0?d.radius+'m':'off';}
-    }
-    if(typeof d.armed==='boolean' && d.armed!==_guardianArmed){
-      _guardianArmed=d.armed; renderGuardianToggle();
-    }
-    // Rebuild _encounters from Pi's active list (keyed by id)
-    _encounters={};
-    (d.active||[]).forEach(function(e){
-      _encounters[e.id]={name:e.vessel,mmsi:e.mmsi,entered:e.entered,minDist:e.minDistM,
-        maxSog:e.maxSogKt!=='—'?parseFloat(e.maxSogKt):null,closing:e.closing,
-        track:(e.track||[]).map(function(p){return{t:p.t,lat:p.lat,lon:p.lon,sog:p.sog,cog:p.cog,dist:p.dist};})};
-    });
-    _savedReports=(d.reports||[]).map(function(r){
-      return {saved:r.saved,vessel:r.vessel,mmsi:r.mmsi,entered:r.entered,left:r.left,
-        minDistM:r.minDistM,maxSogKt:r.maxSogKt,anchorLat:r.anchorLat,anchorLon:r.anchorLon,track:r.track||[],note:''};
-    });
-    // Neighbourhood trails from the Pi (recorded 24/7, every 15s, within 0.5nm)
-    window._nbTrails={};
-    (d.nbTrails||[]).forEach(function(t){
-      window._nbTrails[t.id]={name:t.name,pts:(t.pts||[]).map(function(p){return [p.lat,p.lon];})};
-    });
-    renderEncounterCard(); drawEncounterTracks(); renderGuardianReports(); drawNbTrails();
-  }).catch(function(){});
-}
-setInterval(pollGuardian, 10000);
-setTimeout(pollGuardian, 1500);
-
-var _guardianArmed=true;
-
-function renderGuardianToggle(){
-  var track=document.getElementById('gt-track'), thumb=document.getElementById('gt-thumb');
-  var slider=document.getElementById('guardian-slider'), val=document.getElementById('guardian-val');
-  if(track){track.style.background=_guardianArmed?'#22c55e44':'#1e2a38';}
-  if(thumb){thumb.style.left=_guardianArmed?'21px':'3px'; thumb.style.background=_guardianArmed?'#22c55e':'#7a9abf';}
-  if(slider){slider.style.opacity=_guardianArmed?'1':'0.4'; slider.disabled=!_guardianArmed;}
-  if(val){val.style.opacity=_guardianArmed?'1':'0.4';}
-}
-
-function toggleGuardian(){
-  _guardianArmed=!_guardianArmed;
-  renderGuardianToggle();
-  if(_map)updateMap();
-  fetch(PROXY_BASE + '/api/guardian/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({armed:_guardianArmed})}).catch(function(){});
-}
-
-function setGuardianRadius(v){
-  _guardianRadius=v;
-  var gv=document.getElementById('guardian-val'); if(gv)gv.textContent=v>0?v+'m':'off';
-  localStorage.setItem('guardianRadius',v);
-  if(_map)updateMap();
-  // Tell the Pi — it's the authority now
-  fetch(PROXY_BASE + '/api/guardian/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({radius:v})}).catch(function(){});
-}
-
-function exportReport(r){
-  var lines=['OROBORO GUARDIAN INCIDENT REPORT','Generated: '+new Date(r.saved).toLocaleString(),'',
-    'OWN VESSEL ANCHOR POSITION','Lat: '+r.anchorLat+'  Lon: '+r.anchorLon,'',
-    'VESSEL','Name: '+(r.vessel||'Unknown'),'MMSI: '+(r.mmsi||'—'),
-    'Entered: '+new Date(r.entered).toLocaleString(),
-    'Left: '+new Date(r.left).toLocaleString(),
-    'Min distance: '+r.minDistM+'m'+(r.minDistM<GUARDIAN_ALERT_M?' \u26a0 CLOSE':''),
-    'Max speed: '+r.maxSogKt+' kt',(r.note?'Note: '+r.note:''),'',
-    'GPS TRACK ('+r.track.length+' fixes)'];
-  r.track.forEach(function(p){lines.push(p.t.slice(11,19)+' UTC '+p.lat.toFixed(5)+','+p.lon.toFixed(5)+(p.sog!=null?' '+p.sog.toFixed(1)+'kt':'')+' dist:'+p.dist+'m');});
-  lines.push('','— end of report —');
-  var fname='guardian_'+r.vessel.replace(/[^a-zA-Z0-9]/g,'_')+'_'+r.saved.slice(0,10)+'.txt';
-  var blob=new Blob([lines.join('\n')],{type:'text/plain'});
-  var file=new File([blob],fname,{type:'text/plain'});
-  if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Guardian: '+r.vessel}).catch(function(){});return;}
-  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);
-}
-
-// Encounter card — minimal: name, distance, track count, save-now only
-function renderEncounterCard(){
-  var card=document.getElementById('encounter-card');
-  var det=document.getElementById('encounter-details');
-  if(!card||!det) return;
-  var keys=Object.keys(_encounters);
-  if(!keys.length){card.style.display='none';return;}
-  card.style.display='block';
-  var enc=_encounters[keys[0]];
-  var dc=enc.minDist<GUARDIAN_ALERT_M?'#ef4444':'#c8d4e2';
-  det.innerHTML='';
-  var hdr=document.createElement('div');
-  hdr.innerHTML='<span style="color:#f59e0b;font-size:13px;font-weight:500;">'+(enc.name||'Unknown')+'</span>'+(enc.mmsi?'<span style="color:#64748b;font-size:11px;margin-left:8px;">MMSI '+enc.mmsi+'</span>':'');
-  var grid=document.createElement('div');
-  grid.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:5px;';
-  function cell(lbl,val,col){var d=document.createElement('div');d.innerHTML='<div style="color:#64748b;font-size:9px;">'+lbl+'</div><div style="color:'+col+';font-size:12px;font-weight:500;">'+val+'</div>';return d;}
-  grid.appendChild(cell('MIN DIST',Math.round(enc.minDist)+'m',dc));
-  grid.appendChild(cell('MAX SPD',enc.maxSog!=null?enc.maxSog.toFixed(1)+'kt':'\u2014','#c8d4e2'));
-  grid.appendChild(cell('TRACK',enc.track.length+' pts','#c8d4e2'));
-  if(enc.closing!==undefined){var t=document.createElement('div');t.style.cssText='grid-column:1/-1;font-size:10px;font-weight:600;color:'+(enc.closing?'#ef4444':'#22c55e');t.textContent=enc.closing?'\u2193 Closing':'\u2192 Stable';grid.appendChild(t);}
-  var note=document.createElement('div');
-  note.style.cssText='margin-top:6px;font-size:10px;color:#556677;';
-  note.textContent='Recording on the Pi — saved automatically when the vessel leaves the zone.';
-  det.appendChild(hdr); det.appendChild(grid); det.appendChild(note);
-}
-
-function drawEncounterTracks(){
-  if(!_map) return;
-  if(!window._encLyrs) window._encLyrs={};
-  Object.keys(window._encLyrs).forEach(function(k){
-    if(!_encounters[k.replace('_mk','')]){try{_map.removeLayer(window._encLyrs[k]);}catch(e){} delete window._encLyrs[k];}
-  });
-  Object.keys(_encounters).forEach(function(id){
-    var enc=_encounters[id];
-    if(enc.track.length<2) return;
-    var coords=enc.track.map(function(p){return[p.lat,p.lon];});
-    var col=enc.closing?'#ef4444':'#f59e0b';
-    if(window._encLyrs[id]){try{_map.removeLayer(window._encLyrs[id]);}catch(e){}}
-    if(window._encLyrs[id+'_mk']){try{_map.removeLayer(window._encLyrs[id+'_mk']);}catch(e){}}
-    window._encLyrs[id]=L.polyline(coords,{color:col,weight:2.5,opacity:0.9}).addTo(_map);
-    var last=enc.track[enc.track.length-1];
-    var age=Math.round((Date.now()-new Date(last.t).getTime())/1000);
-    window._encLyrs[id+'_mk']=L.circleMarker([last.lat,last.lon],{radius:5,color:col,fillColor:col,fillOpacity:1,weight:2})
-      .bindTooltip((enc.name||'Unknown')+' last seen '+(age<60?age+'s':'~'+Math.round(age/60)+'min')+' ago',{direction:'top'})
-      .addTo(_map);
-  });
-}
-
-function renderGuardianReports(){
-  var el=document.getElementById('guardian-reports'); if(!el) return;
-  el.innerHTML='';
-  if(!_savedReports.length){el.innerHTML='<p style="font-size:13px;color:#556677;margin:8px 0;">No encounters recorded yet.</p>';return;}
-  _savedReports.slice(0,10).forEach(function(r){
-    var d=new Date(r.entered),close=r.minDistM<GUARDIAN_ALERT_M;
-    var div=document.createElement('div');
-    div.style.cssText='background:#0d1420;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid '+(close?'#ef4444':'#2a3b5c');
-    var hdr=document.createElement('div'); hdr.style.cssText='display:flex;justify-content:space-between;align-items:baseline;';
-    hdr.innerHTML='<span style="font-size:14px;color:'+(close?'#fca5a5':'#c8d4e2')+';font-weight:500;">'+(r.vessel||'Unknown')+'</span><span style="font-size:11px;color:#556677;">'+d.toLocaleDateString([],{day:'numeric',month:'short'})+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</span>';
-    var meta=document.createElement('div'); meta.style.cssText='font-size:12px;color:#7a9abf;margin-top:2px;';
-    meta.textContent=(r.mmsi?'MMSI '+r.mmsi+' \u00b7 ':'')+' min '+r.minDistM+'m \u00b7 max '+r.maxSogKt+'kt';
-    var btn=document.createElement('button'); btn.textContent='Export report';
-    btn.style.cssText='margin-top:6px;background:transparent;border:1px solid #2a3b5c;border-radius:5px;color:#60a5fa;padding:3px 10px;font-size:11px;cursor:pointer;';
-    (function(rep){btn.addEventListener('click',function(){exportReport(rep);});})(r);
-    div.appendChild(hdr); div.appendChild(meta); div.appendChild(btn); el.appendChild(div);
-  });
 }
 
 function invalidateMap() { if (_map) _map.invalidateSize(); }
@@ -1429,7 +1205,7 @@ function renderSettings() {
   el.querySelector('#pv-test')?.addEventListener('click', () => {
     const cfg = S.pushover;
     if (!cfg.userKey || !cfg.apiToken) { showToast('Set Pushover credentials first'); return; }
-    const params = new URLSearchParams({ token: cfg.apiToken, user: cfg.userKey, title: 'Anchor Watch Test', message: 'Test notification from '+((typeof S!=='undefined'&&S.selfName)||'your vessel')+'.', priority: '0' });
+    const params = new URLSearchParams({ token: cfg.apiToken, user: cfg.userKey, title: 'Anchor Watch Test', message: 'Test notification from S/V Oroboro.', priority: '0' });
     fetch('https://api.pushover.net/1/messages.json', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params.toString() }).catch(()=>{});
   });
   el.querySelectorAll('[data-pv-toggle]').forEach(cb => {

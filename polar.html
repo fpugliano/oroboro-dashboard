@@ -118,19 +118,6 @@ body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, b
 body.simple .stat-vmg{display:none;}
 body:not(.simple) .stat-trim{display:none;}
 </style>
-<link rel="stylesheet" href="sunlight.css">
-<script>
-(function(){
-  if(localStorage.getItem('oroboroTheme')==='sunlight'){
-    document.documentElement.classList.add('sunlight');
-  }
-  // Listen for theme changes from Settings page
-  try{
-    var _thCh=new BroadcastChannel('oroboro_theme');
-    _thCh.onmessage=function(e){document.documentElement.classList.toggle('sunlight',e.data==='sunlight');};
-  }catch(e){}
-})();
-</script>
 </head>
 <body>
 
@@ -167,17 +154,7 @@ body:not(.simple) .stat-trim{display:none;}
     <div class="vmg-cell"><div class="vmg-lbl">VPP Target</div><div class="vmg-val" id="l-tgt-twa" style="color:var(--blue)">—</div><div class="vmg-sub" id="l-twa-delta">—</div></div>
     <div class="vmg-cell"><div class="vmg-lbl">SOG</div><div class="vmg-val" id="l-sog" style="font-size:14px">—<span style="font-size:9px;color:#aabbcc"> kt</span></div><div class="vmg-sub" id="l-cog">COG —°</div></div>
   </div>
-  <div id="status-slot" style="display:flex;align-items:center;gap:12px;margin-top:8px;min-height:48px;background:#0f1626;border-radius:8px;padding:6px 12px;">
-    <span id="ss-icon" style="display:flex;align-items:center;font-size:20px;color:#64748b;"></span>
-    <div style="flex:1;min-width:0;">
-      <div id="ss-line1" style="font-size:15px;font-weight:600;color:#94a3b8;">warming up…</div>
-      <div id="ss-line2" style="font-size:11px;color:#556677;"></div>
-    </div>
-    <div style="text-align:center;background:#131e30;border-radius:8px;padding:4px 12px;flex-shrink:0;">
-      <div style="font-size:9px;letter-spacing:0.06em;color:#7a9abf;">SAIL SCORE</div>
-      <div id="ss-score" style="font-size:18px;color:#38bdf8;font-weight:600;">0</div>
-    </div>
-  </div>
+  <div id="trim-banner" style="display:none;margin-top:8px;padding:7px 10px;border-radius:5px;font-size:13px;font-weight:500;text-align:center;"></div>
   <div id="coach-row" style="display:flex;align-items:center;gap:14px;margin-top:8px;">
     <svg viewBox="0 0 120 74" width="112" height="70" style="flex-shrink:0;">
       <path d="M12,64 A48,48 0 0 1 108,64" fill="none" stroke="#1a2332" stroke-width="9" stroke-linecap="round" pathLength="100"/>
@@ -292,24 +269,16 @@ body:not(.simple) .stat-trim{display:none;}
     <button class="btn-sec" onclick="exportCSV()">Export CSV</button>
     <button class="btn-sec" onclick="exportGPX()">Export GPX</button>
   </div>
-  <div class="ctrl-row" id="engine-row" style="border-radius:7px;padding:4px 6px;">
-    <span style="font-size:10px;letter-spacing:0.08em;color:#7a9abf;">ENGINE</span>
-    <div style="display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;">
-      <button id="eng-sail" onclick="setEngine(false)" style="background:none;border:none;padding:5px 14px;font-size:13px;font-family:inherit;color:#8899aa;cursor:pointer;">Sailing</button>
-      <button id="eng-motor" onclick="setEngine(true)" style="background:none;border:none;padding:5px 14px;font-size:13px;font-family:inherit;color:#8899aa;cursor:pointer;">Motoring</button>
-    </div>
-    <span id="engine-status" style="font-size:12px;color:#556677;"></span>
+  <div class="ctrl-row" id="motoring-row">
+    <button id="motor-btn" class="btn-sec" onclick="toggleMotoring()" title="Mark this period as motoring — excluded from polar data">🚤 Motoring</button>
+    <span id="motor-status" style="font-size:11px;color:#94a3b8;min-width:120px;"></span>
+    <span style="color:#333;margin:0 4px;">|</span>
+    <label style="white-space:nowrap;">Delete range:</label>
+    <input type="datetime-local" id="del-from" style="flex:1;min-width:130px;">
+    <label style="white-space:nowrap;">to</label>
+    <input type="datetime-local" id="del-to" style="flex:1;min-width:130px;">
+    <button class="btn-sec" style="color:#f87171;border-color:#7f1d1d;" onclick="deleteRange()">Delete</button>
   </div>
-  <div class="ctrl-row" id="excluded-row" style="display:none;">
-    <span style="font-size:10px;letter-spacing:0.08em;color:#7a9abf;">EXCLUDED</span>
-    <span id="excluded-chips" style="display:flex;gap:6px;flex-wrap:wrap;"></span>
-  </div>
-  <div class="ctrl-row">
-    <span class="ctrl-field"><label>Delete from</label><input type="datetime-local" id="del-from"></span>
-    <span class="ctrl-field"><label>to</label><input type="datetime-local" id="del-to"></span>
-    <button class="btn-sec" style="color:#f87171;border-color:#7f1d1d;" onclick="requestDeleteRange()">Delete</button>
-  </div>
-  <div id="confirm-bar" style="display:none;background:#2a1414;border-radius:7px;padding:7px 12px;font-size:12px;color:#fca5a5;margin:2px 12px 6px;align-items:center;gap:10px;flex-wrap:wrap;"></div>
   <div class="stats-row">
     <div class="stat"><div class="slbl">Points</div><div class="sval" id="s-pts" style="color:var(--cyan)">—</div></div>
     <div class="stat"><div class="slbl">Avg Perf</div><div class="sval" id="s-perf" style="color:var(--orange)">—</div></div>
@@ -796,27 +765,29 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 }).addTo(map);
 
 let trackLayers=[], markerLayers=[], boatMarker=null;
-let liveTrackPts=[], liveTrackLayer=null;
+let liveTrackPts=[], liveTrackLayer=null, liveBoatMarker=null;
 let _lastLivePush=0;
 
 function addLivePoint() {
   if(!_lat||!_lon) return;
   const now=Date.now();
-  if(now-_lastLivePush<5000) return; // max 1 trail point every 5 s
-  if(liveTrackPts.length){
-    const last=liveTrackPts[liveTrackPts.length-1];
-    const dm=111320*Math.sqrt(Math.pow(_lat-last[0],2)+Math.pow((_lon-last[1])*Math.cos(_lat*Math.PI/180),2));
-    if(dm<8) return; // anchored GPS jitter — don't record a scribble
-  }
+  if(now-_lastLivePush<5000) return; // max 1 point every 5 s
   _lastLivePush=now;
   liveTrackPts.push([_lat,_lon]);
   if(liveTrackPts.length>2000) liveTrackPts.shift();
+  // update/create dashed live track line
   if(liveTrackLayer) map.removeLayer(liveTrackLayer);
   if(liveTrackPts.length>1) liveTrackLayer=L.polyline(liveTrackPts,{color:'#22d3ee',weight:2,opacity:0.85,dashArray:'6 5'}).addTo(map);
+  // update/create boat marker
+  if(!liveBoatMarker) {
+    liveBoatMarker=L.circleMarker([_lat,_lon],{radius:6,color:'#fff',fillColor:'#22d3ee',fillOpacity:1,weight:2}).addTo(map);
+    liveBoatMarker.bindTooltip('Current position',{permanent:false,direction:'top'});
+  } else {
+    liveBoatMarker.setLatLng([_lat,_lon]);
+  }
 }
 
 function ptPerf(pt){const o=getRefSpeed(pt.tws,pt.twa);return o>0?pt.stw/o:null;}
-function colorOfPt(p){return isExcluded(p.time)?'#64748b':getPerfColor(ptPerf(p));}
 
 function showPointPopup(ll){
   let best=null,bd=Infinity;
@@ -836,7 +807,7 @@ function showPointPopup(ll){
     ['TWS',f(best.tws,1)+' kt'],['AWS',f(best.aws,1)+' kt'],
     ['TWA',f(best.twa,0)+'°'],['AWA',f(best.awa,0)+'°'],
     [tgtLabel,tgt>0?tgt.toFixed(1)+' kt':'—'],
-    ['Perf',isExcluded(best.time)?'— (excluded)':(perf==null?'— (no target)':(perf*100).toFixed(0)+'%')]
+    ['Perf',perf==null?'— (no target)':(perf*100).toFixed(0)+'%']
   ];
   const html='<div style="font-family:Rajdhani,sans-serif;font-size:13px;min-width:130px;">'
     +'<div style="font-weight:700;margin-bottom:5px;border-bottom:1px solid #ccc;padding-bottom:3px;">'
@@ -865,16 +836,15 @@ function renderTrack() {
   for(let i=1;i<trackData.length;i++) {
     const prev=trackData[i-1], pt=trackData[i];
     const gapSecs=(new Date(pt.time)-new Date(prev.time))/1000;
-    const bandOf=p=>isExcluded(p.time)?-1:perfBand(ptPerf(p));
     if(gapSecs>120) {
-      segs.push({pts:cur,color:colorOfPt(cur[0])});
+      segs.push({pts:cur,color:getPerfColor(ptPerf(cur[0]))});
       cur=[pt];                       // real gap: break the line
-    } else if(bandOf(pt)!==bandOf(prev)) {
-      segs.push({pts:cur,color:colorOfPt(cur[0])});
+    } else if(perfBand(ptPerf(pt))!==perfBand(ptPerf(prev))) {
+      segs.push({pts:cur,color:getPerfColor(ptPerf(cur[0]))});
       cur=[prev,pt];                  // color change: new segment starts at the shared point
     } else { cur.push(pt); }
   }
-  segs.push({pts:cur,color:colorOfPt(cur[0])});
+  segs.push({pts:cur,color:getPerfColor(ptPerf(cur[0]))});
 
   segs.forEach(seg=>{
     if(seg.pts.length<2) return;
@@ -1026,7 +996,7 @@ async function loadData() {
     const filteredTrack=excludedRanges.length?newTrack.filter(p=>!inExcludedRange(new Date(p.time))):newTrack;
     sailingData=sailingData.concat(filteredPts);
     trackData=trackData.concat(filteredTrack);
-    updateBestFromData(newPts.filter(p=>!isExcluded(p.time)));
+    updateBestFromData(newPts);
     updateStats();
     drawPolar();
     renderTrack();
@@ -1046,7 +1016,6 @@ function clearData() {
 }
 
 function updateStats() {
-  const sailingData=activeData();
   const n=sailingData.length;
   document.getElementById('s-pts').textContent=n||'—';
   if(!n){['s-perf','s-maxstw','s-vmgup','s-vmgdn','s-hrs'].forEach(id=>document.getElementById(id).textContent='—');return;}
@@ -1094,7 +1063,6 @@ function updateStats() {
 // Export CSV
 // ═══════════════════════════════════════════════════════════
 function exportCSV() {
-  const sailingData=activeData();
   if(!sailingData.length){document.getElementById('status-line').textContent='No data.';return;}
   const rows=[['time_utc','lat','lon','awa_deg','aws_kt','twa_deg','tws_kt','stw_kt','tws_bucket','polar_bsp_kt','performance_pct']];
   sailingData.forEach(d=>{
@@ -1112,7 +1080,7 @@ function exportCSV() {
 // Export GPX (with wind extensions)
 // ═══════════════════════════════════════════════════════════
 function exportGPX() {
-  const pts=activeData().filter(d=>d.lat&&d.lon);
+  const pts=sailingData.filter(d=>d.lat&&d.lon);
   if(!pts.length){document.getElementById('status-line').textContent='No track data with GPS.';return;}
   const lines=[
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -1132,121 +1100,62 @@ function exportGPX() {
       `</extensions></trkpt>`);
   });
   lines.push('</trkseg></trk></gpx>');
-  const fname=`oroboro_track_${new Date().toISOString().slice(0,10)}.gpx`;
-  const blob=new Blob([lines.join('\n')],{type:'application/gpx+xml'});
-  const file=new File([blob],fname,{type:'application/gpx+xml'});
-  if(navigator.canShare&&navigator.canShare({files:[file]})){
-    navigator.share({files:[file],title:'Oroboro track'})
-      .then(()=>{document.getElementById('status-line').textContent=`Shared ${pts.length} track points as GPX.`;})
-      .catch(()=>{});
-    return;
-  }
+  const blob=new Blob([lines.join('\n')],{type:'application/xml'});
   const blobUrl=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=blobUrl;
-  a.download=fname;
+  a.download=`oroboro_track_${new Date().toISOString().slice(0,10)}.gpx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(blobUrl),1000);
-  document.getElementById('status-line').textContent=`Exported ${pts.length} points — if no file appeared, check the browser's download list and choose Keep.`;
+  document.getElementById('status-line').textContent=`Exported ${pts.length} track points as GPX.`;
 }
 
 // ═══════════════════════════════════════════════════════════
 // Motoring exclusion & range delete
 // ═══════════════════════════════════════════════════════════
-let excludedRanges=loadExclusions();
-let motoringStart=localStorage.getItem('polarMotoringStart')?new Date(localStorage.getItem('polarMotoringStart')):null;
+let excludedRanges=[], motoringStart=null;
 
-function loadExclusions(){
-  try{ return (JSON.parse(localStorage.getItem('polarExclusions')||'[]')).map(r=>({start:new Date(r.start),end:new Date(r.end),type:r.type||'motor'})); }
-  catch(e){ return []; }
+function inExcludedRange(t) {
+  return excludedRanges.some(r=>t>=r.start&&t<=r.end);
 }
-function saveExclusions(){ localStorage.setItem('polarExclusions',JSON.stringify(excludedRanges.map(r=>({start:r.start.toISOString(),end:r.end.toISOString(),type:r.type})))); }
-function isExcluded(t){
-  const d=(t instanceof Date)?t:new Date(t);
-  if(motoringStart&&d>=motoringStart) return true;
-  return excludedRanges.some(r=>d>=r.start&&d<=r.end);
-}
-function activeData(){ return sailingData.filter(p=>!isExcluded(p.time)); }
 
-function setEngine(motor){
-  if(motor&&!motoringStart){
+function toggleMotoring() {
+  const btn=document.getElementById('motor-btn');
+  const status=document.getElementById('motor-status');
+  if(!motoringStart) {
     motoringStart=new Date();
-    localStorage.setItem('polarMotoringStart',motoringStart.toISOString());
-  } else if(!motor&&motoringStart){
-    excludedRanges.push({start:motoringStart,end:new Date(),type:'motor'});
-    saveExclusions();
-    motoringStart=null;
-    localStorage.removeItem('polarMotoringStart');
-  }
-  refreshExclusionUI(); recomputeAll();
-}
-function fmtRange(r){
-  const o={day:'numeric',month:'short'}, t={hour:'2-digit',minute:'2-digit'};
-  return r.start.toLocaleDateString([],o)+' '+r.start.toLocaleTimeString([],t)+'–'+r.end.toLocaleTimeString([],t);
-}
-function refreshExclusionUI(){
-  const row=document.getElementById('engine-row'), st=document.getElementById('engine-status');
-  const sail=document.getElementById('eng-sail'), mot=document.getElementById('eng-motor');
-  const on=!!motoringStart;
-  row.style.border=on?'1px solid #7f1d1d':'';
-  sail.style.background=on?'':'#14532d'; sail.style.color=on?'#8899aa':'#86efac'; sail.style.fontWeight=on?'400':'600';
-  mot.style.background=on?'#7f1d1d':''; mot.style.color=on?'#fca5a5':'#8899aa'; mot.style.fontWeight=on?'600':'400';
-  if(on){
-    const mins=Math.round((Date.now()-motoringStart)/60000);
-    st.textContent='recording since '+motoringStart.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' · '+mins+' min · excluded live';
-    st.style.color='#fca5a5';
+    btn.style.background='#7f1d1d'; btn.style.color='#fca5a5'; btn.style.borderColor='#7f1d1d';
+    status.textContent='Motoring since '+motoringStart.toLocaleTimeString();
   } else {
-    st.textContent='tap Motoring when the engine goes on';
-    st.style.color='#556677';
+    const r={start:motoringStart, end:new Date()};
+    excludedRanges.push(r);
+    const before=sailingData.length;
+    sailingData=sailingData.filter(p=>!inExcludedRange(new Date(p.time)));
+    trackData  =trackData.filter(p=>!inExcludedRange(new Date(p.time)));
+    const removed=before-sailingData.length;
+    motoringStart=null;
+    btn.style.background=''; btn.style.color=''; btn.style.borderColor='';
+    status.textContent=`${excludedRanges.length} range(s) excluded (${removed} pts removed)`;
+    updateStats(); drawPolar(); renderTrack();
   }
-  const wrap=document.getElementById('excluded-row'), chips=document.getElementById('excluded-chips');
-  chips.innerHTML='';
-  excludedRanges.forEach((r,i)=>{
-    const n=sailingData.filter(p=>{const d=new Date(p.time);return d>=r.start&&d<=r.end;}).length;
-    const chip=document.createElement('span');
-    chip.style.cssText='display:inline-flex;align-items:center;gap:8px;background:#1e293b;color:#94a3b8;border-radius:999px;padding:3px 6px 3px 12px;font-size:12px;';
-    chip.textContent=(r.type==='motor'?'motor · ':'deleted · ')+fmtRange(r)+' ';
-    const x=document.createElement('button');
-    x.textContent='✕';
-    x.title='Restore this period';
-    x.style.cssText='background:none;border:1px solid #2a3b5c;color:#64748b;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:1;padding:0;';
-    x.onclick=()=>confirmBar('Restore '+n+' points ('+fmtRange(r)+') back into your sailing data?','Restore',()=>{
-      excludedRanges.splice(i,1); saveExclusions(); refreshExclusionUI(); recomputeAll();
-    });
-    chip.appendChild(x); chips.appendChild(chip);
-  });
-  wrap.style.display=excludedRanges.length?'flex':'none';
 }
-function confirmBar(msg,okLabel,onOk){
-  const bar=document.getElementById('confirm-bar');
-  bar.innerHTML='';
-  bar.appendChild(document.createTextNode(msg+' '));
-  const ok=document.createElement('button'); ok.textContent=okLabel;
-  ok.style.cssText='border:1px solid #7f1d1d;background:none;border-radius:6px;padding:3px 12px;color:#fca5a5;font-weight:600;font-family:inherit;cursor:pointer;';
-  const no=document.createElement('button'); no.textContent='Cancel';
-  no.style.cssText='border:1px solid #2a3b5c;background:none;border-radius:6px;padding:3px 12px;color:#8899aa;font-family:inherit;cursor:pointer;';
-  ok.onclick=()=>{bar.style.display='none';onOk();};
-  no.onclick=()=>{bar.style.display='none';};
-  bar.appendChild(ok); bar.appendChild(no);
-  bar.style.display='flex';
-}
-function requestDeleteRange(){
-  const f=document.getElementById('del-from').value, t=document.getElementById('del-to').value;
-  if(!f||!t){document.getElementById('status-line').textContent='Set both From and To first.';return;}
-  const r={start:new Date(f),end:new Date(t),type:'deleted'};
+
+function deleteRange() {
+  const f=document.getElementById('del-from').value;
+  const t=document.getElementById('del-to').value;
+  if(!f||!t){document.getElementById('status-line').textContent='Set both From and To dates first.';return;}
+  const r={start:new Date(f),end:new Date(t)};
   if(r.start>=r.end){document.getElementById('status-line').textContent='From must be before To.';return;}
-  const n=sailingData.filter(p=>{const d=new Date(p.time);return d>=r.start&&d<=r.end;}).length;
-  confirmBar('This removes '+n+' points ('+fmtRange(r)+') from stats and records.','Confirm',()=>{
-    excludedRanges.push(r); saveExclusions();
-    document.getElementById('del-from').value=''; document.getElementById('del-to').value='';
-    refreshExclusionUI(); recomputeAll();
-  });
+  excludedRanges.push(r);
+  const before=sailingData.length;
+  sailingData=sailingData.filter(p=>!inExcludedRange(new Date(p.time)));
+  trackData  =trackData.filter(p=>!inExcludedRange(new Date(p.time)));
+  const removed=before-sailingData.length;
+  document.getElementById('status-line').textContent=`Deleted ${removed} pts from ${f} → ${t}.`;
+  updateStats(); drawPolar(); renderTrack();
 }
-function recomputeAll(){ try{updateStats();drawPolar();renderTrack();}catch(e){} }
-refreshExclusionUI();
-setInterval(()=>{ if(motoringStart) refreshExclusionUI(); },60000);
 
 // ═══════════════════════════════════════════════════════════
 // Live WebSocket
@@ -1256,166 +1165,6 @@ let wsConn=null,reconnTimer=null;
 
 // ── Trim coach: gauge + rolling 5-min performance sparkline ──
 const perfHistory=[];
-const stwHistory=[];
-let _lastStwPush=0, _lastMovingTs=Date.now();
-
-// ── Cruiser coach: streaks, score, records, day summary ──
-const COACH_SERP="M 478.8 280.6 L 472.5 254.7 L 494.5 254.7 Z M 297.5 451.7 L 271.5 436.0 L 297.5 429.7 Z M 100.5 254.7 L 116.1 228.7 L 122.4 254.7 Z M 307.0 103.7 C 312.2 103.7 316.5 105.3 316.5 107.2 C 316.5 109.2 312.2 110.8 307.0 110.8 C 301.7 110.8 297.5 109.2 297.5 107.2 C 297.5 105.3 301.7 103.7 307.0 103.7 M 307.0 65.0 C 312.2 65.0 316.5 66.6 316.5 68.6 C 316.5 70.5 312.2 72.1 307.0 72.1 C 301.7 72.1 297.5 70.5 297.5 68.6 C 297.5 66.6 301.7 65.0 307.0 65.0 M 481.4 210.0 L 481.3 210.2 C 466.2 147.2 419.8 96.3 359.5 75 C 363.1 81.0 364.6 86.9 364.0 91.7 C 363.3 96.5 360.9 104.8 352.3 112.6 C 408.8 135.0 448.8 190.2 448.8 254.7 C 448.8 339.0 380.4 407.4 296.0 407.4 C 211.6 407.4 143.2 339.0 143.2 254.7 C 143.2 185.6 189.1 127.2 252.0 108.3 C 253.8 109.4 277.5 123.6 310.4 118.0 C 344.6 112.1 351.4 97.5 352.4 90.2 C 353.3 82.9 341.1 63.8 309.4 58.0 C 282.7 53.1 259.5 61.2 245.1 71.1 C 176.5 90.0 123.4 146.4 109.3 216.9 L 85.7 254.7 L 109.3 292.4 C 124.2 366.9 182.6 425.7 256.9 441.1 L 297.5 466.5 L 339.7 440.1 C 409.6 423.7 464.6 368.8 481.3 299.0 L 481.4 299.3 L 509.3 254.7 Z M 481.4 210.0";
-function serpSvg(col){return '<svg viewBox="86 53 424 414" width="24" height="24" aria-hidden="true"><path fill="'+col+'" d="'+COACH_SERP+'"/></svg>';}
-const FLAVOR_UP=["she'd love a bit more sheet","a touch of traveler could wake her up","the telltales are asking for attention","half a knot is waiting if you feel like playing","a little backstay of patience and she'll go"];
-const FLAVOR_OFF=["she'd love a bit more ease","let the jib breathe a little","a small ease might find free speed","half a knot is waiting if you feel like playing"];
-let coach={state:'idle',flavor:'',streakStart:null,celebrating:0,celebText:'',lastRef:0};
-function todayKey(){return new Date().toISOString().slice(0,10);}
-let _dayKey=todayKey();
-function loadDay(){
-  try{const d=JSON.parse(localStorage.getItem('sailDay:'+todayKey())||'{}');
-    return {score:d.score||0,minutes:d.minutes||0,onTgt:d.onTgt||0,bestStreak:d.bestStreak||0,records:d.records||[],maxStw:d.maxStw||0,summaryShown:!!d.summaryShown};}
-  catch(e){return {score:0,minutes:0,onTgt:0,bestStreak:0,records:[],maxStw:0,summaryShown:false};}
-}
-let day=loadDay();
-function saveDay(){localStorage.setItem('sailDay:'+todayKey(),JSON.stringify(day));}
-function rollDay(){if(todayKey()!==_dayKey){_dayKey=todayKey();day=loadDay();}}
-function avg60(){const cut=Date.now()-60000;const xs=perfHistory.filter(x=>x.t>=cut);return xs.length>=6?xs.reduce((a,b)=>a+b.p,0)/xs.length:null;}
-
-function feedCoach(perfPct,ref,twa,upwind){
-  rollDay();
-  coach.lastRef=ref;
-  if(_stw>=1)_lastMovingTs=Date.now();
-  if(_stw>0.5&&_stw>day.maxStw){day.maxStw=+_stw.toFixed(1);}
-  const a=avg60();
-  let target;
-  if(typeof motoringStart!=='undefined'&&motoringStart) target='motor';
-  else if(_stw<1) target='rest';
-  else if(ref<=0||a===null) target='noref';
-  else if(coach.state==='ontarget'?a>=80:a>=87) target='ontarget';
-  else target='easy';
-  if(target!==coach.state){
-    coach.state=target;
-    if(target==='ontarget') coach.streakStart=Date.now();
-    else {
-      if(coach.streakStart){const m=Math.floor((Date.now()-coach.streakStart)/60000);if(m>day.bestStreak){day.bestStreak=m;saveDay();}}
-      coach.streakStart=null;
-    }
-    if(target==='easy'){const arr=upwind?FLAVOR_UP:FLAVOR_OFF;coach.flavor=arr[Math.floor(Math.random()*arr.length)];}
-  }
-  renderCoach(a);
-}
-
-function renderCoach(a){
-  const icon=document.getElementById('ss-icon'),l1=document.getElementById('ss-line1'),l2=document.getElementById('ss-line2'),sc=document.getElementById('ss-score');
-  const slot=document.getElementById('status-slot');
-  if(!icon) return;
-  sc.textContent=Math.round(day.score);
-  if(coach.celebrating>Date.now()){
-    slot.style.border='1px solid #b7791f';
-    icon.innerHTML='🏆';
-    l1.style.color='#fcd34d'; l1.textContent='New personal best!';
-    l2.textContent=coach.celebText;
-    return;
-  }
-  slot.style.border='';
-  if(coach.state==='motor'){icon.innerHTML='🚤';l1.style.color='#94a3b8';l1.textContent='Under engine — not scored';l2.textContent='this period is excluded from your polar';return;}
-  if(coach.state==='rest'){icon.innerHTML='🌊';l1.style.color='#94a3b8';l1.textContent='At rest — the sea keeps the score today';l2.textContent=day.minutes>0?('so far: '+Math.round(day.score)+' pts over '+day.minutes+' min'):'';return;}
-  if(coach.state==='noref'){icon.innerHTML=serpSvg('#64748b');l1.style.color='#94a3b8';l1.textContent='Sailing off the chart — no reference here yet';l2.textContent='every mile you sail teaches the polar';return;}
-  if(coach.state==='ontarget'){
-    const mins=coach.streakStart?Math.floor((Date.now()-coach.streakStart)/60000):0;
-    icon.innerHTML=serpSvg('#4ade80');
-    l1.style.color='#86efac'; l1.textContent='On target '+mins+' min';
-    l2.textContent='best today '+Math.max(day.bestStreak,mins)+' min · '+(a!==null?a.toFixed(0)+'% avg':'');
-    return;
-  }
-  icon.innerHTML=serpSvg('#f59e0b');
-  l1.style.color='#fcd34d'; l1.textContent='Cruising easy — '+coach.flavor;
-  const gap=coach.lastRef>0?coach.lastRef-_stw:0;
-  l2.textContent=(a!==null?a.toFixed(0)+'% of '+refLabel():'')+(gap>0.2?' · '+gap.toFixed(1)+' kt on the table':'');
-}
-
-const _recordCooldown={};
-function evaluateRecord(){
-  if(typeof motoringStart!=='undefined'&&motoringStart) return;
-  const cut=Date.now()-60000;
-  const xs=stwHistory.filter(x=>x.t>=cut);
-  if(xs.length<8) return;
-  const sorted=xs.map(x=>x.twa).sort((p,q)=>p-q);
-  const twaMed=sorted[Math.floor(sorted.length/2)];
-  const ta=TABLE_TWA.reduce((p,q)=>Math.abs(q-twaMed)<Math.abs(p-twaMed)?q:p);
-  if(xs.some(x=>Math.abs(x.twa-ta)>12)) return;
-  const twsAvg=xs.reduce((p,q)=>p+q.tws,0)/xs.length;
-  if(twsAvg>28||twsAvg<3) return;
-  const tw=TABLE_TWS.reduce((p,q)=>Math.abs(q-twsAvg)<Math.abs(p-twsAvg)?q:p);
-  const v=+(xs.reduce((p,q)=>p+q.stw,0)/xs.length).toFixed(2);
-  const cur=OROBORO_BEST[tw]?OROBORO_BEST[tw][ta]:null;
-  if(cur&&v<=cur+0.05) return;
-  const key=tw+':'+ta;
-  if(_recordCooldown[key]&&Date.now()-_recordCooldown[key]<600000) return;
-  _recordCooldown[key]=Date.now();
-  if(!OROBORO_BEST[tw])OROBORO_BEST[tw]={};
-  OROBORO_BEST[tw][ta]=v;
-  if(typeof buildTable==='function') buildTable();
-  day.score+=25;
-  day.records.push({tws:tw,twa:ta,v:v,old:cur});
-  saveDay();
-  coach.celebrating=Date.now()+20000;
-  coach.celebText=v.toFixed(1)+' kt at '+ta+'° in '+tw+' kt of wind'+(cur?' — old record '+cur.toFixed(1)+' kt':' — first record for this cell');
-  renderCoach(avg60());
-}
-
-function trailDistanceNm(){
-  let d=0;
-  for(let i=1;i<liveTrackPts.length;i++){
-    const [a,b]=liveTrackPts[i-1],[c,e]=liveTrackPts[i];
-    d+=3440.065*2*Math.asin(Math.sqrt(Math.pow(Math.sin((c-a)*Math.PI/360),2)+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.pow(Math.sin((e-b)*Math.PI/360),2)));
-  }
-  return d;
-}
-function gradeOf(){
-  if(day.minutes<10) return null;
-  const r=day.score/day.minutes;
-  return r>=1.8?'A':r>=1.6?'B+':r>=1.4?'B':r>=1.2?'C+':r>=1.0?'C':'D';
-}
-function maybeShowSummary(){
-  if(day.summaryShown||day.minutes<15) return;
-  if(Date.now()-_lastMovingTs<600000) return;
-  day.summaryShown=true; saveDay();
-  let hist=[];
-  try{hist=JSON.parse(localStorage.getItem('sailHistory')||'[]');}catch(e){}
-  const rate=day.score/day.minutes;
-  const better=hist.slice(-5).filter(h=>rate>(h.rate||0)).length;
-  hist.push({date:todayKey(),score:Math.round(day.score),minutes:day.minutes,rate:+rate.toFixed(2),grade:gradeOf()});
-  localStorage.setItem('sailHistory',JSON.stringify(hist.slice(-30)));
-  const g=gradeOf()||'—';
-  const dist=trailDistanceNm();
-  const card=document.createElement('div');
-  card.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3000;background:#0d1420;border:1px solid #2a3b5c;border-radius:12px;padding:16px 18px;font-family:Rajdhani,sans-serif;min-width:300px;max-width:92vw;box-shadow:0 10px 40px rgba(0,0,0,0.6);';
-  card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:16px;">'
-    +'<div><div style="font-size:11px;letter-spacing:0.08em;color:#7a9abf;">TODAY\'S SAIL · '+new Date().toLocaleDateString([],{day:"numeric",month:"short"}).toUpperCase()+'</div>'
-    +'<div style="font-size:15px;color:#c8d4e2;">'+(dist>0.3?dist.toFixed(1)+' nm tracked · ':'')+day.minutes+' scored min</div></div>'
-    +'<div style="text-align:center;background:#14261a;border:1px solid #22c55e;border-radius:10px;padding:4px 16px;">'
-    +'<div style="font-size:26px;color:#4ade80;font-weight:600;">'+g+'</div><div style="font-size:10px;color:#7a9abf;">score '+Math.round(day.score)+'</div></div></div>'
-    +'<div style="display:flex;gap:18px;margin-top:12px;flex-wrap:wrap;">'
-    +'<div><div style="font-size:10px;color:#7a9abf;">BEST STREAK</div><div style="font-size:17px;color:#86efac;font-weight:600;">'+day.bestStreak+' min</div></div>'
-    +'<div><div style="font-size:10px;color:#7a9abf;">TIME ON TARGET</div><div style="font-size:17px;color:#e2e8f0;font-weight:600;">'+(day.minutes?Math.round(day.onTgt/day.minutes*100):0)+'%</div></div>'
-    +'<div><div style="font-size:10px;color:#7a9abf;">RECORDS SET</div><div style="font-size:17px;color:#fbbf24;font-weight:600;">🏆 '+day.records.length+'</div></div>'
-    +'<div><div style="font-size:10px;color:#7a9abf;">MAX STW</div><div style="font-size:17px;color:#e2e8f0;font-weight:600;">'+day.maxStw.toFixed(1)+' kt</div></div></div>'
-    +(hist.length>1?'<div style="font-size:12px;color:#556677;margin-top:10px;">better than '+better+' of your last '+Math.min(5,hist.length-1)+' sails</div>':'')
-    +'<button style="margin-top:12px;width:100%;background:#1e3a5f;color:#60a5fa;border:none;border-radius:7px;padding:8px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;" onclick="this.parentNode.remove()">Nice · close</button>';
-  document.body.appendChild(card);
-}
-
-setInterval(()=>{ evaluateRecord(); if(coach.state==='ontarget') renderCoach(avg60()); },30000);
-setInterval(()=>{
-  rollDay();
-  const a=avg60();
-  const scoring=!(typeof motoringStart!=='undefined'&&motoringStart)&&_stw>=1&&coach.lastRef>0&&a!==null;
-  if(scoring){
-    const pts=a>=95?2:a>=85?1.5:a>=70?1:0.5;
-    day.score+=pts; day.minutes+=1;
-    if(coach.state==='ontarget'){day.onTgt+=1;const m=Math.floor((Date.now()-coach.streakStart)/60000);if(m>day.bestStreak)day.bestStreak=m;}
-    saveDay();
-    const sc=document.getElementById('ss-score'); if(sc) sc.textContent=Math.round(day.score);
-  }
-  maybeShowSummary();
-},60000);
 function updateGauge(pct){
   const arc=document.getElementById('gauge-arc'), txt=document.getElementById('gauge-txt');
   const sub=document.getElementById('gauge-sub');
@@ -1530,15 +1279,24 @@ function updateLive() {
   const delta=twa-vmgOpt.a;
   document.getElementById('l-twa-delta').textContent=Math.abs(delta)<1?'on target':delta>0?'+'+delta.toFixed(0)+'° bear away':delta.toFixed(0)+'° head up';
 
-  if(_stw>0.5&&tws>0){
-    const nowH=Date.now();
-    if(nowH-_lastStwPush>=5000){
-      _lastStwPush=nowH;
-      stwHistory.push({t:nowH,stw:_stw,twa:twa,tws:tws});
-      while(stwHistory.length&&nowH-stwHistory[0].t>90000) stwHistory.shift();
-    }
+  const banner=document.getElementById('trim-banner');
+  if(perfPct!==null && _stw>0.5 && perfPct<88){
+    const angleAction=Math.abs(delta)<2?'':(delta>0?`bear away ${Math.abs(delta).toFixed(0)}°`:`head up ${Math.abs(delta).toFixed(0)}°`);
+    const trimAction=upwind?'sheet in':'ease sheets';
+    const suggestion=perfPct<70?trimAction:(angleAction||trimAction);
+    const severe=perfPct<70;
+    banner.style.display='block';
+    banner.style.background=severe?'#7f1d1d':'#78350f';
+    banner.style.color=severe?'#fca5a5':'#fcd34d';
+    banner.textContent=`${perfPct.toFixed(0)}% of target — try: ${suggestion}`;
+  } else if(_stw>1 && twa>135 && activeRef()==='vpp'){
+    banner.style.display='block';
+    banner.style.background='#1e3a5f';
+    banner.style.color='#93c5fd';
+    banner.textContent='Beyond jib polar range — best downwind VMG is ~130° TWA, then gybe';
+  } else {
+    banner.style.display='none';
   }
-  feedCoach(perfPct, polar, twa, upwind);
 
   livePoint={twa,tws,stw:_stw};
   drawPolar();

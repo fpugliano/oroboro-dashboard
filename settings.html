@@ -108,14 +108,6 @@ body{background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',system-ui,sans-seri
 #toast.error{border-color:#f87171;color:#f87171}
 #toast.success{border-color:#5db832;color:#5db832}
 </style>
-<link rel="stylesheet" href="sunlight.css">
-<script>
-(function(){
-  if(localStorage.getItem('oroboroTheme')==='sunlight'){
-    document.documentElement.classList.add('sunlight');
-  }
-})();
-</script>
 </head>
 <body>
 
@@ -334,19 +326,6 @@ function renderHome() {
   const skPort   = (C.signalk && C.signalk.port) || '—';
 
   document.getElementById('s-home').innerHTML = `
-    
-    <div class="section-hdr" style="margin-top:16px">Display</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #1e2a38;">
-      <div>
-        <div style="color:#c8d6e5;font-size:15px;font-weight:500;">Theme</div>
-        <div style="color:#7a9abf;font-size:12px;margin-top:2px;" id="theme-label">Dark Mode</div>
-      </div>
-      <button id="theme-toggle" onclick="toggleTheme()" style="position:relative;width:52px;height:28px;border:none;padding:0;background:none;cursor:pointer;flex-shrink:0;" aria-label="Toggle sunlight mode">
-        <span id="theme-track" style="position:absolute;inset:0;border-radius:14px;background:#1e2a38;transition:.25s;"></span>
-        <span id="theme-thumb" style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;background:#7a9abf;transition:.25s;"></span>
-      </button>
-    </div>
-
     <div class="section-hdr" style="margin-top:4px">Vessel</div>
     <button class="row" onclick="nav('vessel')">
       <span class="row-label">Vessel Name</span>
@@ -608,34 +587,6 @@ function esc(s) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 loadConfig();
-
-function toggleTheme(){
-  var sun = document.documentElement.classList.toggle('sunlight');
-  localStorage.setItem('oroboroTheme', sun ? 'sunlight' : 'dark');
-  // Tell other open tabs immediately
-  try{new BroadcastChannel('oroboro_theme').postMessage(sun?'sunlight':'dark');}catch(e){}
-  updateThemeToggle(sun);
-}
-function updateThemeToggle(sun){
-  var track=document.getElementById('theme-track');
-  var thumb=document.getElementById('theme-thumb');
-  var label=document.getElementById('theme-label');
-  if(!track) return;
-  if(sun){
-    track.style.background='#f59e0b';
-    thumb.style.left='28px';
-    thumb.style.background='#ffffff';
-    if(label) label.textContent='Sunlight Mode';
-  } else {
-    track.style.background='#1e2a38';
-    thumb.style.left='4px';
-    thumb.style.background='#7a9abf';
-    if(label) label.textContent='Dark Mode';
-  }
-}
-// init toggle state
-(function(){ updateThemeToggle(document.documentElement.classList.contains('sunlight')); })();
-
 </script>
 </body>
 </html>
