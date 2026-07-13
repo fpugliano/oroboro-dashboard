@@ -612,6 +612,8 @@ loadConfig();
 function toggleTheme(){
   var sun = document.documentElement.classList.toggle('sunlight');
   localStorage.setItem('oroboroTheme', sun ? 'sunlight' : 'dark');
+  // Tell other open tabs immediately
+  try{new BroadcastChannel('oroboro_theme').postMessage(sun?'sunlight':'dark');}catch(e){}
   updateThemeToggle(sun);
 }
 function updateThemeToggle(sun){

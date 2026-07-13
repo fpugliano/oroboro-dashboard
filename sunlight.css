@@ -1,19 +1,42 @@
 /*
  * Oroboro Dashboard — Sunlight Mode
- * Applied when <html class="sunlight"> is set.
- * Overrides the dark navy palette with high-contrast whites/greys
- * for cockpit use in direct sunlight.
- * Data/alert colors (cyan, amber, red, green) are intentionally
- * kept — they remain readable and carry safety meaning.
+ * High-contrast light theme for cockpit use in direct sunlight.
+ * html.sunlight class stored in localStorage, applied on every page load.
+ * Data/alert colors (cyan, amber, red, green) are selectively restored
+ * to darker but still vivid equivalents that read well on white.
  */
 
-/* ── Page backgrounds ──────────────────────────────────────────── */
+/* ─── 1. ALL text → near-black (catches body, class and inline rules) */
+html.sunlight * { color: #0a1628 !important; }
+
+/* ─── 2. Page backgrounds */
 html.sunlight,
 html.sunlight body,
-html.sunlight #app,
-html.sunlight .page { background: #f0f4f8 !important; color: #0a1628 !important; }
+html.sunlight #app { background: #f0f4f8 !important; }
 
-/* ── Panel / card surfaces ──────────────────────────────────────── */
+/* ─── 3. Restore vivid data colors (darkened so they read on white) */
+html.sunlight [style*="color:#22d3ee"],
+html.sunlight [style*="color: #22d3ee"] { color: #007a99 !important; }
+html.sunlight [style*="color:#60a5fa"],
+html.sunlight [style*="color: #60a5fa"] { color: #1a4a9a !important; }
+html.sunlight [style*="color:#f59e0b"],
+html.sunlight [style*="color: #f59e0b"] { color: #a05c00 !important; }
+html.sunlight [style*="color:#f87171"],
+html.sunlight [style*="color: #f87171"] { color: #b30000 !important; }
+html.sunlight [style*="color:#fca5a5"],
+html.sunlight [style*="color: #fca5a5"] { color: #b30000 !important; }
+html.sunlight [style*="color:#22c55e"],
+html.sunlight [style*="color: #22c55e"] { color: #166534 !important; }
+html.sunlight [style*="color:#5db832"],
+html.sunlight [style*="color: #5db832"] { color: #3a6b1a !important; }
+html.sunlight [style*="color:#ef4444"],
+html.sunlight [style*="color: #ef4444"] { color: #b30000 !important; }
+html.sunlight [style*="color:#86efac"],
+html.sunlight [style*="color: #86efac"] { color: #166534 !important; }
+html.sunlight [style*="color:#4ade80"],
+html.sunlight [style*="color: #4ade80"] { color: #166534 !important; }
+
+/* ─── 4. Dark panel/card backgrounds → white */
 html.sunlight [style*="background:#0a0e14"],
 html.sunlight [style*="background: #0a0e14"],
 html.sunlight [style*="background:#111820"],
@@ -29,92 +52,48 @@ html.sunlight [style*="background: #151c28"],
 html.sunlight [style*="background:#1e2a38"],
 html.sunlight [style*="background: #1e2a38"],
 html.sunlight [style*="background:#1e3a5f"],
-html.sunlight [style*="background: #1e3a5f"] { background: #ffffff !important; }
+html.sunlight [style*="background: #1e3a5f"],
+html.sunlight [style*="background:#374151"],
+html.sunlight [style*="background: #374151"] { background: #ffffff !important; }
 
-/* ── Inline-style rgba dark surfaces ───────────────────────────── */
 html.sunlight [style*="background:rgba(10,14,20"],
 html.sunlight [style*="background: rgba(10,14,20"],
 html.sunlight [style*="background:rgba(30,42,56"],
 html.sunlight [style*="background: rgba(30,42,56"] { background: rgba(255,255,255,0.95) !important; }
 
-/* ── Borders / hairlines ────────────────────────────────────────── */
-html.sunlight [style*="border-color:#1e2a38"],
-html.sunlight [style*="border:#1e2a38"],
+/* ─── 5. Alert backgrounds — keep coloured, just lighten */
+html.sunlight [style*="background:#7f1d1d"],
+html.sunlight [style*="background: #7f1d1d"] { background: #ffe0e0 !important; }
+html.sunlight [style*="background:#78350f"],
+html.sunlight [style*="background: #78350f"] { background: #fff3cd !important; }
+html.sunlight [style*="background:#14532d"],
+html.sunlight [style*="background: #14532d"] { background: #d4edda !important; }
+
+/* ─── 6. Borders */
 html.sunlight [style*="border:1px solid #1e2a38"],
+html.sunlight [style*="border: 1px solid #1e2a38"],
 html.sunlight [style*="border:1px solid #2a3b5c"],
-html.sunlight [style*="border: 1px solid #2a3b5c"] { border-color: #b0bec8 !important; }
+html.sunlight [style*="border: 1px solid #2a3b5c"],
+html.sunlight [style*="border-color:#1e2a38"],
+html.sunlight [style*="border-color: #1e2a38"] { border-color: #b0bec8 !important; }
 
-/* ── Text: muted blue-greys → readable dark ─────────────────────── */
-html.sunlight [style*="color:#7a9abf"],
-html.sunlight [style*="color: #7a9abf"] { color: #2a4a6a !important; }
-
-html.sunlight [style*="color:#aabbcc"],
-html.sunlight [style*="color: #aabbcc"],
-html.sunlight [style*="color:#c8d6e5"],
-html.sunlight [style*="color: #c8d6e5"],
-html.sunlight [style*="color:#c8d4e2"],
-html.sunlight [style*="color: #c8d4e2"],
-html.sunlight [style*="color:#e2e8f0"],
-html.sunlight [style*="color: #e2e8f0"],
-html.sunlight [style*="color:#8899aa"],
-html.sunlight [style*="color: #8899aa"],
-html.sunlight [style*="color:#556677"],
-html.sunlight [style*="color: #556677"],
-html.sunlight [style*="color:#5a7a9a"],
-html.sunlight [style*="color: #5a7a9a"],
-html.sunlight [style*="color:#94a3b8"],
-html.sunlight [style*="color: #94a3b8"],
-html.sunlight [style*="color:#64748b"],
-html.sunlight [style*="color: #64748b"],
-html.sunlight [style*="color:#9ca3af"],
-html.sunlight [style*="color: #9ca3af"] { color: #1a2a3a !important; }
-
-/* ── White text → dark (headings, labels, values) ──────────────── */
-html.sunlight [style*="color:#fff"],
-html.sunlight [style*="color: #fff"],
-html.sunlight [style*="color:#ffffff"],
-html.sunlight [style*="color: #ffffff"] { color: #0a1628 !important; }
-
-/* ── CSS class-based rules (the styled stat cells, dividers etc) ── */
-html.sunlight .stat-cell,
-html.sunlight .cell,
-html.sunlight .card,
-html.sunlight .panel,
-html.sunlight .bm-item { background: #ffffff !important; color: #0a1628 !important; }
-
-html.sunlight .divider,
-html.sunlight .bar-track { background: #d0dae3 !important; }
-
-html.sunlight .section-hdr { color: #2a4a6a !important; border-color: #c0cdd8 !important; }
-
-/* ── Nav / top bar ──────────────────────────────────────────────── */
-html.sunlight #top-bar,
-html.sunlight #nav-bar { background: #e8eef4 !important; border-color: #c0cdd8 !important; }
-
-html.sunlight #burger-btn { border-color: #b0bec8 !important; color: #1a2a3a !important; }
-html.sunlight #burger-menu { background: #ffffff !important; border-color: #c0cdd8 !important; }
-
-/* ── Wind rose ──────────────────────────────────────────────────── */
-html.sunlight .rose-bg,
-html.sunlight .rose-ring { fill: #e8eef4 !important; }
-html.sunlight .rose-label { fill: #1a2a3a !important; }
-
-/* ── Input fields ───────────────────────────────────────────────── */
-html.sunlight input[type=text],
-html.sunlight input[type=number],
+/* ─── 7. Inputs */
+html.sunlight input,
 html.sunlight select,
 html.sunlight textarea {
   background: #ffffff !important;
-  color: #0a1628 !important;
   border-color: #b0bec8 !important;
 }
 
-/* ── Leaflet map (anchor page) ──────────────────────────────────── */
-html.sunlight .leaflet-container { background: #e8eef4 !important; }
+/* ─── 8. Nav / burger */
+html.sunlight #top-bar,
+html.sunlight #nav-bar  { background: #e8eef4 !important; border-color: #c0cdd8 !important; }
+html.sunlight #burger-btn { border-color: #b0bec8 !important; }
+html.sunlight #burger-menu { background: #ffffff !important; border-color: #c0cdd8 !important; }
 
-/* ── Scrollbars ─────────────────────────────────────────────────── */
+/* ─── 9. Misc structural */
+html.sunlight .divider,
+html.sunlight .bar-track { background: #d0dae3 !important; }
+html.sunlight .leaflet-container { background: #e8eef4 !important; }
 html.sunlight ::-webkit-scrollbar-track { background: #e8eef4 !important; }
 html.sunlight ::-webkit-scrollbar-thumb { background: #a0b4c4 !important; }
-
-/* ── Toggle button itself (in settings) ────────────────────────── */
-html.sunlight .theme-toggle-track { background: #f59e0b !important; }
