@@ -118,6 +118,14 @@ body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, b
 body.simple .stat-vmg{display:none;}
 body:not(.simple) .stat-trim{display:none;}
 </style>
+<link rel="stylesheet" href="sunlight.css">
+<script>
+(function(){
+  if(localStorage.getItem('oroboroTheme')==='sunlight'){
+    document.documentElement.classList.add('sunlight');
+  }
+})();
+</script>
 </head>
 <body>
 
@@ -1539,17 +1547,6 @@ function updateLive() {
 }
 
 connectWS();
-
-// Keep screen awake while page is visible (iOS 16.4+ / Safari)
-let wakeLock = null;
-async function acquireWakeLock() {
-  if (!('wakeLock' in navigator)) return;
-  try { wakeLock = await navigator.wakeLock.request('screen'); } catch {}
-}
-acquireWakeLock();
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') acquireWakeLock();
-});
 </script>
 </body>
 </html>

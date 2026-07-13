@@ -124,6 +124,14 @@ html,body{height:100%;background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',sy
 .spinner{width:36px;height:36px;border:3px solid #1e2a38;border-top-color:#22d3ee;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
+<link rel="stylesheet" href="sunlight.css">
+<script>
+(function(){
+  if(localStorage.getItem('oroboroTheme')==='sunlight'){
+    document.documentElement.classList.add('sunlight');
+  }
+})();
+</script>
 </head>
 <body>
 

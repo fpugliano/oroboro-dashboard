@@ -340,6 +340,14 @@ html, body {
 }
 </style>
 <script src="config.js"></script>
+<link rel="stylesheet" href="sunlight.css">
+<script>
+(function(){
+  if(localStorage.getItem('oroboroTheme')==='sunlight'){
+    document.documentElement.classList.add('sunlight');
+  }
+})();
+</script>
 </head>
 <body>
 
