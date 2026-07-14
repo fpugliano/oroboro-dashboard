@@ -940,16 +940,17 @@ function buildWindRose() {
     return e;
   }
 
-  // Background gradient
+  // Background gradient — sunlight-aware
+  const _rSun = document.documentElement.classList.contains('sunlight');
   const defs = el('defs', {}, svg);
   const grad = el('radialGradient', {id:'wr-bg', cx:'50%', cy:'50%', r:'50%'}, defs);
-  el('stop', {offset:'0%',   'stop-color':'#1a2540'}, grad);
-  el('stop', {offset:'100%', 'stop-color':'#0a0e14'}, grad);
-  el('circle', {r:'128', fill:'url(#wr-bg)', stroke:'#1e2a38', 'stroke-width':'0.5'}, svg);
+  el('stop', {offset:'0%',   'stop-color': _rSun ? '#f8fafc' : '#1a2540'}, grad);
+  el('stop', {offset:'100%', 'stop-color': _rSun ? '#f0f4f8' : '#0a0e14'}, grad);
+  el('circle', {r:'128', fill:'url(#wr-bg)', stroke: _rSun ? '#c8d4de' : '#1e2a38', 'stroke-width':'0.5'}, svg);
 
   // Oroboro mark, variant C: serpent rides the tick ring, letters outside the rim
   const SERP_D="M 478.8 280.6 L 472.5 254.7 L 494.5 254.7 Z M 297.5 451.7 L 271.5 436.0 L 297.5 429.7 Z M 100.5 254.7 L 116.1 228.7 L 122.4 254.7 Z M 307.0 103.7 C 312.2 103.7 316.5 105.3 316.5 107.2 C 316.5 109.2 312.2 110.8 307.0 110.8 C 301.7 110.8 297.5 109.2 297.5 107.2 C 297.5 105.3 301.7 103.7 307.0 103.7 M 307.0 65.0 C 312.2 65.0 316.5 66.6 316.5 68.6 C 316.5 70.5 312.2 72.1 307.0 72.1 C 301.7 72.1 297.5 70.5 297.5 68.6 C 297.5 66.6 301.7 65.0 307.0 65.0 M 481.4 210.0 L 481.3 210.2 C 466.2 147.2 419.8 96.3 359.5 75 C 363.1 81.0 364.6 86.9 364.0 91.7 C 363.3 96.5 360.9 104.8 352.3 112.6 C 408.8 135.0 448.8 190.2 448.8 254.7 C 448.8 339.0 380.4 407.4 296.0 407.4 C 211.6 407.4 143.2 339.0 143.2 254.7 C 143.2 185.6 189.1 127.2 252.0 108.3 C 253.8 109.4 277.5 123.6 310.4 118.0 C 344.6 112.1 351.4 97.5 352.4 90.2 C 353.3 82.9 341.1 63.8 309.4 58.0 C 282.7 53.1 259.5 61.2 245.1 71.1 C 176.5 90.0 123.4 146.4 109.3 216.9 L 85.7 254.7 L 109.3 292.4 C 124.2 366.9 182.6 425.7 256.9 441.1 L 297.5 466.5 L 339.7 440.1 C 409.6 423.7 464.6 368.8 481.3 299.0 L 481.4 299.3 L 509.3 254.7 Z M 481.4 210.0";
-  const logoG = el('g', {transform:'scale(0.5574) translate(-297.5,-259)', fill:'#ffffff', 'pointer-events':'none'}, svg);
+  const logoG = el('g', {transform:'scale(0.5574) translate(-297.5,-259)', fill: _rSun ? '#1a2a3a' : '#ffffff', 'pointer-events':'none'}, svg);
   el('path', {d:SERP_D, opacity:'0.45'}, logoG);
 
   // Ring guides removed — the serpent occupies that zone and the dashes read as outlines on it
