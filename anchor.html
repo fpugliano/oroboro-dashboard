@@ -1128,10 +1128,13 @@ async function updateAIS() {
       }
 
       // Guardian proximity check
+      // Exclude own vessel — SK sometimes lists us under both 'self' and MMSI key
       var isSelf2 = (id === 'self');
       if (!isSelf2 && S.selfMmsi && mmsi) isSelf2 = (String(mmsi) === String(S.selfMmsi));
-      if (!isSelf2 && S.curLat != null && haversineM(pos.latitude, pos.longitude, S.curLat, S.curLon) < 8) isSelf2 = true;
       if (!isSelf2 && S.selfName && name && name.toUpperCase() === S.selfName.toUpperCase()) isSelf2 = true;
+      if (!isSelf2 && S.curLat != null && haversineM(pos.latitude, pos.longitude, S.curLat, S.curLon) < 8) isSelf2 = true;
+      // Also exclude if vessel id contains our MMSI (handles urn:mrn:imo:mmsi: keys)
+      if (!isSelf2 && S.selfMmsi && id.indexOf(S.selfMmsi) !== -1) isSelf2 = true;
       if (guardianActive() && S.anchorLat != null && !isSelf2) {
         var dist2   = haversineM(pos.latitude, pos.longitude, S.anchorLat, S.anchorLon);
         var sog2    = v.navigation && v.navigation.speedOverGround && v.navigation.speedOverGround.value;
