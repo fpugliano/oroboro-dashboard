@@ -11,6 +11,9 @@
     var ch=new BroadcastChannel('oroboro_theme');
     ch.onmessage=function(e){
       document.documentElement.classList.toggle('sunlight',e.data==='sunlight');
+      if(typeof updateNetPower==='function') updateNetPower();
+      if(typeof updatePowerBadge==='function') updatePowerBadge();
+      if(typeof drawTrend==='function') drawTrend();
     };
   }catch(e){}
 })();
@@ -711,9 +714,16 @@ const MODE = {
   'low battery':{bg:'#7f1d1d', c:'#f87171'},
 };
 
+// Sunlight-friendly equivalents for badge backgrounds
+var _SUNLIGHT_BG = {
+  '#14532d':'#d4edda', '#7f1d1d':'#ffe0e0', '#78350f':'#fff3cd',
+  '#374151':'#e8eef4', '#1d4ed8':'#dbeafe', '#10261a':'#d4edda',
+  '#2a1414':'#ffe0e0'
+};
 function setBadge(el, text, bg, color) {
   el.textContent      = text;
-  el.style.background = bg;
+  var sun = document.documentElement.classList.contains('sunlight');
+  el.style.background = sun ? (_SUNLIGHT_BG[bg] || bg) : bg;
   el.style.color      = color;
 }
 
@@ -1135,11 +1145,12 @@ function updateNetPower() {
   }
   const netW = _battV * _battA;
   let color, bg, text;
+  var _sun = document.documentElement.classList.contains('sunlight');
   if (netW > 10) {
-    color = '#4ade80'; bg = '#10261a';
+    color = '#4ade80'; bg = _sun ? '#d4edda' : '#10261a';
     text  = '+' + Math.round(netW) + ' W';
   } else if (netW < -10) {
-    color = '#f87171'; bg = '#2a1414';
+    color = '#f87171'; bg = _sun ? '#ffe0e0' : '#2a1414';
     text  = '−' + Math.abs(Math.round(netW)) + ' W';
   } else {
     color = '#9ca3af'; bg = 'transparent';
