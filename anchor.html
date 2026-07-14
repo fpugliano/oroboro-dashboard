@@ -324,6 +324,7 @@ function haversine(lat1, lon1, lat2, lon2) {
   const a = Math.sin(dp/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
+var haversineM = haversine; // alias — haversine() already returns metres
 function bearingTo(lat1, lon1, lat2, lon2) {
   const p1=lat1*Math.PI/180, p2=lat2*Math.PI/180, dl=(lon2-lon1)*Math.PI/180;
   return (Math.atan2(Math.sin(dl)*Math.cos(p2), Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl))*180/Math.PI+360)%360;
@@ -1127,10 +1128,10 @@ async function updateAIS() {
       }
 
       // Guardian proximity check
-      var isSelf2 = (id === 'self') || (S.selfMmsi && String(mmsi) === String(S.selfMmsi));
-      if (!isSelf2 && S.curLat != null) {
-        if (haversineM(pos.latitude, pos.longitude, S.curLat, S.curLon) < 8) isSelf2 = true;
-      }
+      var isSelf2 = (id === 'self');
+      if (!isSelf2 && S.selfMmsi && mmsi) isSelf2 = (String(mmsi) === String(S.selfMmsi));
+      if (!isSelf2 && S.curLat != null && haversineM(pos.latitude, pos.longitude, S.curLat, S.curLon) < 8) isSelf2 = true;
+      if (!isSelf2 && S.selfName && name && name.toUpperCase() === S.selfName.toUpperCase()) isSelf2 = true;
       if (guardianActive() && S.anchorLat != null && !isSelf2) {
         var dist2   = haversineM(pos.latitude, pos.longitude, S.anchorLat, S.anchorLon);
         var sog2    = v.navigation && v.navigation.speedOverGround && v.navigation.speedOverGround.value;
