@@ -2,17 +2,9 @@
 <html lang="en">
 <head>
 <script>
-// Apply saved theme before paint to avoid flash
 (function(){
   if(localStorage.getItem('oroboroTheme')==='sunlight')
     document.documentElement.classList.add('sunlight');
-  // Sync with other open pages via BroadcastChannel
-  try{
-    var ch=new BroadcastChannel('oroboro_theme');
-    ch.onmessage=function(e){
-      document.documentElement.classList.toggle('sunlight',e.data==='sunlight');
-    };
-  }catch(e){}
 })();
 </script>
 <meta charset="UTF-8">
