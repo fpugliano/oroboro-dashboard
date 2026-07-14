@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+// Apply saved theme before paint to avoid flash
+(function(){
+  if(localStorage.getItem('oroboroTheme')==='sunlight')
+    document.documentElement.classList.add('sunlight');
+  // Sync with other open pages via BroadcastChannel
+  try{
+    var ch=new BroadcastChannel('oroboro_theme');
+    ch.onmessage=function(e){
+      document.documentElement.classList.toggle('sunlight',e.data==='sunlight');
+    };
+  }catch(e){}
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -12,6 +26,27 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Oroboro">
 <style>
+:root {
+  --bg-page:       #0a0e14;
+  --bg-card:       #111820;
+  --bg-card-alt:   #1e3a5f;
+  --bg-hairline:   #1e2a38;
+  --bg-muted:      #374151;
+  --text-primary:  #e2e8f0;
+  --text-secondary:#aabbcc;
+  --text-muted:    #7a9abf;
+}
+html.sunlight {
+  --bg-page:       #f0f4f8;
+  --bg-card:       #ffffff;
+  --bg-card-alt:   #e8f0f8;
+  --bg-hairline:   #c8d4de;
+  --bg-muted:      #dde4ea;
+  --text-primary:  #0a1628;
+  --text-secondary:#2a3a4a;
+  --text-muted:    #3a5a7a;
+}
+
 @font-face {
   font-family: 'Rajdhani';
   font-style: normal;
@@ -40,8 +75,8 @@
 html, body {
   width: 100%;
   margin: 0;
-  background: #0a0e14;
-  color: #e2e8f0;
+  background: var(--bg-page);
+  color: var(--text-primary);
   font-family: 'Rajdhani', system-ui, sans-serif;
   font-size: 12px;
 }
@@ -54,7 +89,7 @@ html, body {
 }
 
 .card {
-  background: #111820;
+  background: var(--bg-card);
   border: 0.5px solid #1e2a38;
   border-radius: 8px;
   padding: 10px 12px;
@@ -136,7 +171,7 @@ html, body {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #7a9abf;
+  color: var(--text-muted);
   margin-bottom: 3px;
   flex-shrink: 0;
 }
@@ -148,8 +183,8 @@ html, body {
 .val-xs  { font-size: 14px; font-weight: 500; line-height: 1; letter-spacing: -0.5px; }
 .wind-spd { font-size: 36px; font-weight: 500; line-height: 1; letter-spacing: -0.5px; }
 
-.unit   { font-size: 11px; color: #7a9abf; margin-left: 3px; font-weight: 500; }
-.sub    { font-size: 10px; color: #7a9abf; margin-top: 3px; flex-shrink: 0; }
+.unit   { font-size: 11px; color: var(--text-muted); margin-left: 3px; font-weight: 500; }
+.sub    { font-size: 10px; color: var(--text-muted); margin-top: 3px; flex-shrink: 0; }
 .mono   { font-family: 'Courier New', Courier, monospace; }
 
 .green  { color: #5db832; }
@@ -157,12 +192,12 @@ html, body {
 .amber  { color: #f59e0b; }
 .blue   { color: #60a5fa; }
 .red    { color: #f87171; }
-.muted  { color: #7a9abf; }
-.white  { color: #e2e8f0; }
+.muted  { color: var(--text-muted); }
+.white  { color: var(--text-primary); }
 
-.divider { height: 0.5px; background: #1e2a38; margin: 7px 0; flex-shrink: 0; }
+.divider { height: 0.5px; background: var(--bg-hairline); margin: 7px 0; flex-shrink: 0; }
 
-.bar-track { width: 100%; height: 4px; background: #1e2a38; border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+.bar-track { width: 100%; height: 4px; background: var(--bg-hairline); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
 .bar-fill  { height: 100%; border-radius: 2px; transition: width 0.6s ease, background 0.4s ease; }
 
 .badge {
@@ -189,7 +224,7 @@ html, body {
 
 .tank-card {
   flex: 1;
-  background: #0d1520;
+  background: var(--bg-card);
   border-radius: 6px;
   padding: 10px 8px;
   display: flex;
@@ -199,14 +234,14 @@ html, body {
 }
 /* FIX 1: tank font sizes ~10% smaller */
 .tank-pct  { font-size: 25px; font-weight: 500; color: #22d3ee; line-height: 1; letter-spacing: 0px; }
-.tank-lit  { font-size: 14px; font-weight: 500; color: #e2e8f0; line-height: 1; letter-spacing: -0.5px; }
-.tank-of   { font-size: 9px;  color: #7a9abf; }
+.tank-lit  { font-size: 14px; font-weight: 500; color: var(--text-primary); line-height: 1; letter-spacing: -0.5px; }
+.tank-of   { font-size: 9px;  color: var(--text-muted); }
 .tank-bar  { height: 10px !important; border-radius: 5px !important; }
-.tank-name { font-size: 9px; font-weight: 500; letter-spacing: 0.08em; color: #7a9abf; text-transform: uppercase; margin-top: 2px; }
+.tank-name { font-size: 9px; font-weight: 500; letter-spacing: 0.08em; color: var(--text-muted); text-transform: uppercase; margin-top: 2px; }
 
 .wind-stats { display: flex; gap: 28px; justify-content: center; width: 100%; flex-shrink: 0; }
 .wind-col   { text-align: center; }
-.wind-sub   { font-size: 10px; color: #7a9abf; margin-top: 3px; }
+.wind-sub   { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
 .wind-sub span { font-weight: 500; }
 
 .compass-wrap {
@@ -232,7 +267,7 @@ html, body {
 .compass-stat    { text-align: center; }
 /* FIX 1: ~10% smaller */
 .compass-stat-v  { font-size: 18px; font-weight: 500; letter-spacing: -0.5px; }
-.compass-stat-l  { font-size: 8px; color: #7a9abf; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 3px; }
+.compass-stat-l  { font-size: 8px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 3px; }
 
 .sparkline-wrap { width: 100%; padding: 0 2px; flex: 0 1 80px; min-height: 0; overflow: hidden; }
 #trend-canvas { width: 100%; height: 100%; display: block; border-radius: 4px; }
@@ -240,21 +275,21 @@ html, body {
 .batt-hdr     { margin-bottom: 4px; flex-shrink: 0; }
 .soc-bar      { height: 5px; margin: 4px 0 8px; }
 .stats-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-.stat-cell    { background: #0d1520; border-radius: 5px; padding: 6px 8px; }
+.stat-cell    { background: var(--bg-card); border-radius: 5px; padding: 6px 8px; }
 /* FIX 1: ~10% smaller */
 .stat-v       { font-size: 22px; font-weight: 500; line-height: 1; letter-spacing: 0px; }
-.stat-l       { font-size: 8px; color: #7a9abf; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-l       { font-size: 8px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .solar-total-val { font-size: 16px; font-weight: 500; color: #f59e0b; letter-spacing: 0px; }
 .solar-row    { margin-bottom: 6px; flex-shrink: 0; }
 .solar-rh     { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
-.solar-name   { color: #7a9abf; }
-.solar-w      { color: #e2e8f0; font-weight: 500; letter-spacing: -0.5px; }
-.solar-bar    { height: 3px; background: #1e2a38; border-radius: 1.5px; overflow: hidden; }
+.solar-name   { color: var(--text-muted); }
+.solar-w      { color: var(--text-primary); font-weight: 500; letter-spacing: -0.5px; }
+.solar-bar    { height: 3px; background: var(--bg-hairline); border-radius: 1.5px; overflow: hidden; }
 .solar-fill   { height: 100%; background: #f59e0b; border-radius: 1.5px; transition: width 0.6s ease; }
 
-.batt-temp    { font-size: 10px; color: #7a9abf; }
-.batt-temp span { color: #e2e8f0; font-weight: 500; }
+.batt-temp    { font-size: 10px; color: var(--text-muted); }
+.batt-temp span { color: var(--text-primary); font-weight: 500; }
 
 #bottom-bar {
   position: fixed;
@@ -281,7 +316,7 @@ html, body {
 #fs-btn {
   width: 28px; height: 28px; border-radius: 5px;
   background: rgba(30,42,56,0.85); border: 0.5px solid #7a9abf;
-  color: #e2e8f0; font-size: 14px; cursor: pointer;
+  color: var(--text-primary); font-size: 14px; cursor: pointer;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 #anchor-btn {
@@ -351,8 +386,8 @@ html, body {
     <div style="margin-bottom:4px;">
       <div class="lbl" style="margin-bottom:4px;">Speed over ground</div>
       <div style="display:flex;align-items:baseline;gap:4px;">
-        <span id="sog" style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-0.5px;color:#ffffff;">--</span>
-        <span style="font-size:14px;color:#7a9abf;">kts</span>
+        <span id="sog" style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-0.5px;color:var(--text-primary);">--</span>
+        <span style="font-size:14px;color:var(--text-muted);">kts</span>
       </div>
     </div>
 
@@ -365,11 +400,11 @@ html, body {
     <div style="display:flex;align-items:baseline;justify-content:space-between;">
       <div style="display:flex;align-items:baseline;gap:4px;">
         <span id="depth" style="font-size:52px;font-weight:700;line-height:1;letter-spacing:-0.5px;color:#22d3ee;">--</span>
-        <span style="font-size:14px;color:#7a9abf;">m</span>
+        <span style="font-size:14px;color:var(--text-muted);">m</span>
       </div>
       <div style="display:flex;align-items:baseline;gap:2px;">
         <span id="water-temp" style="font-size:36px;font-weight:600;line-height:1;letter-spacing:0px;color:#60a5fa;">--</span>
-        <span style="font-size:12px;color:#7a9abf;">°C</span>
+        <span style="font-size:12px;color:var(--text-muted);">°C</span>
       </div>
     </div>
   </div>
@@ -381,12 +416,12 @@ html, body {
       <div class="wind-col">
         <div class="lbl">TWS</div>
         <div id="tws" style="font-size:46px;font-weight:700;color:#F5F52A;line-height:1;letter-spacing:-0.5px;">--</div>
-        <div style="font-size:11px;color:#7a9abf;">kts · TWA <span id="twa">--°</span></div>
+        <div style="font-size:11px;color:var(--text-muted);">kts · TWA <span id="twa">--°</span></div>
       </div>
       <div class="wind-col">
         <div class="lbl">AWS</div>
         <div id="aws" style="font-size:46px;font-weight:700;color:#F7A531;line-height:1;letter-spacing:-0.5px;">--</div>
-        <div style="font-size:11px;color:#7a9abf;">kts · AWA <span id="awa">--°</span></div>
+        <div style="font-size:11px;color:var(--text-muted);">kts · AWA <span id="awa">--°</span></div>
       </div>
     </div>
 
@@ -404,7 +439,7 @@ html, body {
   <div class="card" id="card-battery" style="padding:8px 10px;gap:6px;">
     <div class="row-sb batt-hdr" style="margin-bottom:0;">
       <span class="lbl" style="margin:0">House bank</span>
-      <span class="badge" id="charge-badge" style="background:#1e3a5f;color:#60a5fa">--</span>
+      <span class="badge" id="charge-badge" style="background:var(--bg-card-alt);color:#60a5fa">--</span>
     </div>
 
     <div class="row-base">
@@ -475,7 +510,7 @@ html, body {
       <div style="font-size:10px;font-weight:500;text-align:right">
         <span style="color:#60a5fa" id="acout-freq">--Hz</span>
         &nbsp;·&nbsp;
-        <span style="color:#7a9abf" id="batt-a">--A</span>
+        <span style="color:var(--text-muted)" id="batt-a">--A</span>
       </div>
     </div>
 
@@ -483,14 +518,14 @@ html, body {
 
     <div class="row-sb" style="flex-shrink:0">
       <div class="row" style="gap:6px">
-        <span class="badge" id="shore-badge" style="background:#374151;color:#6b7280">No input</span>
-        <span id="shore-v" style="font-size:10px;color:#7a9abf"></span>
+        <span class="badge" id="shore-badge" style="background:var(--bg-muted);color:var(--text-muted)">No input</span>
+        <span id="shore-v" style="font-size:10px;color:var(--text-muted)"></span>
       </div>
-      <span class="badge" id="inv-badge" style="background:#374151;color:#9ca3af">--</span>
+      <span class="badge" id="inv-badge" style="background:var(--bg-muted);color:var(--text-muted)">--</span>
     </div>
   </div>
 
-  <div id="alarm-popup" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:9999; background:#111820; border:1.5px solid #f87171; border-radius:10px; padding:12px 14px; min-width:280px; max-width:340px; font-family:inherit;">
+  <div id="alarm-popup" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:9999; background:var(--bg-card); border:1.5px solid #f87171; border-radius:10px; padding:12px 14px; min-width:280px; max-width:340px; font-family:inherit;">
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
       <div style="display:flex; align-items:center; gap:8px;">
         <div id="alarm-dot" style="width:8px; height:8px; border-radius:50%; background:#f87171;"></div>
@@ -508,14 +543,14 @@ html, body {
 <div id="bottom-bar">
   <div id="bar-left">
     <button id="fs-btn" title="Toggle fullscreen">⛶</button>
-    <button id="burger-btn" title="Menu" style="background:none;border:1px solid #2a3b5c;border-radius:8px;color:#7a9abf;font-size:18px;padding:4px 12px;cursor:pointer;font-family:inherit;">☰</button>
+    <button id="burger-btn" title="Menu" style="background:none;border:1px solid #2a3b5c;border-radius:8px;color:var(--text-muted);font-size:18px;padding:4px 12px;cursor:pointer;font-family:inherit;">☰</button>
   </div>
   <span id="bar-logo"><img src="oroboro-logo-16.jpg" alt="Oroboro"></span>
-  <div id="burger-menu" style="display:none;position:absolute;bottom:calc(100% + 8px);left:8px;background:#131e30;border:1px solid #2a3b5c;border-radius:10px;padding:6px;flex-direction:column;gap:2px;min-width:170px;z-index:200;">
-    <a class="bm-item" href="anchor.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:#c8d6e5;text-decoration:none;border-radius:7px;font-size:14px;">⚓ Anchor watch</a>
-    <a class="bm-item" href="polar.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:#c8d6e5;text-decoration:none;border-radius:7px;font-size:14px;">◔ Polar performance</a>
-    <a class="bm-item" href="#" onclick="event.preventDefault();var url='http://'+window.location.hostname+':3002/d/ajccmj/s-v-oroboro';var w=window.open(url,'_blank');if(!w)window.location.href=url;" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:#c8d6e5;text-decoration:none;border-radius:7px;font-size:14px;">▥ History (Grafana)</a>
-    <a class="bm-item" href="settings.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:#c8d6e5;text-decoration:none;border-radius:7px;font-size:14px;">⚙ Settings</a>
+  <div id="burger-menu" style="display:none;position:absolute;bottom:calc(100% + 8px);left:8px;background:var(--bg-card);border:1px solid #2a3b5c;border-radius:10px;padding:6px;flex-direction:column;gap:2px;min-width:170px;z-index:200;">
+    <a class="bm-item" href="anchor.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">⚓ Anchor watch</a>
+    <a class="bm-item" href="polar.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">◔ Polar performance</a>
+    <a class="bm-item" href="#" onclick="event.preventDefault();var url='http://'+window.location.hostname+':3002/d/ajccmj/s-v-oroboro';var w=window.open(url,'_blank');if(!w)window.location.href=url;" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">▥ History (Grafana)</a>
+    <a class="bm-item" href="settings.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">⚙ Settings</a>
   </div>
   <div id="bar-right">
     <div id="conn-status">
@@ -1049,12 +1084,12 @@ function updateAlarmPopup() {
 
   list.innerHTML = keys.map(path => {
     const a = activeAlarms[path];
-    return `<div style="background:#0d1520;border-radius:6px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+    return `<div style="background:var(--bg-card);border-radius:6px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
       <div style="flex:1;">
-        <div style="font-size:11px;color:#e2e8f0;font-weight:500;margin-bottom:2px;">${a.message}</div>
-        <div style="font-size:10px;color:#7a9abf;">${path} · ${a.value}</div>
+        <div style="font-size:11px;color:var(--text-primary);font-weight:500;margin-bottom:2px;">${a.message}</div>
+        <div style="font-size:10px;color:var(--text-muted);">${path} · ${a.value}</div>
       </div>
-      <button onclick="silenceAlarm('${path}')" style="font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;background:#1e2a38;color:#9ca3af;border:0.5px solid #374151;border-radius:6px;padding:4px 8px;cursor:pointer;font-family:inherit;white-space:nowrap;">Silence</button>
+      <button onclick="silenceAlarm('${path}')" style="font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;background:var(--bg-hairline);color:var(--text-muted);border:0.5px solid #374151;border-radius:6px;padding:4px 8px;cursor:pointer;font-family:inherit;white-space:nowrap;">Silence</button>
     </div>`;
   }).join('');
 }

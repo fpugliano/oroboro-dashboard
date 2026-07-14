@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+// Apply saved theme before paint to avoid flash
+(function(){
+  if(localStorage.getItem('oroboroTheme')==='sunlight')
+    document.documentElement.classList.add('sunlight');
+  // Sync with other open pages via BroadcastChannel
+  try{
+    var ch=new BroadcastChannel('oroboro_theme');
+    ch.onmessage=function(e){
+      document.documentElement.classList.toggle('sunlight',e.data==='sunlight');
+    };
+  }catch(e){}
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -9,6 +23,27 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
+:root {
+  --bg-page:       #0a0e14;
+  --bg-card:       #111820;
+  --bg-card-alt:   #1e3a5f;
+  --bg-hairline:   #1e2a38;
+  --bg-muted:      #374151;
+  --text-primary:  #e2e8f0;
+  --text-secondary:#aabbcc;
+  --text-muted:    #7a9abf;
+}
+html.sunlight {
+  --bg-page:       #f0f4f8;
+  --bg-card:       #ffffff;
+  --bg-card-alt:   #e8f0f8;
+  --bg-hairline:   #c8d4de;
+  --bg-muted:      #dde4ea;
+  --text-primary:  #0a1628;
+  --text-secondary:#2a3a4a;
+  --text-muted:    #3a5a7a;
+}
+
 :root {
   --bg:#0a0e14; --card:#111820; --border:#1a2332;
   --text:#ffffff; --dim:#ffffff; --dimmer:#aabbcc;
@@ -21,7 +56,7 @@ body{font-family:'Rajdhani','Segoe UI',sans-serif;background:var(--bg);color:var
 /* TOP BAR */
 #top-bar{display:flex;align-items:center;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
 #top-bar a{color:var(--cyan);text-decoration:none;font-size:13px;padding:5px 10px;border:1px solid var(--border);border-radius:5px;}
-#top-bar h1{flex:1;text-align:center;font-size:14px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;padding:0 6px;}
+#top-bar h1{flex:1;text-align:center;font-size:14px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;padding:0 6px;}
 @media (max-width:480px){#top-bar h1{font-size:12px;letter-spacing:0.5px;}}
 #conn-badge{font-size:10px;display:flex;align-items:center;gap:4px;}
 #conn-dot{width:7px;height:7px;border-radius:50%;background:#f59e0b;}
@@ -31,26 +66,26 @@ body{font-family:'Rajdhani','Segoe UI',sans-serif;background:var(--bg);color:var
 .live-row{display:flex;}
 .live-cell{flex:1;text-align:center;border-right:1px solid var(--border);padding:0 3px;}
 .live-cell:last-child{border-right:none;}
-.live-lbl{font-size:9px;color:#ffffff;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;opacity:0.55;}
+.live-lbl{font-size:9px;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;opacity:0.55;}
 .live-val{font-size:20px;font-weight:500;line-height:1;}
-.live-unit{font-size:9px;color:#aabbcc;}
+.live-unit{font-size:9px;color:var(--text-secondary);}
 .perf-pill{display:inline-block;font-size:13px;font-weight:600;padding:2px 8px;border-radius:4px;}
 .pg{background:#14532d;color:var(--green);}
 .po{background:#78350f;color:var(--orange);}
 .pr{background:#7f1d1d;color:var(--red);}
 .vmg-row{display:flex;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
 .vmg-cell{flex:1;text-align:center;}
-.vmg-lbl{font-size:9px;color:#ffffff;text-transform:uppercase;opacity:0.55;}
+.vmg-lbl{font-size:9px;color:var(--text-primary);text-transform:uppercase;opacity:0.55;}
 .vmg-val{font-size:14px;font-weight:500;}
-.vmg-sub{font-size:9px;color:#aabbcc;margin-top:1px;}
+.vmg-sub{font-size:9px;color:var(--text-secondary);margin-top:1px;}
 
 /* SECTION DIVIDERS */
-.sec-label{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#ffffff;padding:8px 12px 3px;background:var(--bg);opacity:0.6;}
+.sec-label{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-primary);padding:8px 12px 3px;background:var(--bg);opacity:0.6;}
 .divider{height:1px;background:var(--border);margin:0;}
 
 /* POLAR TABS */
 .polar-tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);}
-.polar-tab{flex:1;text-align:center;padding:9px 4px;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:#aabbcc;cursor:pointer;border-bottom:2px solid transparent;}
+.polar-tab{flex:1;text-align:center;padding:9px 4px;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;}
 .polar-tab.active{color:var(--cyan);border-bottom:2px solid var(--cyan);}
 #polar-panel{padding:6px 8px;background:var(--bg);}
 .polar-canvas-wrap{background:var(--card);border-radius:7px;border:1px solid var(--border);touch-action:manipulation;max-width:600px;margin:0 auto;overflow:visible;}
@@ -58,7 +93,7 @@ body{font-family:'Rajdhani','Segoe UI',sans-serif;background:var(--bg);color:var
 
 /* LEGEND */
 .legend{display:flex;flex-wrap:wrap;gap:6px 10px;padding:5px 12px;justify-content:center;}
-.leg{display:flex;align-items:center;gap:3px;font-size:9px;color:#ffffff;}
+.leg{display:flex;align-items:center;gap:3px;font-size:9px;color:var(--text-primary);}
 .leg-toggle{cursor:pointer;padding:2px 5px;border-radius:8px;border:1px solid transparent;}
 .leg-toggle:has(input:checked){border-color:var(--border);}
 .leg-toggle input{margin:0;width:9px;height:9px;accent-color:var(--cyan);}
@@ -70,26 +105,26 @@ body{font-family:'Rajdhani','Segoe UI',sans-serif;background:var(--bg);color:var
 /* TABLE */
 #table-wrap{overflow-x:auto;padding:4px 10px 8px;}
 table.ptable{border-collapse:collapse;font-size:10px;width:100%;min-width:480px;}
-.ptable th{font-size:8px;color:#ffffff;text-transform:uppercase;letter-spacing:0.04em;padding:3px 4px;text-align:center;border-bottom:1px solid var(--border);}
+.ptable th{font-size:8px;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.04em;padding:3px 4px;text-align:center;border-bottom:1px solid var(--border);}
 .ptable th.twa-h{color:var(--cyan);font-size:9px;}
-.ptable th.sub-vpp{color:#aabbcc;}
+.ptable th.sub-vpp{color:var(--text-secondary);}
 .ptable th.sub-best{color:#22c55e;}
 .ptable td{padding:3px 4px;text-align:center;border-bottom:1px solid #0d1520;}
-.ptable td.tws-c{color:#ffffff;font-weight:500;text-align:left;font-size:11px;}
-.ptable td.vpp{color:#5a7a9a;}
+.ptable td.tws-c{color:var(--text-primary);font-weight:500;text-align:left;font-size:11px;}
+.ptable td.vpp{color:var(--text-muted);}
 .ptable td.best-g{color:var(--green);font-weight:500;}
 .ptable td.best-o{color:var(--orange);font-weight:500;}
 .ptable td.best-r{color:var(--red);font-weight:500;}
-.ptable td.best-none{color:#aabbcc;}
+.ptable td.best-none{color:var(--text-secondary);}
 .tbl-note{display:flex;gap:12px;padding:4px 0 0;font-size:8px;flex-wrap:wrap;}
-.tbl-note .n-vpp{color:#5a7a9a;}
+.tbl-note .n-vpp{color:var(--text-muted);}
 .tbl-note .n-best{color:#22c55e;}
 
 /* TRACK MAP */
 #map-container{height:340px;position:relative;}
 @media (min-width:900px){#map-container{height:64vh;min-height:500px;}}
 #track-map{height:100%;width:100%;}
-.leaflet-container{background:#0a0e14;}
+.leaflet-container{background:var(--bg-page);}
 .map-stats-overlay{position:absolute;top:8px;right:8px;background:rgba(10,14,20,0.88);border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:9px;z-index:500;pointer-events:none;}
 .map-legend-overlay{position:absolute;bottom:8px;left:8px;background:rgba(10,14,20,0.88);border:1px solid var(--border);border-radius:5px;padding:5px 7px;font-size:8px;z-index:500;pointer-events:none;}
 .map-legend-overlay div{display:flex;align-items:center;gap:4px;margin-bottom:2px;}
@@ -105,15 +140,15 @@ table.ptable{border-collapse:collapse;font-size:10px;width:100%;min-width:480px;
   .ctrl-field{flex:1 1 100%;}
   .ctrl-field label{min-width:52px;}
 }
-.ctrl-row label{font-size:10px;color:#ffffff;text-transform:uppercase;opacity:0.6;}
-.ctrl-row select,.ctrl-row input[type="datetime-local"]{background:var(--bg);color:#ffffff;border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-size:11px;font-family:inherit;flex:1;min-width:0;color-scheme:dark;}
+.ctrl-row label{font-size:10px;color:var(--text-primary);text-transform:uppercase;opacity:0.6;}
+.ctrl-row select,.ctrl-row input[type="datetime-local"]{background:var(--bg);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-size:11px;font-family:inherit;flex:1;min-width:0;color-scheme:dark;}
 button.btn-primary{background:var(--cyan);color:var(--bg);border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;}
-button.btn-sec{background:var(--card);color:#ffffff;border:1px solid var(--border);border-radius:4px;padding:6px 10px;font-size:12px;font-family:inherit;cursor:pointer;}
+button.btn-sec{background:var(--card);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;padding:6px 10px;font-size:12px;font-family:inherit;cursor:pointer;}
 .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
 .stat{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 7px;text-align:center;}
-.stat .slbl{font-size:8px;color:#ffffff;text-transform:uppercase;opacity:0.5;}
+.stat .slbl{font-size:8px;color:var(--text-primary);text-transform:uppercase;opacity:0.5;}
 .stat .sval{font-size:15px;font-weight:500;}
-#status-line{text-align:center;padding:5px 12px;font-size:10px;color:#aabbcc;}
+#status-line{text-align:center;padding:5px 12px;font-size:10px;color:var(--text-secondary);}
 body.simple #table-label, body.simple #table-wrap, body.simple #table-divider, body.simple #raw-toggle-wrap {display:none;}
 body.simple .stat-vmg{display:none;}
 body:not(.simple) .stat-trim{display:none;}
@@ -125,10 +160,10 @@ body:not(.simple) .stat-trim{display:none;}
   <a href="oroboro.html">← Dashboard</a>
   <h1>Polar Performance</h1>
   <div id="ref-seg" style="display:flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-right:6px;font-size:11px;">
-    <button id="ref-vpp" style="background:var(--card);color:#aabbcc;border:none;padding:5px 8px;font-family:inherit;cursor:pointer;">VPP</button>
-    <button id="ref-best" style="background:var(--card);color:#aabbcc;border:none;padding:5px 8px;font-family:inherit;cursor:pointer;">My best</button>
+    <button id="ref-vpp" style="background:var(--card);color:var(--text-secondary);border:none;padding:5px 8px;font-family:inherit;cursor:pointer;">VPP</button>
+    <button id="ref-best" style="background:var(--card);color:var(--text-secondary);border:none;padding:5px 8px;font-family:inherit;cursor:pointer;">My best</button>
   </div>
-  <button id="mode-btn" style="background:var(--card);color:#aabbcc;border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:11px;font-family:inherit;cursor:pointer;margin-right:8px;">Analysis</button>
+  <button id="mode-btn" style="background:var(--card);color:var(--text-secondary);border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:11px;font-family:inherit;cursor:pointer;margin-right:8px;">Analysis</button>
   <div id="conn-badge"><div id="conn-dot"></div><span id="conn-txt" style="color:#f59e0b;font-size:10px;">Connecting</span></div>
 </div>
 
@@ -142,7 +177,7 @@ body:not(.simple) .stat-trim{display:none;}
       <div class="live-lbl">Speed / target</div>
       <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;flex-wrap:wrap;">
         <span class="live-val" id="l-stw" style="font-size:22px;">—</span>
-        <span id="l-tgt" style="font-size:13px;color:#8899aa;">/ — kt</span>
+        <span id="l-tgt" style="font-size:13px;color:var(--text-secondary);">/ — kt</span>
         <span id="l-delta" style="display:none;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:600;"></span>
       </div>
       <div class="vmg-sub" id="l-perf">—</div>
@@ -152,7 +187,7 @@ body:not(.simple) .stat-trim{display:none;}
     <div class="vmg-cell"><div class="vmg-lbl">VMG</div><div class="vmg-val" id="l-vmg" style="color:var(--green)">—</div><div class="vmg-sub" id="l-vmg-tgt">target —</div></div>
     <div class="vmg-cell"><div class="vmg-lbl">VMG%</div><div class="vmg-val" id="l-vmgpct">—</div><div class="vmg-sub">of polar</div></div>
     <div class="vmg-cell"><div class="vmg-lbl">VPP Target</div><div class="vmg-val" id="l-tgt-twa" style="color:var(--blue)">—</div><div class="vmg-sub" id="l-twa-delta">—</div></div>
-    <div class="vmg-cell"><div class="vmg-lbl">SOG</div><div class="vmg-val" id="l-sog" style="font-size:14px">—<span style="font-size:9px;color:#aabbcc"> kt</span></div><div class="vmg-sub" id="l-cog">COG —°</div></div>
+    <div class="vmg-cell"><div class="vmg-lbl">SOG</div><div class="vmg-val" id="l-sog" style="font-size:14px">—<span style="font-size:9px;color:var(--text-secondary)"> kt</span></div><div class="vmg-sub" id="l-cog">COG —°</div></div>
   </div>
   <div id="trim-banner" style="display:none;margin-top:8px;padding:7px 10px;border-radius:5px;font-size:13px;font-weight:500;text-align:center;"></div>
   <div id="coach-row" style="display:flex;align-items:center;gap:14px;margin-top:8px;">
@@ -163,7 +198,7 @@ body:not(.simple) .stat-trim{display:none;}
       <text x="60" y="66" text-anchor="middle" font-size="8" fill="#aabbcc" id="gauge-sub">of polar target</text>
     </svg>
     <div style="flex:1;min-width:0;">
-      <div style="font-size:9px;color:#aabbcc;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Performance — last 5 min</div>
+      <div style="font-size:9px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Performance — last 5 min</div>
       <svg viewBox="0 0 300 44" preserveAspectRatio="none" style="width:100%;height:44px;display:block;">
         <line x1="0" y1="7.3" x2="300" y2="7.3" stroke="#4a5a6a" stroke-dasharray="4 3" stroke-width="1"/>
         <polyline id="spark-line" fill="none" stroke="#22c55e" stroke-width="2" points=""/>
@@ -211,7 +246,7 @@ body:not(.simple) .stat-trim{display:none;}
   <div class="tbl-note">
     <span class="n-vpp">VPP = Leopard 40 main+jib (F02)</span>
     <span class="n-best">Best = Oroboro achieved</span>
-    <span style="color:#aabbcc">* VPP target = main + jib (no gennaker) · no VPP data beyond 130° TWA</span>
+    <span style="color:var(--text-secondary)">* VPP target = main + jib (no gennaker) · no VPP data beyond 130° TWA</span>
   </div>
 </div>
 
@@ -223,12 +258,12 @@ body:not(.simple) .stat-trim{display:none;}
   <div id="track-map"></div>
   <div class="map-stats-overlay" id="map-stats" style="display:none;"></div>
   <div class="map-legend-overlay">
-    <div><div class="mleg-line" style="background:#22c55e"></div><span style="color:#fff">&ge;95% of polar</span></div>
-    <div><div class="mleg-line" style="background:#84cc16"></div><span style="color:#fff">85&ndash;95%</span></div>
-    <div><div class="mleg-line" style="background:#f59e0b"></div><span style="color:#fff">70&ndash;85%</span></div>
-    <div><div class="mleg-line" style="background:#ef4444"></div><span style="color:#fff">&lt;70%</span></div>
-    <div><div class="mleg-line" style="background:#64748b"></div><span style="color:#fff">no polar target</span></div>
-    <div><div style="width:10px;height:10px;border-radius:50%;border:2px solid #fff;"></div><span style="color:#fff">Tack/Jibe</span></div>
+    <div><div class="mleg-line" style="background:#22c55e"></div><span style="color:var(--text-primary)">&ge;95% of polar</span></div>
+    <div><div class="mleg-line" style="background:#84cc16"></div><span style="color:var(--text-primary)">85&ndash;95%</span></div>
+    <div><div class="mleg-line" style="background:#f59e0b"></div><span style="color:var(--text-primary)">70&ndash;85%</span></div>
+    <div><div class="mleg-line" style="background:#ef4444"></div><span style="color:var(--text-primary)">&lt;70%</span></div>
+    <div><div class="mleg-line" style="background:var(--bg-muted)"></div><span style="color:var(--text-primary)">no polar target</span></div>
+    <div><div style="width:10px;height:10px;border-radius:50%;border:2px solid #fff;"></div><span style="color:var(--text-primary)">Tack/Jibe</span></div>
   </div>
 </div>
 
@@ -271,7 +306,7 @@ body:not(.simple) .stat-trim{display:none;}
   </div>
   <div class="ctrl-row" id="motoring-row">
     <button id="motor-btn" class="btn-sec" onclick="toggleMotoring()" title="Mark this period as motoring — excluded from polar data">🚤 Motoring</button>
-    <span id="motor-status" style="font-size:11px;color:#94a3b8;min-width:120px;"></span>
+    <span id="motor-status" style="font-size:11px;color:var(--text-muted);min-width:120px;"></span>
     <span style="color:#333;margin:0 4px;">|</span>
     <label style="white-space:nowrap;">Delete range:</label>
     <input type="datetime-local" id="del-from" style="flex:1;min-width:130px;">
@@ -506,7 +541,7 @@ function updateBestFromData(pts) {
 // ═══════════════════════════════════════════════════════════
 function buildTable() {
   document.getElementById('twa-header-row').innerHTML='<th style="text-align:left">TWS</th>'+TABLE_TWA.map(a=>`<th colspan="2" class="twa-h">${a}°</th>`).join('');
-  document.getElementById('sub-header-row').innerHTML='<th style="text-align:left;color:#aabbcc">kt</th>'+TABLE_TWA.map(()=>'<th class="sub-vpp">VPP</th><th class="sub-best">Best</th>').join('');
+  document.getElementById('sub-header-row').innerHTML='<th style="text-align:left;color:var(--text-secondary)">kt</th>'+TABLE_TWA.map(()=>'<th class="sub-vpp">VPP</th><th class="sub-best">Best</th>').join('');
   document.getElementById('polar-table-body').innerHTML=TABLE_TWS.map(tw=>{
     const cells=TABLE_TWA.map(ta=>{
       const vpp=OFFICIAL_POLAR[tw]?.[ta]??'—';
@@ -885,7 +920,7 @@ function renderTrack() {
   const el=document.getElementById('map-stats');
   el.style.display='block';
   const dist=calcDistance(pts);
-  el.innerHTML=`<div style="color:#aabbcc;font-size:7px;text-transform:uppercase;margin-bottom:2px">${trackData.length} track pts</div><div style="color:#fff;font-size:9px">~${dist.toFixed(1)} nm</div>`;
+  el.innerHTML=`<div style="color:var(--text-secondary);font-size:7px;text-transform:uppercase;margin-bottom:2px">${trackData.length} track pts</div><div style="color:var(--text-primary);font-size:9px">~${dist.toFixed(1)} nm</div>`;
 }
 
 function calcDistance(pts) {
@@ -1272,10 +1307,10 @@ function updateLive() {
   const vmg=_stw*Math.cos(twa*Math.PI/180)*(upwind?1:-1);
   const vmgPct=vmgOpt.v>0?vmg/vmgOpt.v*100:0;
   const col=vmgPct>=90?'var(--green)':vmgPct>=75?'var(--orange)':'var(--red)';
-  set('l-vmg',vmg.toFixed(2)+'<span style="font-size:9px;color:#aabbcc"> kt</span>');
+  set('l-vmg',vmg.toFixed(2)+'<span style="font-size:9px;color:var(--text-secondary)"> kt</span>');
   document.getElementById('l-vmg-tgt').textContent='target '+vmgOpt.v.toFixed(2);
   set('l-vmgpct',`<span style="color:${col}">${vmgPct.toFixed(0)}%</span>`);
-  set('l-tgt-twa',vmgOpt.a.toFixed(0)+'<span style="font-size:9px;color:#aabbcc">°</span>');
+  set('l-tgt-twa',vmgOpt.a.toFixed(0)+'<span style="font-size:9px;color:var(--text-secondary)">°</span>');
   const delta=twa-vmgOpt.a;
   document.getElementById('l-twa-delta').textContent=Math.abs(delta)<1?'on target':delta>0?'+'+delta.toFixed(0)+'° bear away':delta.toFixed(0)+'° head up';
 

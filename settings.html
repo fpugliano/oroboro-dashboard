@@ -1,23 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+// Apply saved theme before paint to avoid flash
+(function(){
+  if(localStorage.getItem('oroboroTheme')==='sunlight')
+    document.documentElement.classList.add('sunlight');
+  // Sync with other open pages via BroadcastChannel
+  try{
+    var ch=new BroadcastChannel('oroboro_theme');
+    ch.onmessage=function(e){
+      document.documentElement.classList.toggle('sunlight',e.data==='sunlight');
+    };
+  }catch(e){}
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Settings — Oroboro</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
+:root {
+  --bg-page:       #0a0e14;
+  --bg-card:       #111820;
+  --bg-card-alt:   #1e3a5f;
+  --bg-hairline:   #1e2a38;
+  --bg-muted:      #374151;
+  --text-primary:  #e2e8f0;
+  --text-secondary:#aabbcc;
+  --text-muted:    #7a9abf;
+}
+html.sunlight {
+  --bg-page:       #f0f4f8;
+  --bg-card:       #ffffff;
+  --bg-card-alt:   #e8f0f8;
+  --bg-hairline:   #c8d4de;
+  --bg-muted:      #dde4ea;
+  --text-primary:  #0a1628;
+  --text-secondary:#2a3a4a;
+  --text-muted:    #3a5a7a;
+}
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',system-ui,sans-serif;min-height:100vh}
+body{background:var(--bg-page);color:var(--text-primary);font-family:'Rajdhani',system-ui,sans-serif;min-height:100vh}
 
 #top-bar{
   position:sticky;top:0;z-index:100;
   display:flex;align-items:center;justify-content:space-between;
-  padding:10px 16px;background:#0a0e14;border-bottom:0.5px solid #1e2a38;
+  padding:10px 16px;background:var(--bg-page);border-bottom:0.5px solid #1e2a38;
 }
 #top-bar .title{font-size:14px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase}
 .dash-link{
-  background:#111820;border:1px solid #1e2a38;color:#22d3ee;
+  background:var(--bg-card);border:1px solid #1e2a38;color:#22d3ee;
   font-size:11px;font-weight:700;border-radius:6px;padding:5px 10px;
   text-decoration:none;font-family:inherit;cursor:pointer;
 }
@@ -25,7 +60,7 @@ body{background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',system-ui,sans-seri
 .screen{padding:16px;display:flex;flex-direction:column;min-height:calc(100vh - 49px)}
 
 .section-hdr{
-  font-size:10px;color:#7a9abf;text-transform:uppercase;letter-spacing:0.07em;
+  font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;
   padding:0 2px;margin:20px 0 8px;
 }
 .section-hdr:first-child{margin-top:4px}
@@ -34,10 +69,10 @@ body{background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',system-ui,sans-seri
   display:flex;justify-content:space-between;align-items:center;
   padding:13px 2px;border-bottom:0.5px solid #1e2a38;
   background:none;border-left:none;border-right:none;border-top:none;
-  width:100%;font-family:inherit;text-align:left;color:#e2e8f0;cursor:pointer;
+  width:100%;font-family:inherit;text-align:left;color:var(--text-primary);cursor:pointer;
 }
 .row-label{font-size:13px}
-.row-value{font-size:13px;color:#7a9abf;display:flex;align-items:center;gap:6px}
+.row-value{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:6px}
 .row-chevron{color:#22d3ee;font-size:15px}
 
 .back-btn{
@@ -46,17 +81,17 @@ body{background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',system-ui,sans-seri
 }
 
 .field{margin-bottom:12px}
-.field-label{font-size:10px;color:#7a9abf;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px}
-.field-hint{font-size:9px;color:#7a9abf;margin-top:3px;line-height:1.4}
+.field-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px}
+.field-hint{font-size:9px;color:var(--text-muted);margin-top:3px;line-height:1.4}
 .field-wrap{
-  background:#0d1520;border-radius:6px;border:1px solid #1e2a38;
+  background:var(--bg-card);border-radius:6px;border:1px solid #1e2a38;
   padding:10px 12px;display:flex;align-items:center;gap:6px;
 }
 .field-wrap input{
-  background:none;border:none;color:#e2e8f0;font-size:15px;
+  background:none;border:none;color:var(--text-primary);font-size:15px;
   font-family:inherit;font-weight:600;width:100%;outline:none;
 }
-.field-unit{font-size:11px;color:#7a9abf;flex-shrink:0}
+.field-unit{font-size:11px;color:var(--text-muted);flex-shrink:0}
 
 .grow{flex:1}
 
@@ -75,32 +110,32 @@ body{background:#0a0e14;color:#e2e8f0;font-family:'Rajdhani',system-ui,sans-seri
 
 .card-list{display:flex;flex-direction:column;gap:8px}
 .card-item{
-  background:#111820;border:1px solid #1e2a38;border-radius:8px;
+  background:var(--bg-card);border:1px solid #1e2a38;border-radius:8px;
   padding:12px;display:flex;justify-content:space-between;align-items:center;
-  cursor:pointer;font-family:inherit;text-align:left;width:100%;color:#e2e8f0;
+  cursor:pointer;font-family:inherit;text-align:left;width:100%;color:var(--text-primary);
 }
 .card-title{font-size:13px;font-weight:600}
-.card-sub{font-size:10px;color:#7a9abf;margin-top:2px}
+.card-sub{font-size:10px;color:var(--text-muted);margin-top:2px}
 
 .scan-section{border-top:1px solid #1e2a38;margin-top:16px;padding-top:16px}
-.scan-hdr{font-size:10px;color:#7a9abf;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px}
+.scan-hdr{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px}
 .scan-results{display:flex;flex-direction:column;gap:6px;margin-top:10px}
 .scan-card{
-  background:#0d1520;border:1px solid #1e2a38;border-radius:8px;
+  background:var(--bg-card);border:1px solid #1e2a38;border-radius:8px;
   padding:10px;display:flex;justify-content:space-between;align-items:center;
-  cursor:pointer;font-family:inherit;text-align:left;width:100%;color:#e2e8f0;
+  cursor:pointer;font-family:inherit;text-align:left;width:100%;color:var(--text-primary);
 }
 .scan-card.selected{background:rgba(34,211,238,0.12);border-color:#22d3ee}
 .scan-card-title{font-size:12px;font-weight:600;color:#22d3ee}
-.scan-card-sub{font-size:9px;color:#7a9abf}
+.scan-card-sub{font-size:9px;color:var(--text-muted)}
 .scan-check{font-size:12px;color:#22d3ee}
 .scan-configured{font-size:9px;color:#5db832;font-weight:700}
 
-.footnote{font-size:10px;color:#7a9abf;line-height:1.5;margin-top:20px;padding:0 2px}
+.footnote{font-size:10px;color:var(--text-muted);line-height:1.5;margin-top:20px;padding:0 2px}
 
 #toast{
   position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
-  background:#111820;border:1px solid #1e2a38;border-radius:8px;
+  background:var(--bg-card);border:1px solid #1e2a38;border-radius:8px;
   padding:10px 18px;font-size:12px;font-weight:600;z-index:9999;
   opacity:0;transition:opacity 0.2s,transform 0.2s;pointer-events:none;white-space:nowrap;
 }
@@ -326,6 +361,17 @@ function renderHome() {
   const skPort   = (C.signalk && C.signalk.port) || '—';
 
   document.getElementById('s-home').innerHTML = `
+    <div style="padding:12px 0 4px;border-bottom:1px solid var(--bg-hairline);display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div>
+        <div style="color:var(--text-primary);font-size:15px;font-weight:600">Theme</div>
+        <div id="theme-label" style="color:var(--text-muted);font-size:12px;margin-top:2px">Dark Mode</div>
+      </div>
+      <button id="theme-btn" onclick="toggleTheme()" aria-label="Toggle sunlight mode"
+        style="position:relative;width:52px;height:28px;border:none;padding:0;background:none;cursor:pointer;flex-shrink:0">
+        <span id="theme-track" style="position:absolute;inset:0;border-radius:14px;background:var(--bg-hairline);transition:.25s"></span>
+        <span id="theme-thumb" style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;background:var(--text-muted);transition:.25s"></span>
+      </button>
+    </div>
     <div class="section-hdr" style="margin-top:4px">Vessel</div>
     <button class="row" onclick="nav('vessel')">
       <span class="row-label">Vessel Name</span>
@@ -380,7 +426,7 @@ function renderSolar() {
 
   document.getElementById('s-solar').innerHTML = `
     <button class="back-btn" onclick="nav('home')">‹ Back</button>
-    <div class="card-list">${cards || '<p style="font-size:12px;color:#7a9abf;padding:8px 2px">No arrays configured.</p>'}</div>
+    <div class="card-list">${cards || '<p style="font-size:12px;color:var(--text-muted);padding:8px 2px">No arrays configured.</p>'}</div>
     <button class="btn btn-secondary" onclick="addSolar()" style="margin-top:8px">+ Add Solar Array</button>
     <div class="scan-section">
       <div class="scan-hdr">Auto-discover from Signal K</div>
@@ -468,7 +514,7 @@ function renderTanks() {
 
   document.getElementById('s-tanks').innerHTML = `
     <button class="back-btn" onclick="nav('home')">‹ Back</button>
-    <div class="card-list">${cards || '<p style="font-size:12px;color:#7a9abf;padding:8px 2px">No tanks configured.</p>'}</div>
+    <div class="card-list">${cards || '<p style="font-size:12px;color:var(--text-muted);padding:8px 2px">No tanks configured.</p>'}</div>
     <div class="grow"></div>
     <button class="btn btn-primary" onclick="saveTanks()">Save All</button>
   `;
@@ -522,7 +568,7 @@ function renderScanResults(category, instances) {
   const el = document.getElementById('scan-' + category + '-results');
   if (!el) return;
   if (!instances || !instances.length) {
-    el.innerHTML = '<p style="font-size:11px;color:#7a9abf;margin-top:6px">No instances found.</p>';
+    el.innerHTML = '<p style="font-size:11px;color:var(--text-muted);margin-top:6px">No instances found.</p>';
     return;
   }
 
@@ -587,6 +633,26 @@ function esc(s) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 loadConfig();
+
+function toggleTheme(){
+  var sun=document.documentElement.classList.toggle('sunlight');
+  localStorage.setItem('oroboroTheme',sun?'sunlight':'dark');
+  _applyToggleUI(sun);
+  try{new BroadcastChannel('oroboro_theme').postMessage(sun?'sunlight':'dark');}catch(e){}
+}
+function _applyToggleUI(sun){
+  var track=document.getElementById('theme-track');
+  var thumb=document.getElementById('theme-thumb');
+  var label=document.getElementById('theme-label');
+  if(!track)return;
+  track.style.background=sun?'#f59e0b':'var(--bg-hairline)';
+  thumb.style.left=sun?'28px':'4px';
+  thumb.style.background=sun?'#ffffff':'var(--text-muted)';
+  if(label)label.textContent=sun?'Sunlight Mode':'Dark Mode';
+}
+// init on load
+_applyToggleUI(document.documentElement.classList.contains('sunlight'));
+
 </script>
 </body>
 </html>
