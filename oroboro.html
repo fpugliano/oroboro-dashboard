@@ -56,8 +56,8 @@ html.sunlight {
   --text-secondary:#2a3a4a;
   --text-muted:    #3a5a7a;
 }
-html.sunlight [style*="background:#14532d"] { background: #d4edda !important; }
-html.sunlight [style*="background: #14532d"] { background: #d4edda !important; }
+html.sunlight [style*="background:#14532d"] { background: #ffffff !important; }
+html.sunlight [style*="background: #14532d"] { background: #ffffff !important; }
 html.sunlight [style*="background:#7f1d1d"] { background: #ffe0e0 !important; }
 html.sunlight [style*="background: #7f1d1d"] { background: #ffe0e0 !important; }
 html.sunlight [style*="background:#78350f"] { background: #fff3cd !important; }
@@ -721,8 +721,8 @@ const MODE = {
 
 // Sunlight-friendly equivalents for badge backgrounds
 var _SUNLIGHT_BG = {
-  '#14532d':'#d4edda', '#7f1d1d':'#ffe0e0', '#78350f':'#fff3cd',
-  '#374151':'#e8eef4', '#1d4ed8':'#dbeafe', '#10261a':'#d4edda',
+  '#14532d':'#ffffff', '#7f1d1d':'#ffe0e0', '#78350f':'#fff3cd',
+  '#374151':'#e8eef4', '#1d4ed8':'#dbeafe', '#10261a':'#ffffff',
   '#2a1414':'#ffe0e0'
 };
 function setBadge(el, text, bg, color) {
@@ -1152,7 +1152,7 @@ function updateNetPower() {
   let color, bg, text;
   var _sun = document.documentElement.classList.contains('sunlight');
   if (netW > 10) {
-    color = '#4ade80'; bg = _sun ? '#d4edda' : '#10261a';
+    color = '#4ade80'; bg = _sun ? '#ffffff' : '#10261a';
     text  = '+' + Math.round(netW) + ' W';
   } else if (netW < -10) {
     color = '#f87171'; bg = _sun ? '#ffe0e0' : '#2a1414';
