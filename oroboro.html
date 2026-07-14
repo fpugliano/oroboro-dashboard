@@ -1497,6 +1497,17 @@ window.addEventListener('load', () => {
       .observe(document.documentElement,{attributeFilter:['class']});
   }catch(e){}
   if(document.documentElement.classList.contains('sunlight')) _themeRedraw();
+  // Safari fallback: re-check theme on tab focus (BroadcastChannel unreliable in Safari)
+  function _syncTheme(){
+    var saved=localStorage.getItem('oroboroTheme')==='sunlight';
+    var current=document.documentElement.classList.contains('sunlight');
+    if(saved!==current){
+      document.documentElement.classList.toggle('sunlight',saved);
+      _themeRedraw();
+    }
+  }
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) _syncTheme(); });
+  window.addEventListener('pageshow',_syncTheme);
   // Listen for gauge changes from Settings
   try{
     var _gCh=new BroadcastChannel('oroboro_gauge');

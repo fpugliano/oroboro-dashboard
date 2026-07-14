@@ -566,6 +566,7 @@ function switchTab(tab) {
 }
 
 function drawCanvas(canvasId, mode) {
+  var _pSun=document.documentElement.classList.contains('sunlight');
   const canvas=document.getElementById(canvasId);
   const wrap=canvas.parentElement;
   const W=wrap.clientWidth;
@@ -591,7 +592,7 @@ function drawCanvas(canvasId, mode) {
   const maxSpd=11, scale=maxR/maxSpd;
   const fs=Math.max(9,W*0.055); // font size
 
-  ctx.fillStyle='#111820'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=_pSun?'#ffffff':'#111820'; ctx.fillRect(0,0,W,H);
 
   function toXY(twa,spd) {
     const r=spd*scale;
@@ -772,12 +773,12 @@ function drawCanvas(canvasId, mode) {
       ctx.beginPath(); ctx.arc(pt.x,pt.y,7,0,Math.PI*2);
       ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.8; ctx.stroke();
       ctx.beginPath(); ctx.arc(pt.x,pt.y,3,0,Math.PI*2);
-      ctx.fillStyle='#ffffff'; ctx.fill();
+      ctx.fillStyle=_pSun?'#1a2a3a':'#ffffff'; ctx.fill();
     }
   }
 
   // ── Boat name watermark ────────────────────────────────
-  ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.font=`bold 9px Rajdhani,sans-serif`;
+  ctx.fillStyle=_pSun?'rgba(10,22,40,0.35)':'rgba(255,255,255,0.25)'; ctx.font=`bold 9px Rajdhani,sans-serif`;
   ctx.textAlign='left'; ctx.fillText('S/V OROBORO',4,H-6);
 }
 
@@ -1361,6 +1362,17 @@ connectWS();
       .observe(document.documentElement,{attributeFilter:['class']});
   }catch(e){}
   if(document.documentElement.classList.contains('sunlight')) _themeRedraw();
+  // Safari fallback: re-check theme on tab focus (BroadcastChannel unreliable in Safari)
+  function _syncTheme(){
+    var saved=localStorage.getItem('oroboroTheme')==='sunlight';
+    var current=document.documentElement.classList.contains('sunlight');
+    if(saved!==current){
+      document.documentElement.classList.toggle('sunlight',saved);
+      _themeRedraw();
+    }
+  }
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) _syncTheme(); });
+  window.addEventListener('pageshow',_syncTheme);
 })();
 </script>
 </body>
