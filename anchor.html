@@ -287,7 +287,7 @@ const S = {
   gpsAccuracy: null, lastGpsFix: null,
   distance: null, bearing: null,
   battery: null,
-  selfMmsi: null, selfName: null,
+  selfMmsi: null, selfName: null, selfId: null,
 
   // alarm state (display only — actual monitoring runs server-side)
   alarmAcknowledged: false,
@@ -420,6 +420,9 @@ async function initialLoad() {
       const name = d.name && d.name.value;
       if (mmsi) S.selfMmsi = String(mmsi);
       if (name) S.selfName = name;
+    }).catch(() => {}),
+    fetch(SK_BASE + '/signalk/v1/api/self').then(r => r.ok ? r.text() : null).then(t => {
+      if (t) S.selfId = t.replace(/"/g, '').replace(/^vessels\./, '').trim();
     }).catch(() => {}),
   ]);
 
@@ -1127,14 +1130,13 @@ async function updateAIS() {
         return;
       }
 
-      // Guardian proximity check
-      // Exclude own vessel — SK sometimes lists us under both 'self' and MMSI key
-      var isSelf2 = (id === 'self');
-      if (!isSelf2 && S.selfMmsi && mmsi) isSelf2 = (String(mmsi) === String(S.selfMmsi));
-      if (!isSelf2 && S.selfName && name && name.toUpperCase() === S.selfName.toUpperCase()) isSelf2 = true;
-      if (!isSelf2 && S.curLat != null && haversineM(pos.latitude, pos.longitude, S.curLat, S.curLon) < 8) isSelf2 = true;
-      // Also exclude if vessel id contains our MMSI (handles urn:mrn:imo:mmsi: keys)
-      if (!isSelf2 && S.selfMmsi && id.indexOf(S.selfMmsi) !== -1) isSelf2 = true;
+      // Guardian proximity check — own-vessel exclusion.
+      // SK lists our own vessel under its MMSI urn (urn:mrn:imo:mmsi:368063270), never as 'self'.
+      var isSelf2 = (id === 'self') || (S.selfId && id === S.selfId);
+      if (!isSelf2 && S.selfMmsi && String(id).indexOf(String(S.selfMmsi)) !== -1) isSelf2 = true;
+      if (!isSelf2 && S.selfMmsi && mmsi && String(mmsi) === String(S.selfMmsi)) isSelf2 = true;
+      if (!isSelf2 && S.selfName && name && String(name).toUpperCase() === String(S.selfName).toUpperCase()) isSelf2 = true;
+      if (isSelf2 && _encounters[id]) { delete _encounters[id]; renderEncounterCard(); }
       if (guardianActive() && S.anchorLat != null && !isSelf2) {
         var dist2   = haversineM(pos.latitude, pos.longitude, S.anchorLat, S.anchorLon);
         var sog2    = v.navigation && v.navigation.speedOverGround && v.navigation.speedOverGround.value;
