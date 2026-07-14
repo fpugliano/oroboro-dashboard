@@ -565,7 +565,7 @@ html, body {
   btn.addEventListener('click',e=>{e.stopPropagation();menu.style.display=menu.style.display==='flex'?'none':'flex';});
   document.addEventListener('click',e=>{if(!menu.contains(e.target))menu.style.display='none';});
   menu.querySelectorAll('.bm-item').forEach(a=>{
-    a.addEventListener('mouseenter',()=>a.style.background='#1e3a5f');
+    a.addEventListener('mouseenter',()=>a.style.background=document.documentElement.classList.contains('sunlight')?'#e8f0f8':'#1e3a5f');
     a.addEventListener('mouseleave',()=>a.style.background='');
   });
 })();
