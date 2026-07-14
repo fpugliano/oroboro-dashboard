@@ -1346,5 +1346,27 @@ function updateLive() {
 
 connectWS();
 </script>
+
+<script>
+(function(){
+  function _themeRedraw(){
+    if(typeof updateNetPower==='function') updateNetPower();
+    if(typeof drawTrend==='function') drawTrend();
+    if(typeof buildWindRose==='function') buildWindRose();
+  }
+  try{
+    var _thCh=new BroadcastChannel('oroboro_theme');
+    _thCh.onmessage=function(e){
+      document.documentElement.classList.toggle('sunlight',e.data==='sunlight');
+      _themeRedraw();
+    };
+  }catch(e){}
+  try{
+    new MutationObserver(_themeRedraw)
+      .observe(document.documentElement,{attributeFilter:['class']});
+  }catch(e){}
+  if(document.documentElement.classList.contains('sunlight')) _themeRedraw();
+})();
+</script>
 </body>
 </html>
