@@ -633,7 +633,7 @@ function drawCanvas(canvasId, mode) {
   ctx.restore(); // end clip
 
   // ── Angle labels on outer arc ─────────────────────────
-  ctx.fillStyle='#ffffff'; ctx.font=`${fs}px Rajdhani,sans-serif`;
+  ctx.fillStyle=_pSun?'#0a1628':'#ffffff'; ctx.font=`${fs}px Rajdhani,sans-serif`;
   [30,45,60,75,90,105,120,135,150,165,180].forEach(a=>{
     const p=toXY(a, maxSpd*1.05+1.0);
     if(p.x>W-2) return; // don't draw off-canvas
@@ -644,7 +644,7 @@ function drawCanvas(canvasId, mode) {
   });
 
   // ── Speed labels on the 0° upwind axis ────────────────
-  ctx.fillStyle='#ffffff'; ctx.font=`${fs*0.85}px Rajdhani,sans-serif`;
+  ctx.fillStyle=_pSun?'#0a1628':'#ffffff'; ctx.font=`${fs*0.85}px Rajdhani,sans-serif`;
   ctx.textAlign='right';
   for(let s=2;s<=10;s+=2) {
     const y=oy-s*scale;
@@ -652,12 +652,12 @@ function drawCanvas(canvasId, mode) {
   }
   // Left-side speed scale label
   ctx.save();
-  ctx.fillStyle='#ffffff'; ctx.font=`${fs*0.75}px Rajdhani,sans-serif`;
+  ctx.fillStyle=_pSun?'#0a1628':'#ffffff'; ctx.font=`${fs*0.75}px Rajdhani,sans-serif`;
   ctx.textAlign='center';
   ctx.restore();
 
   // ── "▼ WIND" label at top ─────────────────────────────
-  ctx.fillStyle='#ffffff'; ctx.font=`bold ${fs}px Rajdhani,sans-serif`;
+  ctx.fillStyle=_pSun?'#0a1628':'#ffffff'; ctx.font=`bold ${fs}px Rajdhani,sans-serif`;
 
   // ── VMG target lines (blue solid) ─────────────────────
   const curTWS=livePoint?livePoint.tws:10;
@@ -689,7 +689,7 @@ function drawCanvas(canvasId, mode) {
       // Label at the curve's downwind end
       const lastTWA=twas[twas.length-1];
       const lp=toXY(lastTWA,OFFICIAL_POLAR[tws][lastTWA]);
-      ctx.fillStyle='#ffffff'; ctx.font=`${fs*0.8}px Rajdhani,sans-serif`;
+      ctx.fillStyle=_pSun?'#0a1628':'#ffffff'; ctx.font=`${fs*0.8}px Rajdhani,sans-serif`;
       ctx.textAlign='left'; ctx.fillText(tws,lp.x+3,lp.y+fs*0.8);
     });
     // Gennaker reference ghost curves (optional)
@@ -706,7 +706,7 @@ function drawCanvas(canvasId, mode) {
       });
     }
     // TWS axis label
-    ctx.fillStyle='#ffffffaa'; ctx.font=`${fs*0.75}px Rajdhani,sans-serif`;
+    ctx.fillStyle=_pSun?'rgba(10,22,40,0.67)':'#ffffffaa'; ctx.font=`${fs*0.75}px Rajdhani,sans-serif`;
     ctx.textAlign='right'; ctx.fillText('TWS →',ox-3,oy+maxSpd*scale*0.7);
   } else {
     // Ghost VPP (faint)
@@ -751,7 +751,7 @@ function drawCanvas(canvasId, mode) {
       ctx.fillStyle=col; ctx.font=`${fs*0.8}px Rajdhani,sans-serif`;
       ctx.textAlign='right'; ctx.fillText(tws,ox-3,lp.y);
     });
-    ctx.fillStyle='#ffffffaa'; ctx.font=`${fs*0.75}px Rajdhani,sans-serif`;
+    ctx.fillStyle=_pSun?'rgba(10,22,40,0.67)':'#ffffffaa'; ctx.font=`${fs*0.75}px Rajdhani,sans-serif`;
     ctx.textAlign='right'; ctx.fillText('TWS →',ox-3,oy+maxSpd*scale*0.7);
   }
 
@@ -1346,9 +1346,8 @@ connectWS();
 <script>
 (function(){
   function _themeRedraw(){
-    if(typeof updateNetPower==='function') updateNetPower();
-    if(typeof drawTrend==='function') drawTrend();
-    if(typeof buildWindRose==='function') buildWindRose();
+    if(typeof drawPolar==='function') drawPolar();
+    if(typeof renderTrack==='function') renderTrack();
   }
   try{
     var _thCh=new BroadcastChannel('oroboro_theme');
