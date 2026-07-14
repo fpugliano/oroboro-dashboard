@@ -364,6 +364,21 @@ function renderHome() {
         <span id="theme-thumb" style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;background:var(--text-muted);transition:.25s"></span>
       </button>
     </div>
+    <div style="padding:12px 0 4px;border-bottom:1px solid var(--bg-hairline);margin-bottom:8px">
+      <div style="margin-bottom:6px">
+        <div style="color:var(--text-primary);font-size:15px;font-weight:600">Custom gauge</div>
+        <div style="color:var(--text-muted);font-size:12px;margin-top:2px">Shown next to depth on the main dashboard</div>
+      </div>
+      <select id="custom-gauge-select" onchange="setCustomGauge(this.value)"
+        style="width:100%;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--bg-hairline);border-radius:8px;padding:8px 10px;font-size:14px;font-family:inherit">
+        <option value="wtemp">Water temperature</option>
+        <option value="baro">Barometer (pressure)</option>
+        <option value="stw">Speed through water (STW)</option>
+        <option value="heading">Heading</option>
+        <option value="atemp">Air temperature</option>
+      </select>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Requires a sensor on your NMEA 2000 network</div>
+    </div>
     <div class="section-hdr" style="margin-top:4px">Vessel</div>
     <button class="row" onclick="nav('vessel')">
       <span class="row-label">Vessel Name</span>
@@ -402,6 +417,7 @@ function renderHome() {
 
     <p class="footnote">Changes are saved to config.js on the Pi and take effect on next dashboard reload.</p>
   `;
+  initGaugeSelect();
 }
 
 function renderSolar() {
