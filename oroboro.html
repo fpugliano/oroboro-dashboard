@@ -21,6 +21,7 @@
     new MutationObserver(function(){
       if(typeof updateNetPower==='function') updateNetPower();
       if(typeof drawTrend==='function') drawTrend();
+      if(typeof buildWindRose==='function') buildWindRose();
     }).observe(document.documentElement,{attributeFilter:['class']});
   }catch(e){}
 })();
