@@ -667,6 +667,17 @@ _applyToggleUI(document.documentElement.classList.contains('sunlight'));
   }catch(e){}
   if(document.documentElement.classList.contains('sunlight')) _themeRedraw();
 })();
+
+function setCustomGauge(key) {
+  localStorage.setItem('oroboroCustomGauge', key);
+  // Tell the main dashboard page if it's open
+  try { new BroadcastChannel('oroboro_gauge').postMessage(key); } catch(e) {}
+}
+function initGaugeSelect() {
+  var sel = document.getElementById('custom-gauge-select');
+  if (sel) sel.value = localStorage.getItem('oroboroCustomGauge') || 'wtemp';
+}
+
 </script>
 </body>
 </html>

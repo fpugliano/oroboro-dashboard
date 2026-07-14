@@ -393,7 +393,7 @@ html, body {
 
     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:2px;">
       <div class="lbl">Depth</div>
-      <div class="lbl">Water temp</div>
+      <div class="lbl" id="custom-gauge-lbl">Water temp</div>
     </div>
     <div style="display:flex;align-items:baseline;justify-content:space-between;">
       <div style="display:flex;align-items:baseline;gap:4px;">
@@ -401,8 +401,8 @@ html, body {
         <span style="font-size:14px;color:var(--text-muted);">m</span>
       </div>
       <div style="display:flex;align-items:baseline;gap:2px;">
-        <span id="water-temp" style="font-size:36px;font-weight:600;line-height:1;letter-spacing:0px;color:#60a5fa;">--</span>
-        <span style="font-size:12px;color:var(--text-muted);">°C</span>
+        <span id="custom-gauge-val" style="font-size:36px;font-weight:600;line-height:1;letter-spacing:0px;color:#60a5fa;">--</span>
+        <span id="custom-gauge-unit" style="font-size:12px;color:var(--text-muted);">°C</span>
       </div>
     </div>
   </div>
@@ -621,6 +621,40 @@ function flattenSK(obj, prefix, out) {
   }
   return out;
 }
+
+// ── Custom gauge ─────────────────────────────────────────────────────────
+var GAUGE_OPTIONS = {
+  wtemp:   { label:'Water temp',  unit:'°C',  color:'#60a5fa', path:'environment.water.temperature',    fmt: function(v){ return toC(v).toFixed(1); } },
+  baro:    { label:'Barometer',   unit:'hPa', color:'#22d3ee', path:'environment.outside.pressure',     fmt: function(v){ return (v/100).toFixed(0); } },
+  stw:     { label:'Speed / water', unit:'kt', color:'#22d3ee', path:'navigation.speedThroughWater',   fmt: function(v){ return toKts(v).toFixed(1); } },
+  heading: { label:'Heading',     unit:'°',   color:'#aabbcc', path:'navigation.headingTrue',           fmt: function(v){ return Math.round(v * 57.2958) + ''; } },
+  atemp:   { label:'Air temp',    unit:'°C',  color:'#f59e0b', path:'environment.outside.temperature', fmt: function(v){ return toC(v).toFixed(1); } },
+};
+var _gaugeKey = localStorage.getItem('oroboroCustomGauge') || 'wtemp';
+var _gaugeVal = null;
+
+function applyGauge(key) {
+  var g = GAUGE_OPTIONS[key];
+  if (!g) return;
+  _gaugeKey = key;
+  _gaugeVal = null;
+  var lbl  = document.getElementById('custom-gauge-lbl');
+  var val  = document.getElementById('custom-gauge-val');
+  var unit = document.getElementById('custom-gauge-unit');
+  if (lbl)  lbl.textContent  = g.label;
+  if (val)  { val.textContent = '--'; val.style.color = g.color; }
+  if (unit) unit.textContent = g.unit;
+}
+
+function updateCustomGauge(path, rawVal) {
+  var g = GAUGE_OPTIONS[_gaugeKey];
+  if (!g || g.path !== path) return;
+  var el = document.getElementById('custom-gauge-val');
+  if (el) el.textContent = g.fmt(rawVal);
+}
+
+// Init on load
+applyGauge(_gaugeKey);
 
 async function poll() {
   try {
@@ -1269,11 +1303,13 @@ function onValue(path, val) {
       break;
 
     case 'navigation.speedThroughWater':
+      updateCustomGauge('navigation.speedThroughWater', val);
       _stw = val;
       updateTrueWind();
       break;
 
     case 'navigation.headingTrue':
+      updateCustomGauge('navigation.headingTrue', val);
     case 'navigation.headingMagnetic': {
       const h = Math.round(norm360(toDeg(val)));
       _hdg = norm360(toDeg(val));
@@ -1288,7 +1324,13 @@ function onValue(path, val) {
       break;
 
     case 'environment.water.temperature':
-      document.getElementById('water-temp').textContent = toC(val).toFixed(1);
+      updateCustomGauge('environment.water.temperature', val);
+      break;
+    case 'environment.outside.pressure':
+      updateCustomGauge('environment.outside.pressure', val);
+      break;
+    case 'environment.outside.temperature':
+      updateCustomGauge('environment.outside.temperature', val);
       break;
 
     case 'environment.wind.speedApparent':
@@ -1452,6 +1494,13 @@ window.addEventListener('load', () => {
       .observe(document.documentElement,{attributeFilter:['class']});
   }catch(e){}
   if(document.documentElement.classList.contains('sunlight')) _themeRedraw();
+  // Listen for gauge changes from Settings
+  try{
+    var _gCh=new BroadcastChannel('oroboro_gauge');
+    _gCh.onmessage=function(e){
+      if(typeof applyGauge==='function') applyGauge(e.data);
+    };
+  }catch(e){}
 })();
 </script>
 </body>
