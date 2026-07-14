@@ -213,6 +213,19 @@ html,body{height:100%;background:var(--bg-page);color:var(--text-primary);font-f
   <!-- ── Map tab ── -->
   <div id="tab-map" class="tab">
     <div id="leaflet-map"></div>
+    <div id="encounter-card" style="display:none;background:#0d1420;border-top:1px solid #7f1d1d;padding:8px 12px;">
+      <div style="color:#fca5a5;font-weight:500;font-size:11px;margin-bottom:4px;">⚠ Vessel in proximity zone</div>
+      <div id="encounter-details"></div>
+    </div>
+    <div style="padding:7px 12px;display:flex;align-items:center;gap:10px;background:var(--bg-card);border-top:1px solid var(--bg-hairline);">
+      <span style="font-size:10px;color:var(--text-muted);white-space:nowrap;">GUARDIAN</span>
+      <input type="range" id="guardian-slider" min="0" max="500" step="10" value="180" style="flex:1;" oninput="var v=+this.value;_guardianRadius=v;document.getElementById('guardian-val').textContent=v>0?v+'m':'off';localStorage.setItem('guardianRadius',v);if(_map)drawGuardianZone();">
+      <span id="guardian-val" style="font-size:11px;color:var(--text-secondary);min-width:42px;">180m</span>
+      <button id="guardian-toggle" onclick="toggleGuardian()" style="position:relative;width:40px;height:22px;border:none;padding:0;background:none;cursor:pointer;flex-shrink:0;">
+        <span id="gt-track" style="position:absolute;inset:0;border-radius:11px;background:var(--bg-hairline);transition:.2s;"></span>
+        <span id="gt-thumb" style="position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--text-muted);transition:.2s;"></span>
+      </button>
+    </div>
   </div>
 
   <!-- ── History tab ── -->
@@ -986,6 +999,8 @@ function initMap() {
 
   if (_zoneLyr) { const b = _zoneLyr.getBounds ? _zoneLyr.getBounds() : null; if (b && b.isValid()) _map.fitBounds(b, {padding:[30,30]}); }
   updateAIS();
+  updateGuardianToggleUI();
+  drawGuardianZone();
 }
 
 function anchorIconHtml() {
@@ -1111,6 +1126,36 @@ async function updateAIS() {
         return;
       }
 
+      // Guardian proximity check
+      var isSelf2 = (id === 'self') || (S.selfMmsi && String(mmsi) === String(S.selfMmsi));
+      if (!isSelf2 && S.curLat != null) {
+        if (haversineM(pos.latitude, pos.longitude, S.curLat, S.curLon) < 8) isSelf2 = true;
+      }
+      if (guardianActive() && S.anchorLat != null && !isSelf2) {
+        var dist2   = haversineM(pos.latitude, pos.longitude, S.anchorLat, S.anchorLon);
+        var sog2    = v.navigation && v.navigation.speedOverGround && v.navigation.speedOverGround.value;
+        var sog2kt  = sog2 ? +(sog2 * 1.944).toFixed(1) : 0;
+        if (dist2 <= _guardianRadius) {
+          if (!_encounters[id]) {
+            _encounters[id] = { id, name: name||'Unknown', mmsi: mmsi||'', entryTime: Date.now(), minDistM: Math.round(dist2), maxSogKt: sog2kt, track: [] };
+            sendGuardianPushover(_encounters[id], 'guardianEntry');
+            renderEncounterCard();
+          }
+          var enc = _encounters[id];
+          enc.minDistM = Math.min(enc.minDistM, Math.round(dist2));
+          enc.maxSogKt = Math.max(enc.maxSogKt, sog2kt);
+          enc.track.push({ lat: pos.latitude, lon: pos.longitude, t: Date.now() });
+          if (enc.track.length > 300) enc.track.shift();
+          if (enc.track.length >= 2) {
+            var prev = enc.track[enc.track.length - 2];
+            if (haversineM(prev.lat, prev.lon, S.anchorLat, S.anchorLon) - dist2 > 10) sendGuardianPushover(enc, 'guardianClosing');
+          }
+        } else if (_encounters[id]) {
+          saveEncounterReport(_encounters[id]);
+          delete _encounters[id];
+          renderEncounterCard();
+        }
+      }
       // Other vessels: amber triangle + name (bold) + full MMSI below
       const line1 = name || 'Unknown';
       const line2 = mmsi || '';
@@ -1128,9 +1173,107 @@ async function updateAIS() {
       _aisLyrs.push(mk);
     }));
   } catch(e) {}
+  setTimeout(drawEncounterTracks, 0);
 }
 
 function invalidateMap() { if (_map) _map.invalidateSize(); }
+
+
+// ── Guardian ────────────────────────────────────────────────────────────────────────────────
+var _guardianRadius = parseInt(localStorage.getItem('guardianRadius') || '180');
+var _guardianArmed  = localStorage.getItem('guardianArmed') === 'true';
+var _encounters     = {};
+var _savedReports   = JSON.parse(localStorage.getItem('guardianReports') || '[]');
+var _encLyrs        = [];
+
+function guardianActive() { return _guardianArmed && _guardianRadius > 0; }
+
+function toggleGuardian() {
+  _guardianArmed = !_guardianArmed;
+  localStorage.setItem('guardianArmed', String(_guardianArmed));
+  updateGuardianToggleUI();
+  drawGuardianZone();
+}
+
+function updateGuardianToggleUI() {
+  var track = document.getElementById('gt-track');
+  var thumb = document.getElementById('gt-thumb');
+  if (!track) return;
+  track.style.background = _guardianArmed ? '#22c55e' : 'var(--bg-hairline)';
+  thumb.style.left       = _guardianArmed ? '21px' : '3px';
+  thumb.style.background = _guardianArmed ? '#ffffff' : 'var(--text-muted)';
+}
+
+function drawGuardianZone() {
+  if (!_map) return;
+  if (window._guardianZoneLyr) { _map.removeLayer(window._guardianZoneLyr); window._guardianZoneLyr = null; }
+  if (!guardianActive() || S.anchorLat == null) return;
+  window._guardianZoneLyr = L.circle([S.anchorLat, S.anchorLon], {
+    radius: _guardianRadius, color: '#f59e0b', weight: 1.5, opacity: 0.7,
+    fillColor: '#f59e0b', fillOpacity: 0.05
+  }).addTo(_map);
+}
+
+function drawEncounterTracks() {
+  if (!_map) return;
+  _encLyrs.forEach(function(l) { try { _map.removeLayer(l); } catch(e){} });
+  _encLyrs = [];
+  Object.values(_encounters).forEach(function(enc) {
+    if (!enc.track || enc.track.length < 2) return;
+    var line = L.polyline(enc.track.map(function(p) { return [p.lat, p.lon]; }),
+      { color: '#f87171', weight: 2, opacity: 0.8 });
+    line.addTo(_map);
+    _encLyrs.push(line);
+  });
+}
+
+function renderEncounterCard() {
+  var card = document.getElementById('encounter-card');
+  var det  = document.getElementById('encounter-details');
+  if (!card || !det) return;
+  var encs = Object.values(_encounters);
+  if (!encs.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  var enc = encs[0];
+  det.innerHTML =
+    '<div style="font-size:13px;font-weight:600;color:#f87171">' + (enc.name || 'Unknown') +
+    (enc.mmsi ? ' <span style="font-size:10px;color:#7a9abf">MMSI ' + enc.mmsi + '</span>' : '') + '</div>' +
+    '<div style="font-size:11px;color:#c8d4e2;margin-top:2px">Min ' + enc.minDistM +
+    'm · Max ' + enc.maxSogKt + 'kt · ' + enc.track.length + ' pts</div>';
+}
+
+function saveEncounterReport(enc) {
+  enc.exitTime = Date.now();
+  _savedReports.unshift(enc);
+  if (_savedReports.length > 20) _savedReports = _savedReports.slice(0, 20);
+  try { localStorage.setItem('guardianReports', JSON.stringify(_savedReports)); } catch(e) {}
+}
+
+function sendGuardianPushover(enc, eventKey) {
+  var proxyBase = window.PROXY_BASE || ('http://' + window.location.hostname + ':3001');
+  var titles = {
+    guardianEntry:   'Guardian: Vessel in zone',
+    guardianClosing: 'Guardian: Vessel closing',
+    guardianCleared: 'Guardian: Zone cleared'
+  };
+  fetch(proxyBase + '/api/guardian/notify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      event: eventKey, vessel: enc.name || 'Unknown', mmsi: enc.mmsi || '',
+      minDistM: enc.minDistM, maxSogKt: enc.maxSogKt || 0,
+      title: titles[eventKey] || 'Guardian alert'
+    })
+  }).catch(function(){});
+}
+
+(function() {
+  var slider = document.getElementById('guardian-slider');
+  var val    = document.getElementById('guardian-val');
+  if (slider) slider.value = _guardianRadius;
+  if (val)    val.textContent = _guardianRadius > 0 ? _guardianRadius + 'm' : 'off';
+  updateGuardianToggleUI();
+})();
 
 // ─── History ──────────────────────────────────────────────────────────────
 function renderHistory() {
