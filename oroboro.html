@@ -28,6 +28,7 @@
 <style>
 :root {
   --bg-page:       #0a0e14;
+  --bottom-bar-bg: rgba(10,14,20,0.92);
   --bg-card:       #111820;
   --bg-card-alt:   #1e3a5f;
   --bg-hairline:   #1e2a38;
@@ -38,6 +39,7 @@
 }
 html.sunlight {
   --bg-page:       #f0f4f8;
+  --bottom-bar-bg: rgba(240,244,248,0.95);
   --bg-card:       #ffffff;
   --bg-card-alt:   #e8f0f8;
   --bg-hairline:   #c8d4de;
@@ -46,6 +48,11 @@ html.sunlight {
   --text-secondary:#2a3a4a;
   --text-muted:    #3a5a7a;
 }
+html.sunlight [style*="background:#14532d"] { background: #d4edda !important; }
+html.sunlight [style*="background: #14532d"] { background: #d4edda !important; }
+html.sunlight [style*="background:#7f1d1d"] { background: #ffe0e0 !important; }
+html.sunlight [style*="background: #7f1d1d"] { background: #ffe0e0 !important; }
+html.sunlight [style*="background:#78350f"] { background: #fff3cd !important; }
 
 @font-face {
   font-family: 'Rajdhani';
@@ -302,7 +309,7 @@ html, body {
   padding-bottom: max(6px, env(safe-area-inset-bottom, 6px));
   padding-left: 0;
   min-height: 46px;
-  background: rgba(10,14,20,0.92);
+  background: var(--bottom-bar-bg);
   backdrop-filter: blur(6px);
   border-top: 0.5px solid #1e2a38;
   z-index: 9999;
@@ -543,10 +550,10 @@ html, body {
 <div id="bottom-bar">
   <div id="bar-left">
     <button id="fs-btn" title="Toggle fullscreen">⛶</button>
-    <button id="burger-btn" title="Menu" style="background:none;border:1px solid #2a3b5c;border-radius:8px;color:var(--text-muted);font-size:18px;padding:4px 12px;cursor:pointer;font-family:inherit;">☰</button>
+    <button id="burger-btn" title="Menu" style="background:none;border:1px solid var(--bg-hairline);border-radius:8px;color:var(--text-muted);font-size:18px;padding:4px 12px;cursor:pointer;font-family:inherit;">☰</button>
   </div>
   <span id="bar-logo"><img src="oroboro-logo-16.jpg" alt="Oroboro"></span>
-  <div id="burger-menu" style="display:none;position:absolute;bottom:calc(100% + 8px);left:8px;background:var(--bg-card);border:1px solid #2a3b5c;border-radius:10px;padding:6px;flex-direction:column;gap:2px;min-width:170px;z-index:200;">
+  <div id="burger-menu" style="display:none;position:absolute;bottom:calc(100% + 8px);left:8px;background:var(--bg-card);border:1px solid var(--bg-hairline);border-radius:10px;padding:6px;flex-direction:column;gap:2px;min-width:170px;z-index:200;">
     <a class="bm-item" href="anchor.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">⚓ Anchor watch</a>
     <a class="bm-item" href="polar.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">◔ Polar performance</a>
     <a class="bm-item" href="#" onclick="event.preventDefault();var url='http://'+window.location.hostname+':3002/d/ajccmj/s-v-oroboro';var w=window.open(url,'_blank');if(!w)window.location.href=url;" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">▥ History (Grafana)</a>
@@ -750,7 +757,7 @@ function drawTrend() {
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  ctx.fillStyle = '#0d1520';
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-card').trim() || '#0d1520';
   ctx.fillRect(0, 0, W, H);
 
   // Layout margins: top for current-value label, right for y-axis, bottom for x-axis
@@ -759,7 +766,7 @@ function drawTrend() {
 
   // Header label — top left
   ctx.font = '500 7px sans-serif';
-  ctx.fillStyle = '#5a7a9f';
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#5a7a9f';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillText('TWS TREND  1 HR', cX, 3);
@@ -800,7 +807,7 @@ function drawTrend() {
 
   // Faint grid lines
   ctx.lineWidth = 0.5;
-  ctx.strokeStyle = '#1a2e4a';
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-hairline').trim() || '#1a2e4a';
   ticks.forEach(v => {
     const y = toY(v);
     ctx.beginPath(); ctx.moveTo(cX, y); ctx.lineTo(cX + cW, y); ctx.stroke();
@@ -817,7 +824,7 @@ function drawTrend() {
 
   // Average label — left of dashed line
   ctx.font = '6.5px sans-serif';
-  ctx.fillStyle = '#6a8aaa';
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#6a8aaa';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
   ctx.fillText('avg ' + avg.toFixed(1), cX + 2, avgY - 1);
