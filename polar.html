@@ -9,9 +9,11 @@
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>S/V Oroboro — Polar Performance</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Oroboro"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -155,7 +157,7 @@ body:not(.simple) .stat-trim{display:none;}
 <body>
 
 <div id="top-bar">
-  <a href="oroboro.html">← Dashboard</a>
+  <a href="oroboro.html" onclick="event.preventDefault();window.location.href=this.href;">← Dashboard</a>
   <h1>Polar Performance</h1>
   <div id="ref-seg" style="display:flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-right:6px;font-size:11px;">
     <button id="ref-vpp" style="background:var(--card);color:var(--text-secondary);border:none;padding:5px 8px;font-family:inherit;cursor:pointer;">VPP</button>

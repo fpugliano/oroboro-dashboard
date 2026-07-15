@@ -14,10 +14,11 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>S/V Oroboro — Marine Dashboard</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Oroboro"/>
 <link rel="apple-touch-icon" href="icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Oroboro">
 <style>
 :root {
   --bg-page:       #0a0e14;
@@ -547,10 +548,10 @@ html, body {
   </div>
   <span id="bar-logo"><img src="oroboro-logo-16.jpg" alt="Oroboro"></span>
   <div id="burger-menu" style="display:none;position:absolute;bottom:calc(100% + 8px);left:8px;background:var(--bg-card);border:1px solid var(--bg-hairline);border-radius:10px;padding:6px;flex-direction:column;gap:2px;min-width:170px;z-index:200;">
-    <a class="bm-item" href="anchor.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">⚓ Anchor watch</a>
-    <a class="bm-item" href="polar.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">◔ Polar performance</a>
+    <a class="bm-item" href="anchor.html" onclick="event.preventDefault();window.location.href=this.href;" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">⚓ Anchor watch</a>
+    <a class="bm-item" href="polar.html" onclick="event.preventDefault();window.location.href=this.href;" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">◔ Polar performance</a>
     <a class="bm-item" href="#" onclick="event.preventDefault();var url='http://'+window.location.hostname+':3002/d/ajccmj/s-v-oroboro';var w=window.open(url,'_blank');if(!w)window.location.href=url;" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">▥ History (Grafana)</a>
-    <a class="bm-item" href="settings.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">⚙ Settings</a>
+    <a class="bm-item" href="settings.html" onclick="event.preventDefault();window.location.href=this.href;" style="display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--text-secondary);text-decoration:none;border-radius:7px;font-size:14px;">⚙ Settings</a>
   </div>
   <div id="bar-right">
     <div id="conn-status">
