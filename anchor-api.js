@@ -51,7 +51,7 @@ const _guardian = {
   _loop:       null,
 };
 const NB_RADIUS_M = 926;
-const NB_MAX_PTS  = 240;
+const NB_MAX_PTS  = 720;
 const GUARDIAN_ALERT_M = 40;
 
 function saveGuardian() {
@@ -239,8 +239,14 @@ async function guardianTick() {
       if (nbDist <= NB_RADIUS_M) {
         if (!_guardian.nbTrails[id]) _guardian.nbTrails[id] = { name: (typeof v.name === 'string' ? v.name : (v.name && v.name.value)) || null, pts: [] };
         const tr = _guardian.nbTrails[id];
-        tr.pts.push({ lat: pos.latitude, lon: pos.longitude, t: now });
-        if (tr.pts.length > NB_MAX_PTS) tr.pts = tr.pts.slice(-NB_MAX_PTS);
+        // Movement-gated: store only if moved >=3m since the last stored fix,
+        // or >=3min elapsed — an anchored boat's swing keeps its shape without
+        // filling the buffer with duplicates (720 pts ≈ 1-2 days at anchor).
+        const lastPt = tr.pts.length ? tr.pts[tr.pts.length - 1] : null;
+        if (!lastPt || haversine(pos.latitude, pos.longitude, lastPt.lat, lastPt.lon) >= 3 || now - lastPt.t >= 180000) {
+          tr.pts.push({ lat: pos.latitude, lon: pos.longitude, t: now });
+          if (tr.pts.length > NB_MAX_PTS) tr.pts = tr.pts.slice(-NB_MAX_PTS);
+        }
       }
 
       // ── Guardian zone / encounter logic (only when armed) ──

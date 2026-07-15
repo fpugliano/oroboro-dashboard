@@ -219,7 +219,7 @@ html,body{height:100%;background:var(--bg-page);color:var(--text-primary);font-f
   <div id="tab-map" class="tab">
     <div id="leaflet-map"></div>
     <div id="encounter-card" style="display:none;background:#0d1420;border-top:1px solid #7f1d1d;padding:8px 12px;">
-      <div style="color:#fca5a5;font-weight:500;font-size:11px;margin-bottom:4px;">⚠ Vessel in proximity zone</div>
+      <div id="encounter-head" style="color:#fca5a5;font-weight:500;font-size:11px;margin-bottom:4px;">⚠ Vessel in proximity zone</div>
       <div id="encounter-details"></div>
     </div>
     <div style="padding:7px 12px;display:flex;align-items:center;gap:10px;background:var(--bg-card);border-top:1px solid var(--bg-hairline);">
@@ -1254,15 +1254,22 @@ function drawGuardianZone() {
   }).addTo(_map);
 }
 
-var _ENC_COLORS = ['#f87171', '#fb923c', '#facc15', '#a78bfa'];
+var _VESSEL_COLORS = ['#38bdf8', '#a78bfa', '#f472b6', '#fb923c', '#34d399', '#facc15', '#f87171', '#22d3ee'];
+function vesselColor(id) {
+  var h = 0;
+  var str = String(id || '');
+  for (var i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  return _VESSEL_COLORS[Math.abs(h) % _VESSEL_COLORS.length];
+}
 function drawEncounterTracks() {
   if (!_map) return;
   _encLyrs.forEach(function(l){ try { _map.removeLayer(l); } catch(e){} });
   _encLyrs = [];
-  Object.values(_encounters).forEach(function(enc, i){
+  Object.keys(_encounters).forEach(function(id){
+    var enc = _encounters[id];
     if (!enc.track || enc.track.length < 2) return;
     var line = L.polyline(enc.track.map(function(p){ return [p.lat, p.lon]; }),
-      { color: _ENC_COLORS[i % _ENC_COLORS.length], weight: 2, opacity: 0.85 });
+      { color: vesselColor(id), weight: 2, opacity: 0.85 });
     var last = enc.track[enc.track.length - 1];
     line.bindTooltip((enc.name || 'Unknown') + ' — last seen ' + (last.t ? last.t.slice(11,19) + ' UTC' : '') + (last.dist != null ? ' · ' + last.dist + 'm' : ''));
     line.addTo(_map);
@@ -1270,17 +1277,42 @@ function drawEncounterTracks() {
   });
 }
 
+var NB_SPARSE_MS = 120000;  // gap between fixes > 2min → render segment dotted
 function drawNbTrails() {
   if (!_map) return;
   _nbLyrs.forEach(function(l){ try { _map.removeLayer(l); } catch(e){} });
   _nbLyrs = [];
   (_nbTrails || []).forEach(function(t){
     if (!t.pts || t.pts.length < 2) return;
-    var line = L.polyline(t.pts.map(function(p){ return [p.lat, p.lon]; }),
-      { color: '#7a9abf', weight: 1, opacity: 0.5, dashArray: '2 4' });
-    if (t.name) line.bindTooltip(t.name);
-    line.addTo(_map);
-    _nbLyrs.push(line);
+    var col = vesselColor(t.id);
+    // Split into runs of dense (solid swing) vs sparse (dotted interpolation)
+    var run = [[t.pts[0].lat, t.pts[0].lon]], runSparse = false;
+    function flush() {
+      if (run.length < 2) return;
+      var line = L.polyline(run, runSparse
+        ? { color: col, weight: 2, opacity: 0.9, dashArray: '1 6', lineCap: 'round' }
+        : { color: col, weight: 2, opacity: 0.9, lineCap: 'round' });
+      if (t.name) line.bindTooltip(t.name);
+      line.addTo(_map);
+      _nbLyrs.push(line);
+    }
+    for (var i = 1; i < t.pts.length; i++) {
+      var sparse = (t.pts[i].t - t.pts[i-1].t) > NB_SPARSE_MS;
+      if (sparse !== runSparse) {
+        flush();
+        run = [run[run.length - 1] || [t.pts[i-1].lat, t.pts[i-1].lon]];
+        runSparse = sparse;
+      }
+      run.push([t.pts[i].lat, t.pts[i].lon]);
+    }
+    flush();
+    // Dot at the latest fix
+    var last = t.pts[t.pts.length - 1];
+    var dot = L.circleMarker([last.lat, last.lon],
+      { radius: 4, color: '#0a0e14', weight: 1, fillColor: col, fillOpacity: 1 });
+    if (t.name) dot.bindTooltip(t.name);
+    dot.addTo(_map);
+    _nbLyrs.push(dot);
   });
 }
 
@@ -1288,18 +1320,29 @@ function renderEncounterCard() {
   var card = document.getElementById('encounter-card');
   var det  = document.getElementById('encounter-details');
   if (!card || !det) return;
-  var encs = Object.values(_encounters);
-  if (!encs.length) { card.style.display = 'none'; return; }
+  var ids = Object.keys(_encounters);
+  if (!ids.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
-  var enc = encs[0];
-  var dc = enc.minDistM < GUARDIAN_ALERT_M ? '#ef4444' : '#c8d4e2';
-  det.innerHTML =
-    '<div style="font-size:13px;font-weight:600;color:#f87171">' + esc(enc.name || 'Unknown') +
-    (enc.mmsi ? ' <span style="font-size:10px;color:#7a9abf">MMSI ' + esc(String(enc.mmsi)) + '</span>' : '') +
-    (enc.closing ? ' <span style="font-size:10px;color:#ef4444">▼ closing</span>' : '') + '</div>' +
-    '<div style="font-size:11px;color:' + dc + ';margin-top:2px">Min ' + enc.minDistM +
-    'm · Max ' + enc.maxSogKt + 'kt · ' + (enc.track ? enc.track.length : 0) + ' pts</div>' +
-    '<div style="font-size:10px;color:#556677;margin-top:4px">Recording on the Pi — saved automatically when the vessel leaves the zone.</div>';
+  var head = document.getElementById('encounter-head');
+  if (head) head.textContent = '\u26a0 ' + (ids.length === 1 ? 'Vessel' : ids.length + ' vessels') + ' in proximity zone';
+  det.innerHTML = '';
+  ids.forEach(function(id, i){
+    var enc = _encounters[id];
+    var col = vesselColor(id);
+    var dc = enc.minDistM < GUARDIAN_ALERT_M ? '#ef4444' : '#c8d4e2';
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:baseline;gap:8px;' + (i ? 'margin-top:4px;' : '');
+    row.innerHTML =
+      '<span style="font-size:13px;font-weight:500;color:' + col + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(enc.name || 'Unknown') +
+      (enc.mmsi ? ' <span style="font-size:10px;color:#7a9abf">MMSI ' + esc(String(enc.mmsi)) + '</span>' : '') +
+      (enc.closing ? ' <span style="font-size:10px;color:#ef4444">\u25bc closing</span>' : '') + '</span>' +
+      '<span style="font-size:11px;color:' + dc + ';white-space:nowrap;">Min ' + enc.minDistM + 'm \u00b7 Max ' + enc.maxSogKt + 'kt \u00b7 ' + (enc.track ? enc.track.length : 0) + ' pts</span>';
+    det.appendChild(row);
+  });
+  var note = document.createElement('div');
+  note.style.cssText = 'font-size:10px;color:#556677;margin-top:6px;';
+  note.textContent = 'Recording on the Pi \u2014 saved automatically when each vessel leaves the zone.';
+  det.appendChild(note);
 }
 
 function renderGuardianReports() {
