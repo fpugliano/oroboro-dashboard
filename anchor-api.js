@@ -389,9 +389,9 @@ function readDashboardConfig() {
   } catch(e) { return null; }
 }
 
-function influxQuery(flux) {
+function influxQuery(flux, dc) {
   return new Promise((resolve, reject) => {
-    const dc = readDashboardConfig();
+    if (!dc) dc = readDashboardConfig();
     const inf = dc && dc.influx;
     if (!inf || !inf.token || inf.token.indexOf('PASTE_') === 0) { reject(new Error('influx not configured')); return; }
     const body = JSON.stringify({ query: flux, type: 'flux' });
@@ -427,8 +427,7 @@ function influxCsvToMap(csv) {
   return out;
 }
 
-function twsHistoryFlux(measurement, fn) {
-  const dc = readDashboardConfig();
+function twsHistoryFlux(measurement, fn, dc) {
   const bucket = (dc && dc.influx && dc.influx.bucket) || 'signalk';
   return 'from(bucket:"' + bucket + '")|>range(start:-1h)' +
     '|>filter(fn:(r)=>r._measurement=="' + measurement + '")' +
@@ -611,11 +610,12 @@ http.createServer(async (req, res) => {
 
   if (method === 'GET' && url === '/api/tws/history') {
     try {
+      const dc = readDashboardConfig();
       const [awsCsv, awsMaxCsv, awaCsv, stwCsv] = await Promise.all([
-        influxQuery(twsHistoryFlux('environment.wind.speedApparent', 'mean')),
-        influxQuery(twsHistoryFlux('environment.wind.speedApparent', 'max')),
-        influxQuery(twsHistoryFlux('environment.wind.angleApparent', 'mean')),
-        influxQuery(twsHistoryFlux('navigation.speedThroughWater', 'mean')),
+        influxQuery(twsHistoryFlux('environment.wind.speedApparent', 'mean', dc), dc),
+        influxQuery(twsHistoryFlux('environment.wind.speedApparent', 'max', dc), dc),
+        influxQuery(twsHistoryFlux('environment.wind.angleApparent', 'mean', dc), dc),
+        influxQuery(twsHistoryFlux('navigation.speedThroughWater', 'mean', dc), dc),
       ]);
       const aws = influxCsvToMap(awsCsv), awsMax = influxCsvToMap(awsMaxCsv);
       const awa = influxCsvToMap(awaCsv), stw = influxCsvToMap(stwCsv);

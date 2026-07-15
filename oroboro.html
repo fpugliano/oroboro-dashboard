@@ -587,7 +587,6 @@ const twsSamples = [];
 const twsTrend   = [];
 const twsGust    = [];
 let _twsCur = 0;
-let _twsBackfilled = false;
 
 // Backfill the last hour of TWS from the Pi (anchor-api queries InfluxDB
 // locally, so this works identically on the boat LAN and over Tailscale).
@@ -600,7 +599,6 @@ function backfillTwsTrend() {
     twsTrend.length = 0; twsGust.length = 0;
     d.trend.forEach(v => twsTrend.push(v));
     (d.gust || d.trend).forEach(v => twsGust.push(v));
-    _twsBackfilled = true;
     drawTrend();
   }).catch(() => {});
 }

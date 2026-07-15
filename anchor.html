@@ -14,6 +14,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Oroboro"/>
+<link rel="apple-touch-icon" href="icon.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -332,7 +333,6 @@ function haversine(lat1, lon1, lat2, lon2) {
   const a = Math.sin(dp/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
-var haversineM = haversine; // alias — haversine() already returns metres
 function bearingTo(lat1, lon1, lat2, lon2) {
   const p1=lat1*Math.PI/180, p2=lat2*Math.PI/180, dl=(lon2-lon1)*Math.PI/180;
   return (Math.atan2(Math.sin(dl)*Math.cos(p2), Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl))*180/Math.PI+360)%360;
@@ -1159,7 +1159,6 @@ async function updateAIS() {
       _aisLyrs.push(mk);
     }));
   } catch(e) {}
-  setTimeout(drawEncounterTracks, 0);
 }
 
 function invalidateMap() { if (_map) _map.invalidateSize(); }
