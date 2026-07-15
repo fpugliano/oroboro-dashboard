@@ -378,6 +378,64 @@ async function skPut(skPath, value) {
   return res;
 }
 
+// ─── TWS history backfill (reads InfluxDB locally, serves the browser) ────
+function readDashboardConfig() {
+  try {
+    const src = fs.readFileSync(CONFIG_JS_PATH, 'utf8');
+    const eqIdx = src.indexOf('DASHBOARD_CONFIG');
+    if (eqIdx === -1) return null;
+    const afterEq = src.slice(src.indexOf('=', eqIdx) + 1).trim().replace(/\s*;\s*$/, '');
+    return vm.runInNewContext('(' + afterEq + ')', { window: { location: { hostname: '' } } });
+  } catch(e) { return null; }
+}
+
+function influxQuery(flux) {
+  return new Promise((resolve, reject) => {
+    const dc = readDashboardConfig();
+    const inf = dc && dc.influx;
+    if (!inf || !inf.token || inf.token.indexOf('PASTE_') === 0) { reject(new Error('influx not configured')); return; }
+    const body = JSON.stringify({ query: flux, type: 'flux' });
+    const req = http.request({
+      host: 'localhost', port: inf.port || 8086,
+      path: '/api/v2/query?org=' + encodeURIComponent(inf.org || 'Oroboro'),
+      method: 'POST',
+      headers: { 'Authorization': 'Token ' + inf.token, 'Content-Type': 'application/json', 'Accept': 'application/csv' },
+    }, r => {
+      let d = '';
+      r.on('data', c => { d += c; });
+      r.on('end', () => r.statusCode === 200 ? resolve(d) : reject(new Error('influx HTTP ' + r.statusCode + ': ' + d.slice(0, 200))));
+    });
+    req.on('error', reject);
+    req.end(body);
+  });
+}
+
+// Parse annotated CSV → map of epochSeconds → value.
+// Header rows are detected via cols[1] === 'result' (annotation lines start with #).
+function influxCsvToMap(csv) {
+  const out = {};
+  let iTime = -1, iVal = -1;
+  csv.split('\n').forEach(line => {
+    if (!line || line[0] === '#') return;
+    const cols = line.split(',');
+    if (cols[1] === 'result') { iTime = cols.indexOf('_time'); iVal = cols.indexOf('_value'); return; }
+    if (iTime === -1 || iVal === -1) return;
+    const t = Date.parse(cols[iTime]);
+    const v = parseFloat(cols[iVal]);
+    if (!isNaN(t) && !isNaN(v)) out[Math.round(t / 1000)] = v;
+  });
+  return out;
+}
+
+function twsHistoryFlux(measurement, fn) {
+  const dc = readDashboardConfig();
+  const bucket = (dc && dc.influx && dc.influx.bucket) || 'signalk';
+  return 'from(bucket:"' + bucket + '")|>range(start:-1h)' +
+    '|>filter(fn:(r)=>r._measurement=="' + measurement + '")' +
+    '|>filter(fn:(r)=>r._field=="value")' +
+    '|>aggregateWindow(every:10s,fn:' + fn + ',createEmpty:false)';
+}
+
 // ─── HTTP helpers ─────────────────────────────────────────────────────────
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -548,6 +606,39 @@ http.createServer(async (req, res) => {
       curLon:         _mon.curLon,
       radius:         _mon.radius,
     });
+    return;
+  }
+
+  if (method === 'GET' && url === '/api/tws/history') {
+    try {
+      const [awsCsv, awsMaxCsv, awaCsv, stwCsv] = await Promise.all([
+        influxQuery(twsHistoryFlux('environment.wind.speedApparent', 'mean')),
+        influxQuery(twsHistoryFlux('environment.wind.speedApparent', 'max')),
+        influxQuery(twsHistoryFlux('environment.wind.angleApparent', 'mean')),
+        influxQuery(twsHistoryFlux('navigation.speedThroughWater', 'mean')),
+      ]);
+      const aws = influxCsvToMap(awsCsv), awsMax = influxCsvToMap(awsMaxCsv);
+      const awa = influxCsvToMap(awaCsv), stw = influxCsvToMap(stwCsv);
+      // Same true-wind math as the dashboard: calcTrueWind(aws, awa, stw)
+      const tws = (a, w, st) => {
+        const twx = a * Math.cos(w) - st, twy = a * Math.sin(w);
+        return Math.sqrt(twx * twx + twy * twy) * 1.94384;  // kts
+      };
+      // 360 slots × 10s, aligned to now, forward-filled across gaps
+      const nowS = Math.floor(Date.now() / 10000) * 10;
+      const trend = [], gust = [];
+      let lastT = null, lastG = null;
+      for (let i = 359; i >= 0; i--) {
+        const t = nowS - i * 10;
+        const a = aws[t], w = awa[t], st = stw[t] != null ? stw[t] : 0;
+        if (a != null && w != null) {
+          lastT = tws(a, w, st);
+          lastG = awsMax[t] != null ? tws(awsMax[t], w, st) : lastT;
+        }
+        if (lastT != null) { trend.push(+lastT.toFixed(2)); gust.push(+lastG.toFixed(2)); }
+      }
+      json(res, 200, { ok: true, trend, gust });
+    } catch(e) { json(res, 200, { ok: false, error: e.message }); }
     return;
   }
 

@@ -586,6 +586,23 @@ const twsSamples = [];
 const twsTrend   = [];
 const twsGust    = [];
 let _twsCur = 0;
+let _twsBackfilled = false;
+
+// Backfill the last hour of TWS from the Pi (anchor-api queries InfluxDB
+// locally, so this works identically on the boat LAN and over Tailscale).
+function backfillTwsTrend() {
+  const base = `http://${SK_HOST}:3001`;
+  fetch(base + '/api/tws/history').then(r => r.ok ? r.json() : null).then(d => {
+    if (!d || !d.ok || !d.trend || d.trend.length < 2) return;
+    // Only seed if the live loop hasn't accumulated meaningful data yet
+    if (twsTrend.length > d.trend.length) return;
+    twsTrend.length = 0; twsGust.length = 0;
+    d.trend.forEach(v => twsTrend.push(v));
+    (d.gust || d.trend).forEach(v => twsGust.push(v));
+    _twsBackfilled = true;
+    drawTrend();
+  }).catch(() => {});
+}
 const activeAlarms = {};
 
 let _twa = 0, _awa = 0;
@@ -1418,6 +1435,7 @@ window.addEventListener('load', () => {
   applyConfig();
   buildHandlers();
   buildWindRose();
+  backfillTwsTrend();
   poll();
   setInterval(poll, 1000);
   setInterval(() => {
