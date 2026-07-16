@@ -420,9 +420,54 @@ function renderHome() {
       <span class="row-value">${nTanks} tank${nTanks !== 1 ? 's' : ''}<span class="row-chevron">›</span></span>
     </button>
 
+    <div class="section-hdr">Alarms</div>
+    <div style="padding:12px 0;border-bottom:0.5px solid #1e2a38;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="row-label">12 V Buzzer</div>
+        <div id="buzzer-status-label" style="font-size:11px;color:var(--text-muted);margin-top:2px">Checking…</div>
+      </div>
+      <button id="buzzer-test-btn" class="btn-sm" onclick="testBuzzer()" disabled style="opacity:0.4">Test</button>
+    </div>
+
     <p class="footnote">Changes are saved to config.js on the Pi and take effect on next dashboard reload.</p>
   `;
   initGaugeSelect();
+  checkBuzzerStatus();
+}
+
+async function checkBuzzerStatus() {
+  try {
+    const r = await fetch(PROXY + '/api/anchor/status');
+    const d = await r.json();
+    const lbl = document.getElementById('buzzer-status-label');
+    const btn = document.getElementById('buzzer-test-btn');
+    if (!lbl || !btn) return;
+    if (d.buzzer !== undefined && d.buzzer !== null) {
+      lbl.textContent = 'Enabled — GPIO BCM ' + (d.buzzer.mode !== undefined ? 'configured' : '?');
+      btn.disabled = false; btn.style.opacity = '1';
+    } else {
+      lbl.textContent = 'Disabled — set buzzer.enabled: true in anchor-api-config.json';
+      btn.disabled = true; btn.style.opacity = '0.4';
+    }
+  } catch(e) {
+    const lbl = document.getElementById('buzzer-status-label');
+    if (lbl) lbl.textContent = 'Could not reach proxy — is anchor-api running?';
+  }
+}
+
+async function testBuzzer() {
+  const btn = document.getElementById('buzzer-test-btn');
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  try {
+    const r = await fetch(PROXY + '/buzzer/test', { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) showToast('Test pattern started (3 s)');
+    else showToast(d.error || 'Test failed', true);
+  } catch(e) {
+    showToast('Could not reach proxy', true);
+  } finally {
+    if (btn) { btn.textContent = 'Test'; btn.disabled = false; }
+  }
 }
 
 function renderSolar() {

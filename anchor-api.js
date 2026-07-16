@@ -18,6 +18,111 @@ const PORT     = cfg.proxyPort   || 3001;
 
 let skToken = null;
 
+// ─── GPIO + Buzzer ────────────────────────────────────────────────────────
+// Kernel sysfs (/sys/class/gpio/) gives persistent line ownership: the relay
+// holds state between writes without spawning a child process on every toggle.
+// Pi 5 / RP1 also exposes sysfs via its GPIO compatibility shim.
+// Falls back to console-log mock when GPIO access fails (Mac / no Pi).
+const SYSFS = '/sys/class/gpio';
+let _gpioMock = false;
+
+function _gpioExport(pin) {
+  const dir = SYSFS + '/gpio' + pin;
+  if (!fs.existsSync(dir)) {
+    fs.writeFileSync(SYSFS + '/export', String(pin));
+    const deadline = Date.now() + 200;
+    while (!fs.existsSync(dir + '/direction') && Date.now() < deadline) {}
+  }
+  fs.writeFileSync(dir + '/direction', 'out');
+}
+function _gpioWrite(pin, high) {
+  if (_gpioMock) { console.log('[buzzer] mock pin ' + pin + ' → ' + (high ? 'HIGH' : 'LOW')); return; }
+  try { fs.writeFileSync(SYSFS + '/gpio' + pin + '/value', high ? '1' : '0'); }
+  catch(e) { console.error('[buzzer] write error:', e.message); }
+}
+function _gpioInit(pin) {
+  try { _gpioExport(pin); _gpioWrite(pin, false); console.log('[buzzer] GPIO BCM' + pin + ' ready (sysfs)'); return true; }
+  catch(e) { console.warn('[buzzer] GPIO init failed (' + e.message + ') — mock mode'); _gpioMock = true; return false; }
+}
+function _gpioShutdown(pin) {
+  try { _gpioWrite(pin, false); fs.writeFileSync(SYSFS + '/unexport', String(pin)); } catch(e) {}
+}
+
+const _bCfg = {
+  enabled:          (cfg.buzzer && cfg.buzzer.enabled)          === true,
+  gpioPin:          (cfg.buzzer && cfg.buzzer.gpioPin)          || 17,
+  rearmSeconds:     (cfg.buzzer && cfg.buzzer.rearmSeconds)     || 30,
+  rearmOnWorsening: (cfg.buzzer && cfg.buzzer.rearmOnWorsening) !== false,
+};
+if (_bCfg.enabled) _gpioInit(_bCfg.gpioPin);
+
+// Patterns: array of [durationMs, pinHigh]
+// Drag     — urgent:   3 × (150 ms on / 150 ms off) + 700 ms pause, repeat
+// Guardian — moderate: 800 ms on / 800 ms off, repeat
+const _PATTERNS = {
+  drag:     [[150,1],[150,0],[150,1],[150,0],[150,1],[150,0],[700,0]],
+  guardian: [[800,1],[800,0]],
+};
+const _buzzer = { mode: null, silencedUntil: 0, distAtSilence: null, _timer: null };
+
+function _bStop() {
+  clearTimeout(_buzzer._timer); _buzzer._timer = null;
+  if (_bCfg.enabled) _gpioWrite(_bCfg.gpioPin, false);
+}
+function _bPlay(type) {
+  _bStop();
+  if (!_bCfg.enabled) return;
+  const pat = _PATTERNS[type] || _PATTERNS.drag;
+  let i = 0;
+  function step() { const [d,h] = pat[i++ % pat.length]; _gpioWrite(_bCfg.gpioPin, h); _buzzer._timer = setTimeout(step, d); }
+  step();
+}
+function startBuzzer(type) {
+  _buzzer.mode = 'sounding:' + type; _buzzer.distAtSilence = null;
+  _bPlay(type);
+  console.log('[buzzer] sounding:', type);
+}
+function stopBuzzer() { _bStop(); _buzzer.mode = null; console.log('[buzzer] stopped'); }
+function silenceBuzzer() {
+  _bStop();
+  _buzzer.mode = 'silenced';
+  _buzzer.silencedUntil = Date.now() + _bCfg.rearmSeconds * 1000;
+  _buzzer.distAtSilence = _mon.distance;
+  console.log('[buzzer] silenced for ' + _bCfg.rearmSeconds + 's');
+}
+function testBuzzer() {
+  if (!_bCfg.enabled) return false;
+  const prevMode = _buzzer.mode;
+  _buzzer.mode = 'sounding:test'; _bPlay('drag');
+  console.log('[buzzer] test started (3 s)');
+  setTimeout(() => {
+    if (_buzzer.mode === 'sounding:test') { _buzzer.mode = prevMode; _bStop(); buzzerUpdateFromAlarms(); }
+  }, 3000);
+  return true;
+}
+function buzzerUpdateFromAlarms() {
+  if (!_bCfg.enabled || _buzzer.mode === 'sounding:test') return;
+  const now = Date.now();
+  const dragActive  = _mon.alarmState === 'dragging' || _mon.alarmState === 'gpsLost';
+  const guardActive = _guardian.armed && Object.keys(_guardian.encounters).length > 0;
+  const alarmType   = dragActive ? 'drag' : (guardActive ? 'guardian' : null);
+  if (!alarmType) {
+    if (_buzzer.mode !== null) stopBuzzer();
+    return;
+  }
+  if (_buzzer.mode === null) { startBuzzer(alarmType); return; }
+  if (_buzzer.mode === 'sounding:guardian' && alarmType === 'drag') { startBuzzer('drag'); return; }
+  if (_buzzer.mode.startsWith('sounding:')) return;
+  if (_buzzer.mode === 'silenced') {
+    if (now >= _buzzer.silencedUntil) { console.log('[buzzer] rearm: silence expired'); startBuzzer(alarmType); return; }
+    if (_bCfg.rearmOnWorsening && dragActive && _mon.distance != null && _buzzer.distAtSilence != null
+        && _mon.distance > _buzzer.distAtSilence + 5) {
+      console.log('[buzzer] rearm: worsened by ' + Math.round(_mon.distance - _buzzer.distAtSilence) + ' m');
+      startBuzzer(alarmType);
+    }
+  }
+}
+
 // ─── Monitoring state ─────────────────────────────────────────────────────
 const _mon = {
   running:        false,
@@ -140,6 +245,7 @@ async function monitorTick() {
         _mon.alarmState = 'gpsLost';
         console.log('[anchor-api] GPS lost — no position update for 120s');
         sendPushover(readState().pushover, 'gpsLost');
+        buzzerUpdateFromAlarms();
       }
       return;
     }
@@ -175,6 +281,7 @@ async function monitorTick() {
       if (_mon.alarmState !== 'ok') console.log('[anchor-api] Alarm cleared — boat back within bounds');
       _mon.alarmState = 'ok';
     }
+    buzzerUpdateFromAlarms();
 
   } catch(e) {
     console.error('[anchor-api] Poll error:', e.message);
@@ -291,6 +398,7 @@ async function guardianTick() {
     Object.keys(_guardian.nbTrails).forEach(id => { if (!nbSeen[id]) delete _guardian.nbTrails[id]; });
 
     if (guardianOn) Object.keys(_guardian.encounters).forEach(id => { if (!seen[id]) finalizeEncounter(id); });
+    buzzerUpdateFromAlarms();
   } catch(e) { console.error('[anchor-api] guardianTick error:', e.message); }
 }
 
@@ -345,6 +453,7 @@ function stopMonitoring() {
   _mon.running    = false;  _mon.alarmState = 'ok';
   _mon.distance   = null;   _mon.bearing    = null;
   _mon._loop      = null;   _mon._trail     = null;
+  buzzerUpdateFromAlarms();
 }
 
 // ─── Signal K helpers ─────────────────────────────────────────────────────
@@ -610,6 +719,12 @@ http.createServer(async (req, res) => {
       curLat:         _mon.curLat,
       curLon:         _mon.curLon,
       radius:         _mon.radius,
+      buzzer:         _bCfg.enabled ? {
+        mode:    _buzzer.mode,
+        rearmIn: _buzzer.mode === 'silenced'
+          ? Math.max(0, Math.round((_buzzer.silencedUntil - Date.now()) / 1000))
+          : null,
+      } : null,
     });
     return;
   }
@@ -719,6 +834,23 @@ http.createServer(async (req, res) => {
     return;
   }
 
+  if (method === 'POST' && url === '/buzzer/silence') {
+    if (!_bCfg.enabled) { json(res, 400, { ok: false, error: 'Buzzer not enabled in config' }); return; }
+    if (!_buzzer.mode || !_buzzer.mode.startsWith('sounding:')) {
+      json(res, 400, { ok: false, error: 'Buzzer is not currently sounding' }); return;
+    }
+    silenceBuzzer();
+    json(res, 200, { ok: true, rearmIn: _bCfg.rearmSeconds });
+    return;
+  }
+
+  if (method === 'POST' && url === '/buzzer/test') {
+    if (!_bCfg.enabled) { json(res, 400, { ok: false, error: 'Buzzer not enabled in config' }); return; }
+    testBuzzer();
+    json(res, 200, { ok: true, message: 'Test pattern started (3 s)' });
+    return;
+  }
+
   json(res, 404, { ok: false, error: 'not found' });
 }).listen(PORT, async () => {
   console.log('[anchor-api] Listening on port ' + PORT);
@@ -764,3 +896,6 @@ http.createServer(async (req, res) => {
     console.error('[anchor-api] Startup anchor check error:', e.message);
   }
 });
+
+process.on('SIGTERM', () => { if (_bCfg.enabled) _gpioShutdown(_bCfg.gpioPin); process.exit(0); });
+process.on('SIGINT',  () => { if (_bCfg.enabled) _gpioShutdown(_bCfg.gpioPin); process.exit(0); });

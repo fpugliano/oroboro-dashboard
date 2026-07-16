@@ -3,5 +3,11 @@
   "signalkPort": 3000,
   "username": "",
   "password": "",
-  "proxyPort": 3001
+  "proxyPort": 3001,
+  "buzzer": {
+    "enabled": false,
+    "gpioPin": 17,
+    "rearmSeconds": 30,
+    "rearmOnWorsening": true
+  }
 }

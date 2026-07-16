@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.2.0] — 2026-07-16
+
+### Added
+- **12 V buzzer output** — anchor drag and Guardian zone breaches now sound a physical 12 V piezo buzzer via a relay on a Pi GPIO pin, waking crew even when all phones are silent.
+  - `anchor-api.js` — GPIO driver via kernel sysfs (Pi 4 / Pi 5 compatible); mock mode on non-Pi for development. Distinct software patterns: urgent 3-burst for drag/GPS-loss, slow 800 ms pulse for Guardian. Clean pin-low on `SIGTERM`/`SIGINT`.
+  - `anchor-api.js` — `POST /buzzer/silence` stops the buzzer and starts a rearm countdown; `POST /buzzer/test` plays the drag pattern for 3 s. Buzzer state (`mode`, `rearmIn`) included in `GET /api/anchor/status`.
+  - `anchor.html` — large SILENCE button appears between the status banner and tabs while the buzzer is sounding; replaced by a countdown badge ("rearms in N s") while silenced. Driven entirely by the existing 5 s status poll — no extra polling.
+  - `settings.html` — "12 V Buzzer" row in the Alarms section with a Test button; disabled with explanation when `buzzer.enabled: false`.
+  - `anchor-api-config.json` — four new keys: `buzzer.enabled` (default `false`), `buzzer.gpioPin` (default `17`), `buzzer.rearmSeconds` (default `30`), `buzzer.rearmOnWorsening` (default `true`).
+  - README — wiring guide, permissions setup, deploy steps.
+
 ## [1.1.3] — 2026-06-18
 
 ### Added
