@@ -21,31 +21,72 @@ let skToken = null;
 // ─── GPIO + Buzzer ────────────────────────────────────────────────────────
 // Kernel sysfs (/sys/class/gpio/) gives persistent line ownership: the relay
 // holds state between writes without spawning a child process on every toggle.
-// Pi 5 / RP1 also exposes sysfs via its GPIO compatibility shim.
+// On Pi 4 the gpiochip base is 0, so sysfs pin == BCM pin.
+// On Pi 5 (RP1) the chip base is a large offset (e.g. 512), so sysfs pin =
+// base + BCM.  detectGpioBase() reads /sys/class/gpio/gpiochip*/label to find
+// the pinctrl chip and returns its base automatically.
 // Falls back to console-log mock when GPIO access fails (Mac / no Pi).
 const SYSFS = '/sys/class/gpio';
 let _gpioMock = false;
+let _gpioBase = 0;   // resolved by detectGpioBase() at init
 
-function _gpioExport(pin) {
-  const dir = SYSFS + '/gpio' + pin;
+function detectGpioBase() {
+  try {
+    const chips = fs.readdirSync(SYSFS).filter(d => d.startsWith('gpiochip'));
+    // Prefer the chip whose label contains 'pinctrl' — that's the SoC GPIO block
+    // on both Pi 4 (pinctrl-bcm2835) and Pi 5 (pinctrl-rp1).
+    for (const chip of chips) {
+      try {
+        const label = fs.readFileSync(SYSFS + '/' + chip + '/label', 'utf8').trim();
+        if (label.includes('pinctrl')) {
+          const base = parseInt(fs.readFileSync(SYSFS + '/' + chip + '/base', 'utf8').trim(), 10);
+          if (!isNaN(base)) { console.log('[buzzer] GPIO chip: ' + chip + ' (' + label + ') base=' + base); return base; }
+        }
+      } catch(e) {}
+    }
+    // Fallback: chip with largest base that exposes ≥28 lines (covers 40-pin header)
+    let best = 0;
+    for (const chip of chips) {
+      try {
+        const base  = parseInt(fs.readFileSync(SYSFS + '/' + chip + '/base',  'utf8').trim(), 10);
+        const ngpio = parseInt(fs.readFileSync(SYSFS + '/' + chip + '/ngpio', 'utf8').trim(), 10);
+        if (ngpio >= 28 && base > best) best = base;
+      } catch(e) {}
+    }
+    return best;
+  } catch(e) { return 0; }
+}
+
+function _gpioExport(sysfsPin) {
+  const dir = SYSFS + '/gpio' + sysfsPin;
   if (!fs.existsSync(dir)) {
-    fs.writeFileSync(SYSFS + '/export', String(pin));
+    fs.writeFileSync(SYSFS + '/export', String(sysfsPin));
     const deadline = Date.now() + 200;
     while (!fs.existsSync(dir + '/direction') && Date.now() < deadline) {}
   }
   fs.writeFileSync(dir + '/direction', 'out');
 }
-function _gpioWrite(pin, high) {
-  if (_gpioMock) { console.log('[buzzer] mock pin ' + pin + ' → ' + (high ? 'HIGH' : 'LOW')); return; }
-  try { fs.writeFileSync(SYSFS + '/gpio' + pin + '/value', high ? '1' : '0'); }
+function _gpioWrite(bcmPin, high) {
+  if (_gpioMock) { console.log('[buzzer] mock pin ' + bcmPin + ' → ' + (high ? 'HIGH' : 'LOW')); return; }
+  try { fs.writeFileSync(SYSFS + '/gpio' + (_gpioBase + bcmPin) + '/value', high ? '1' : '0'); }
   catch(e) { console.error('[buzzer] write error:', e.message); }
 }
-function _gpioInit(pin) {
-  try { _gpioExport(pin); _gpioWrite(pin, false); console.log('[buzzer] GPIO BCM' + pin + ' ready (sysfs)'); return true; }
-  catch(e) { console.warn('[buzzer] GPIO init failed (' + e.message + ') — mock mode'); _gpioMock = true; return false; }
+function _gpioInit(bcmPin) {
+  try {
+    _gpioBase = detectGpioBase();
+    const sysfsPin = _gpioBase + bcmPin;
+    _gpioExport(sysfsPin);
+    _gpioWrite(bcmPin, false);
+    console.log('[buzzer] GPIO init: BCM ' + bcmPin + ' → sysfs ' + sysfsPin + ' (base=' + _gpioBase + ')');
+    return true;
+  } catch(e) {
+    console.warn('[buzzer] GPIO init failed (' + e.message + ') — mock mode');
+    _gpioMock = true;
+    return false;
+  }
 }
-function _gpioShutdown(pin) {
-  try { _gpioWrite(pin, false); fs.writeFileSync(SYSFS + '/unexport', String(pin)); } catch(e) {}
+function _gpioShutdown(bcmPin) {
+  try { _gpioWrite(bcmPin, false); fs.writeFileSync(SYSFS + '/unexport', String(_gpioBase + bcmPin)); } catch(e) {}
 }
 
 const _bCfg = {
