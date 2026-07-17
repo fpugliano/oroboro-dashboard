@@ -57,14 +57,35 @@ function detectGpioBase() {
   } catch(e) { return 0; }
 }
 
+// Retry a sysfs write for up to 1 s, re-attempting on EACCES/EPERM (udev race
+// after export: the gpio group + permissions are applied asynchronously).
+function _retryWrite(filePath, data) {
+  const deadline = Date.now() + 1000;
+  let lastErr;
+  while (Date.now() < deadline) {
+    try { fs.writeFileSync(filePath, data); return; } catch(e) {
+      if (e.code !== 'EACCES' && e.code !== 'EPERM') throw e;
+      lastErr = e;
+      const t = Date.now(); while (Date.now() - t < 50) {}  // 50 ms backoff
+    }
+  }
+  throw lastErr;
+}
 function _gpioExport(sysfsPin) {
   const dir = SYSFS + '/gpio' + sysfsPin;
   if (!fs.existsSync(dir)) {
-    fs.writeFileSync(SYSFS + '/export', String(sysfsPin));
-    const deadline = Date.now() + 200;
-    while (!fs.existsSync(dir + '/direction') && Date.now() < deadline) {}
+    try { fs.writeFileSync(SYSFS + '/export', String(sysfsPin)); }
+    catch(e) {
+      if (e.code !== 'EBUSY') throw e;  // EBUSY = already exported by a prior run
+      console.log('[buzzer] gpio' + sysfsPin + ' already exported (EBUSY) — proceeding');
+    }
+    // Wait up to 1 s for the kernel to create the gpio directory
+    const deadline = Date.now() + 1000;
+    while (!fs.existsSync(dir + '/direction') && Date.now() < deadline) {
+      const t = Date.now(); while (Date.now() - t < 20) {}
+    }
   }
-  fs.writeFileSync(dir + '/direction', 'out');
+  _retryWrite(dir + '/direction', 'out');  // udev may not have applied perms yet
 }
 function _gpioWrite(bcmPin, high) {
   if (_gpioMock) { console.log('[buzzer] mock pin ' + bcmPin + ' → ' + (high ? 'HIGH' : 'LOW')); return; }
@@ -76,7 +97,7 @@ function _gpioInit(bcmPin) {
     _gpioBase = detectGpioBase();
     const sysfsPin = _gpioBase + bcmPin;
     _gpioExport(sysfsPin);
-    _gpioWrite(bcmPin, false);
+    _retryWrite(SYSFS + '/gpio' + sysfsPin + '/value', '0');  // initial LOW; may also need retry
     console.log('[buzzer] GPIO init: BCM ' + bcmPin + ' → sysfs ' + sysfsPin + ' (base=' + _gpioBase + ')');
     return true;
   } catch(e) {
@@ -86,7 +107,9 @@ function _gpioInit(bcmPin) {
   }
 }
 function _gpioShutdown(bcmPin) {
-  try { _gpioWrite(bcmPin, false); fs.writeFileSync(SYSFS + '/unexport', String(_gpioBase + bcmPin)); } catch(e) {}
+  const sp = _gpioBase + bcmPin;
+  try { fs.writeFileSync(SYSFS + '/gpio' + sp + '/value', '0'); } catch(e) {}
+  try { fs.writeFileSync(SYSFS + '/unexport', String(sp)); } catch(e) {}
 }
 
 const _bCfg = {
@@ -104,7 +127,7 @@ const _PATTERNS = {
   drag:     [[150,1],[150,0],[150,1],[150,0],[150,1],[150,0],[700,0]],
   guardian: [[800,1],[800,0]],
 };
-const _buzzer = { mode: null, silencedUntil: 0, distAtSilence: null, _timer: null };
+const _buzzer = { mode: 'idle', silencedUntil: 0, distAtSilence: null, _timer: null };
 
 function _bStop() {
   clearTimeout(_buzzer._timer); _buzzer._timer = null;
@@ -123,7 +146,7 @@ function startBuzzer(type) {
   _bPlay(type);
   console.log('[buzzer] sounding:', type);
 }
-function stopBuzzer() { _bStop(); _buzzer.mode = null; console.log('[buzzer] stopped'); }
+function stopBuzzer() { _bStop(); _buzzer.mode = 'idle'; console.log('[buzzer] stopped'); }
 function silenceBuzzer() {
   _bStop();
   _buzzer.mode = 'silenced';
@@ -148,10 +171,10 @@ function buzzerUpdateFromAlarms() {
   const guardActive = _guardian.armed && Object.keys(_guardian.encounters).length > 0;
   const alarmType   = dragActive ? 'drag' : (guardActive ? 'guardian' : null);
   if (!alarmType) {
-    if (_buzzer.mode !== null) stopBuzzer();
+    if (_buzzer.mode !== 'idle') stopBuzzer();
     return;
   }
-  if (_buzzer.mode === null) { startBuzzer(alarmType); return; }
+  if (_buzzer.mode === 'idle') { startBuzzer(alarmType); return; }
   if (_buzzer.mode === 'sounding:guardian' && alarmType === 'drag') { startBuzzer('drag'); return; }
   if (_buzzer.mode.startsWith('sounding:')) return;
   if (_buzzer.mode === 'silenced') {
