@@ -1658,5 +1658,20 @@ window.addEventListener('load', async () => {
   window.addEventListener('pageshow',_syncTheme);
 })();
 </script>
+<script>
+(function(){
+  var _wl=null;
+  function _acquire(){
+    if(!navigator.wakeLock)return;
+    navigator.wakeLock.request('screen').then(function(l){
+      _wl=l; l.addEventListener('release',function(){_wl=null;});
+    }).catch(function(){});
+  }
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='visible')_acquire();
+  });
+  _acquire();
+})();
+</script>
 </body>
 </html>
