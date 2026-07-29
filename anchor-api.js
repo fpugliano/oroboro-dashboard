@@ -8,6 +8,8 @@ const vm    = require('vm');
 const STATE_FILE      = '/home/pi/anchor-api/anchor-state.json';
 const GUARDIAN_FILE   = '/home/pi/anchor-api/guardian-state.json';
 const CONFIG_JS_PATH  = '/usr/lib/node_modules/signalk-server/public/config.js';
+const POLAR_DIR       = '/home/pi/anchor-api/polars';
+const POLAR_BEST_DIR  = '/home/pi/anchor-api/polar-best';
 
 const cfg      = JSON.parse(fs.readFileSync(path.join(__dirname, 'anchor-api-config.json'), 'utf8'));
 const SK_HOST  = cfg.signalkHost || 'localhost';
@@ -790,6 +792,120 @@ http.createServer(async (req, res) => {
           : null,
       } : null,
     });
+    return;
+  }
+
+  // ─── Polar library ───────────────────────────────────────────────────────
+  // A named library of polars lives on the Pi at POLAR_DIR, one JSON per boat.
+  // Each file: { id, name, boat, sailPlan, source, date, tws:[...], polar:{tws:{twa:kt}} }
+  // GET  /api/polar/list        → [{id,name,boat,sailPlan,source,date}]
+  // GET  /api/polar/get?id=…    → full polar object
+  // POST /api/polar/save        → validated polar object (writes POLAR_DIR/<id>.json)
+  // POST /api/polar/delete      → { id }
+  // ─── Per-polar "My Best" achieved-performance store ──────────────────────
+  // The self-built polar (best boatspeed seen per TWA/TWS cell), keyed by the
+  // active polar id ('builtin' for the built-in default). Persists what the
+  // boat has actually achieved so it survives reloads and syncs across devices.
+  if (method === 'GET' && url.indexOf('/api/polar/best') === 0 && url.indexOf('/save') === -1) {
+    try {
+      const id = (require('url').parse(url, true).query.id || 'builtin').replace(/[^a-zA-Z0-9_-]/g, '') || 'builtin';
+      let best = {};
+      try { best = JSON.parse(fs.readFileSync(path.join(POLAR_BEST_DIR, id + '.json'), 'utf8')); } catch(e) {}
+      json(res, 200, { ok: true, id: id, best: best });
+    } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+    return;
+  }
+
+  if (method === 'POST' && url === '/api/polar/best/save') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      const id = (body.id || 'builtin').toString().replace(/[^a-zA-Z0-9_-]/g, '') || 'builtin';
+      const best = body.best;
+      if (!best || typeof best !== 'object') throw new Error('best object required');
+      // Validate: every cell a plausible boatspeed, so junk can't land here either.
+      Object.keys(best).forEach(tws => {
+        const row = best[tws];
+        if (!row || typeof row !== 'object') throw new Error('bad row ' + tws);
+        Object.keys(row).forEach(twa => {
+          const v = Number(row[twa]);
+          if (row[twa] !== null && (isNaN(v) || v < 0 || v > 40)) throw new Error('bad speed at ' + tws + '/' + twa);
+        });
+      });
+      try { fs.mkdirSync(POLAR_BEST_DIR, { recursive: true }); } catch(e) {}
+      fs.writeFileSync(path.join(POLAR_BEST_DIR, id + '.json'), JSON.stringify(best), 'utf8');
+      json(res, 200, { ok: true, id: id });
+    } catch (e) { json(res, 400, { ok: false, error: e.message }); }
+    return;
+  }
+
+  if (method === 'GET' && url === '/api/polar/list') {
+    try {
+      try { fs.mkdirSync(POLAR_DIR, { recursive: true }); } catch(e) {}
+      const items = fs.readdirSync(POLAR_DIR).filter(f => f.endsWith('.json')).map(f => {
+        try {
+          const p = JSON.parse(fs.readFileSync(path.join(POLAR_DIR, f), 'utf8'));
+          return { id: p.id, name: p.name, boat: p.boat || null, sailPlan: p.sailPlan || null, source: p.source || null, date: p.date || null };
+        } catch(e) { return null; }
+      }).filter(Boolean);
+      json(res, 200, { ok: true, polars: items });
+    } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+    return;
+  }
+
+  if (method === 'GET' && url.indexOf('/api/polar/get') === 0) {
+    try {
+      const id = (require('url').parse(url, true).query.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+      if (!id) { json(res, 400, { ok: false, error: 'id required' }); return; }
+      const p = JSON.parse(fs.readFileSync(path.join(POLAR_DIR, id + '.json'), 'utf8'));
+      json(res, 200, { ok: true, polar: p });
+    } catch (e) { json(res, 404, { ok: false, error: 'not found' }); }
+    return;
+  }
+
+  if (method === 'POST' && url === '/api/polar/save') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      // Validate shape before writing — reject junk so the library stays clean.
+      if (!body || typeof body !== 'object') throw new Error('bad body');
+      if (!body.name || typeof body.name !== 'string') throw new Error('name required');
+      if (!Array.isArray(body.tws) || !body.tws.length) throw new Error('tws array required');
+      if (!body.polar || typeof body.polar !== 'object') throw new Error('polar table required');
+      let cells = 0;
+      Object.keys(body.polar).forEach(tws => {
+        const row = body.polar[tws];
+        if (!row || typeof row !== 'object') throw new Error('bad polar row ' + tws);
+        Object.keys(row).forEach(twa => {
+          const v = Number(row[twa]);
+          if (isNaN(v) || v < 0 || v > 40) throw new Error('bad speed at ' + tws + '/' + twa);
+          cells++;
+        });
+      });
+      if (cells < 4) throw new Error('polar too sparse');
+      const id = (body.id || body.name).toString().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48);
+      if (!id) throw new Error('could not derive id');
+      const rec = {
+        id: id, name: body.name.slice(0, 60),
+        boat: body.boat ? String(body.boat).slice(0, 60) : null,
+        sailPlan: body.sailPlan ? String(body.sailPlan).slice(0, 60) : null,
+        source: body.source ? String(body.source).slice(0, 40) : null,
+        date: body.date ? String(body.date).slice(0, 20) : new Date().toISOString().slice(0, 10),
+        tws: body.tws.map(Number), polar: body.polar,
+      };
+      try { fs.mkdirSync(POLAR_DIR, { recursive: true }); } catch(e) {}
+      fs.writeFileSync(path.join(POLAR_DIR, id + '.json'), JSON.stringify(rec, null, 2), 'utf8');
+      json(res, 200, { ok: true, id: id, polar: rec });
+    } catch (e) { json(res, 400, { ok: false, error: e.message }); }
+    return;
+  }
+
+  if (method === 'POST' && url === '/api/polar/delete') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      const id = (body.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+      if (!id) throw new Error('id required');
+      fs.unlinkSync(path.join(POLAR_DIR, id + '.json'));
+      json(res, 200, { ok: true });
+    } catch (e) { json(res, 400, { ok: false, error: e.message }); }
     return;
   }
 

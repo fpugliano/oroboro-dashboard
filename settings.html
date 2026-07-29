@@ -216,6 +216,8 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:'Rajdhani',
 <div id="s-tanks" class="screen" style="display:none"></div>
 
 <!-- ── Tank edit ── -->
+<div id="s-polar" class="screen" style="display:none"></div>
+
 <div id="s-tank-edit" class="screen" style="display:none">
   <button class="back-btn" onclick="nav('tanks')">‹ Back to Tanks</button>
   <div class="field">
@@ -260,6 +262,7 @@ function nav(screen) {
   if (screen === 'battery')     renderBattery();
   if (screen === 'inverter')    renderInverter();
   if (screen === 'tanks')       renderTanks();
+  if (screen === 'polar')       renderPolarLib();
   if (screen === 'tank-edit')   fillTankEdit();
   if (screen === 'vessel') {
     document.getElementById('f-vessel-name').value = (C.vessel && C.vessel.name) || '';
@@ -412,6 +415,12 @@ function renderHome() {
     <button class="row" onclick="nav('inverter')">
       <span class="row-label">Inverter / Charger</span>
       <span class="row-value">Instance ${esc(invInst)}<span class="row-chevron">›</span></span>
+    </button>
+
+    <div class="section-hdr">Performance</div>
+    <button class="row" onclick="nav('polar')">
+      <span class="row-label">Polar diagram</span>
+      <span class="row-value" id="polar-current">Leopard 40 (built-in)<span class="row-chevron">›</span></span>
     </button>
 
     <div class="section-hdr">Tanks</div>
@@ -739,6 +748,159 @@ function setCustomGauge(key) {
   // Tell the main dashboard page if it's open
   try { new BroadcastChannel('oroboro_gauge').postMessage(key); } catch(e) {}
 }
+
+// ── Polar library ──────────────────────────────────────────────────────────
+// A named library of polars lives on the Pi (anchor-api /api/polar/*), so every
+// crew device sees the same set. The active choice is remembered in localStorage
+// and read by polar.html on load; "Leopard 40 (built-in)" is the fallback.
+var _polarList = [];
+
+function activePolarId() { return localStorage.getItem('oroboroActivePolar') || ''; }
+
+function renderPolarLib() {
+  var el = document.getElementById('s-polar');
+  el.innerHTML =
+    '<button class="back-btn" onclick="nav(\'home\')">‹ Back</button>' +
+    '<div style="padding:4px 2px;">' +
+      '<div class="section-hdr" style="margin-top:0">Library</div>' +
+      '<div id="polar-lib-list"><p style="font-size:12px;color:var(--text-muted)">Loading…</p></div>' +
+      '<div class="section-hdr">Import polar</div>' +
+      '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Paste an ORC / Expedition table (TWA rows, TWS columns) or a CSV with the same shape.</div>' +
+      '<input type="file" id="polar-file" accept=".pol,.csv,.txt" style="font-size:12px;margin-bottom:8px;color:var(--text-secondary)"/>' +
+      '<textarea id="polar-paste" placeholder="twa\t6\t8\t10\t12\t14\t16&#10;52\t3.5\t4.5\t5.3\t6.1\t6.9\t7.5&#10;60\t4.0\t5.1\t6.0\t6.9\t7.6\t8.3" style="width:100%;height:88px;font-family:monospace;font-size:11px;background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);border-radius:8px;padding:8px;box-sizing:border-box"></textarea>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
+        '<input id="polar-boat" placeholder="Boat (e.g. Leopard 40)" style="font-size:12px;background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);border-radius:8px;padding:8px"/>' +
+        '<input id="polar-sailplan" placeholder="Sail plan (main+jib)" style="font-size:12px;background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);border-radius:8px;padding:8px"/>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
+        '<select id="polar-source" style="font-size:12px;background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);border-radius:8px;padding:8px">' +
+          '<option value="VPP">Designer VPP</option><option value="measured">Measured / logged</option></select>' +
+        '<input id="polar-name" placeholder="Name" style="font-size:12px;background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);border-radius:8px;padding:8px"/>' +
+      '</div>' +
+      '<div id="polar-parse-msg" style="font-size:12px;margin-top:8px"></div>' +
+      '<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="importPolar()">Import polar</button>' +
+    '</div>';
+  var f = document.getElementById('polar-file');
+  if (f) f.addEventListener('change', function(e){
+    var file = e.target.files[0]; if (!file) return;
+    var rd = new FileReader();
+    rd.onload = function(ev){ document.getElementById('polar-paste').value = ev.target.result; previewParse(); };
+    rd.readAsText(file);
+    if (!document.getElementById('polar-name').value) document.getElementById('polar-name').value = file.name.replace(/\.[^.]+$/, '');
+  });
+  document.getElementById('polar-paste').addEventListener('input', previewParse);
+  loadPolarList();
+}
+
+function loadPolarList() {
+  fetch(PROXY + '/api/polar/list').then(function(r){ return r.json(); }).then(function(d){
+    _polarList = (d && d.ok && d.polars) ? d.polars : [];
+    var el = document.getElementById('polar-lib-list'); if (!el) return;
+    var active = activePolarId();
+    var rows = '<button class="row" onclick="selectPolar(\'\')">' +
+      '<span class="row-label">Leopard 40 (built-in)</span>' +
+      '<span class="row-value">' + (active === '' ? '✓' : '') + '<span class="row-chevron"></span></span></button>';
+    _polarList.forEach(function(p){
+      var meta = [p.boat, p.sailPlan, p.source].filter(Boolean).join(' · ');
+      rows += '<button class="row" onclick="selectPolar(\'' + p.id + '\')">' +
+        '<span class="row-label">' + esc(p.name) + (meta ? '<span style="display:block;font-size:11px;color:var(--text-muted)">' + esc(meta) + '</span>' : '') + '</span>' +
+        '<span class="row-value">' + (active === p.id ? '✓ ' : '') +
+        '<span onclick="event.stopPropagation();deletePolar(\'' + p.id + '\')" style="color:#ef4444;padding:0 6px">✕</span></span></button>';
+    });
+    el.innerHTML = rows;
+  }).catch(function(){
+    var el = document.getElementById('polar-lib-list');
+    if (el) el.innerHTML = '<p style="font-size:12px;color:#ef4444">Could not reach the Pi.</p>';
+  });
+}
+
+function selectPolar(id) {
+  localStorage.setItem('oroboroActivePolar', id);
+  var lbl = document.getElementById('polar-current');
+  if (lbl) {
+    var name = 'Leopard 40 (built-in)';
+    if (id) { var p = _polarList.filter(function(x){ return x.id === id; })[0]; if (p) name = p.name; }
+    lbl.innerHTML = esc(name) + '<span class="row-chevron">›</span>';
+  }
+  loadPolarList();
+}
+
+function deletePolar(id) {
+  if (!confirm('Delete this polar from the library?')) return;
+  fetch(PROXY + '/api/polar/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id }) })
+    .then(function(){ if (activePolarId() === id) selectPolar(''); loadPolarList(); });
+}
+
+// Parse an ORC/Expedition .pol or CSV: first row = header (label + TWS values),
+// each subsequent row = TWA + one boatspeed per TWS. Tabs, commas, or spaces.
+function parsePolarText(txt) {
+  var lines = txt.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
+  if (lines.length < 2) throw new Error('need a header and at least one row');
+  function cells(l){ return l.split(/[\t,;]+|\s{2,}|\s+/).map(function(c){ return c.trim(); }).filter(function(c){ return c !== ''; }); }
+  var head = cells(lines[0]);
+  var tws = head.slice(1).map(Number);
+  if (!tws.length || tws.some(isNaN)) throw new Error('header wind speeds not numeric');
+  var polar = {}; tws.forEach(function(w){ polar[w] = {}; });
+  for (var i = 1; i < lines.length; i++) {
+    var c = cells(lines[i]); if (c.length < 2) continue;
+    var twa = Number(c[0]); if (isNaN(twa)) continue;
+    for (var j = 0; j < tws.length && j + 1 < c.length; j++) {
+      var v = Number(c[j + 1]);
+      if (!isNaN(v) && v > 0) polar[tws[j]][twa] = v;
+    }
+  }
+  return { tws: tws, polar: polar };
+}
+
+function previewParse() {
+  var msg = document.getElementById('polar-parse-msg'); if (!msg) return;
+  var txt = document.getElementById('polar-paste').value.trim();
+  if (!txt) { msg.textContent = ''; return; }
+  try {
+    var p = parsePolarText(txt);
+    var angles = new Set(); Object.keys(p.polar).forEach(function(w){ Object.keys(p.polar[w]).forEach(function(a){ angles.add(a); }); });
+    msg.style.color = '#22c55e';
+    msg.textContent = '✓ Parsed ' + p.tws.length + ' wind speeds × ' + angles.size + ' angles';
+  } catch (e) {
+    msg.style.color = '#ef4444';
+    msg.textContent = '✕ ' + e.message;
+  }
+}
+
+function importPolar() {
+  var txt = document.getElementById('polar-paste').value.trim();
+  var msg = document.getElementById('polar-parse-msg');
+  var name = document.getElementById('polar-name').value.trim();
+  if (!name) { msg.style.color = '#ef4444'; msg.textContent = '✕ Give it a name'; return; }
+  var parsed;
+  try { parsed = parsePolarText(txt); } catch (e) { msg.style.color = '#ef4444'; msg.textContent = '✕ ' + e.message; return; }
+  var rec = {
+    name: name,
+    boat: document.getElementById('polar-boat').value.trim() || null,
+    sailPlan: document.getElementById('polar-sailplan').value.trim() || null,
+    source: document.getElementById('polar-source').value,
+    tws: parsed.tws, polar: parsed.polar,
+  };
+  fetch(PROXY + '/api/polar/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rec) })
+    .then(function(r){ return r.json(); }).then(function(d){
+      if (!d.ok) { msg.style.color = '#ef4444'; msg.textContent = '✕ ' + (d.error || 'save failed'); return; }
+      selectPolar(d.id);
+      document.getElementById('polar-paste').value = ''; document.getElementById('polar-name').value = '';
+      msg.style.color = '#22c55e'; msg.textContent = '✓ Saved and selected';
+    }).catch(function(){ msg.style.color = '#ef4444'; msg.textContent = '✕ Could not reach the Pi'; });
+}
+
+// Reflect the active polar's name in the Performance row on load
+(function(){
+  var id = activePolarId(); if (!id) return;
+  fetch(PROXY + '/api/polar/get?id=' + encodeURIComponent(id)).then(function(r){ return r.json(); }).then(function(d){
+    if (d && d.ok && d.polar) {
+      var lbl = document.getElementById('polar-current');
+      if (lbl) lbl.innerHTML = esc(d.polar.name) + '<span class="row-chevron">›</span>';
+    }
+  }).catch(function(){});
+})();
+
 function initGaugeSelect() {
   var sel = document.getElementById('custom-gauge-select');
   if (sel) sel.value = localStorage.getItem('oroboroCustomGauge') || 'wtemp';

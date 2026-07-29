@@ -355,7 +355,7 @@ const WS_URL        = `ws://${HOST}:${SK_PORT}/signalk/v1/stream?subscribe=none`
 // curves, calibration RMS 0.003 kt vs 28 known anchors.
 // The designer's VPP does not compute main+jib beyond 130° TWA.
 // ═══════════════════════════════════════════════════════════
-const OFFICIAL_POLAR = {
+const BUILTIN_POLAR = {
   4:  {52:2.40,60:2.79,70:3.07,75:3.14,80:3.17,90:3.13,100:2.94,110:2.61,120:2.19,130:1.90},
   6:  {52:3.52,60:4.02,70:4.36,75:4.44,80:4.47,90:4.41,100:4.17,110:3.74,120:3.19,130:2.80},
   8:  {52:4.48,60:5.05,70:5.43,75:5.52,80:5.55,90:5.47,100:5.17,110:4.68,120:4.08,130:3.64},
@@ -364,6 +364,14 @@ const OFFICIAL_POLAR = {
   14: {52:6.88,60:7.61,70:8.04,75:8.13,80:8.16,90:8.02,100:7.62,110:6.99,120:6.26,130:5.75},
   16: {52:7.53,60:8.27,70:8.73,75:8.84,80:8.86,90:8.69,100:8.24,110:7.60,120:6.90,130:6.39}
 };
+
+// Active polar: defaults to the built-in Leopard 40, replaced at load time if
+// the user has selected an imported polar in Settings (stored on the Pi).
+let OFFICIAL_POLAR = BUILTIN_POLAR;
+function maxPolarTWS() {
+  const k = Object.keys(OFFICIAL_POLAR).map(Number).filter(n=>!isNaN(n)).sort((a,b)=>a-b);
+  return k.length ? k[k.length-1] : 16;
+}
 
 // Gennaker composite from the F02 "at BEST" table — reference only,
 // Oroboro carries no gennaker. Shown as optional ghost curves.
@@ -388,15 +396,11 @@ const OPTIMAL_VMG = {
 const TABLE_TWA = [52,60,70,90,110,130,150,170];
 const TABLE_TWS = [4,6,8,10,12,14,16,20,25];   // 20/25: achieved-only rows, no VPP data
 
-const OROBORO_BEST = {
-  4:{52:null,60:null,70:null,90:null,110:null,130:null,150:null,170:null},
-  6:{52:null,60:null,70:null,90:4.62,110:null,130:null,150:null,170:null},
-  8:{52:null,60:null,70:5.30,90:5.31,110:null,130:null,150:null,170:null},
-  10:{52:null,60:4.92,70:5.67,90:5.53,110:null,130:4.73,150:null,170:null},
-  12:{52:4.65,60:4.92,70:5.67,90:6.21,110:5.84,130:5.40,150:5.22,170:null},
-  14:{52:null,60:null,70:null,90:7.02,110:6.33,130:5.85,150:5.41,170:null},
-  16:{52:null,60:null,70:6.61,90:7.29,110:7.66,130:7.13,150:6.89,170:5.48}
-};
+// My Best (self-built polar): best boatspeed the boat has actually achieved
+// per TWA/TWS cell. Starts empty and is built by sailing; loaded from and
+// persisted to the Pi per active polar (see loadActivePolar / saveBest).
+let OROBORO_BEST = {};
+let _bestKey = 'builtin';   // active polar id the best-store is keyed on
 
 const TWS_COLORS = {'4-6':'#ff8c00','6-8':'#f59e0b','8-12':'#22c55e','12-16':'#00d4ff','16-20':'#a855f7','20+':'#ef4444'};
 const ROW_TO_BUCKET = {4:'4-6',6:'6-8',8:'8-12',10:'8-12',12:'12-16',14:'12-16',16:'16-20',20:'20+',25:'20+'};
@@ -517,6 +521,17 @@ document.getElementById('ref-best').addEventListener('click',()=>{refMode='best'
 
 function angDiff(a,b){let d=Math.abs(a-b)%360;return d>180?360-d:d;}
 
+let _saveBestTimer = null;
+function saveBest() {
+  if (_saveBestTimer) clearTimeout(_saveBestTimer);
+  _saveBestTimer = setTimeout(function(){
+    const base = 'http://' + HOST + ':3001';
+    fetch(base + '/api/polar/best/save', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: _bestKey, best: OROBORO_BEST }) }).catch(function(){});
+  }, 1500);
+}
+
 function updateBestFromData(pts) {
   const binTWA=twa=>TABLE_TWA.reduce((a,b)=>Math.abs(b-twa)<Math.abs(a-twa)?b:a);
   const binTWS=tws=>{if(tws>28)return null;return TABLE_TWS.reduce((a,b)=>Math.abs(b-tws)<Math.abs(a-tws)?b:a);};
@@ -554,7 +569,31 @@ function buildTable() {
     return `<tr><td class="tws-c">${tw} kt</td>${cells}</tr>`;
   }).join('');
 }
-buildTable();
+// Load the active polar (if any) from the Pi, then build. Falls back silently
+// to the built-in Leopard 40 if nothing is selected or the Pi is unreachable.
+(function loadActivePolar(){
+  const id = localStorage.getItem('oroboroActivePolar') || '';
+  _bestKey = id || 'builtin';
+  const base = 'http://' + HOST + ':3001';
+  // My Best achieved store for this polar — loads in parallel with the reference.
+  fetch(base + '/api/polar/best?id=' + encodeURIComponent(_bestKey))
+    .then(r => r.ok ? r.json() : null)
+    .then(d => { if (d && d.ok && d.best) OROBORO_BEST = d.best; })
+    .catch(()=>{})
+    .finally(()=>{ buildTable(); if (typeof drawPolar==='function') drawPolar(); });
+  if (!id) return;   // built-in reference polar; nothing to fetch
+  fetch(base + '/api/polar/get?id=' + encodeURIComponent(id))
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (d && d.ok && d.polar && d.polar.polar) {
+        OFFICIAL_POLAR = d.polar.polar;
+        const vppNote = document.querySelector('.n-vpp');
+        if (vppNote) vppNote.textContent = 'VPP = ' + (d.polar.name || 'imported') + (d.polar.source === 'measured' ? ' (measured)' : '');
+        if (typeof drawPolar==='function') drawPolar();
+      }
+    })
+    .catch(()=>{});
+})();
 
 // ═══════════════════════════════════════════════════════════
 // Dual Polar Drawing
@@ -716,11 +755,12 @@ function drawCanvas(canvasId, mode) {
     ctx.textAlign='right'; ctx.fillText('TWS →',ox-3,oy+maxSpd*scale*0.7);
   } else {
     // Ghost VPP (faint)
-    const allTwas=Object.keys(OFFICIAL_POLAR[16]).map(Number).sort((a,b)=>a-b);
+    const _refTWS=maxPolarTWS();
+    const allTwas=Object.keys(OFFICIAL_POLAR[_refTWS]||{}).map(Number).sort((a,b)=>a-b);
     ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=0.8; ctx.setLineDash([3,5]);
     ctx.beginPath();
     allTwas.forEach((twa,j)=>{
-      const pt=toXY(twa,OFFICIAL_POLAR[16][twa]);
+      const pt=toXY(twa,OFFICIAL_POLAR[_refTWS][twa]);
       j===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y);
     });
     ctx.stroke(); ctx.setLineDash([]);
@@ -1034,6 +1074,7 @@ async function loadData() {
     sailingData=sailingData.concat(filteredPts);
     trackData=trackData.concat(filteredTrack);
     updateBestFromData(newPts);
+    saveBest();
     updateStats();
     drawPolar();
     renderTrack();
