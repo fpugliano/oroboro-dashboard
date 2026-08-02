@@ -576,7 +576,10 @@ html, body {
 'use strict';
 
 const CFG = DASHBOARD_CONFIG;
-const SK_HOST = CFG.signalk.host;
+// Data host = whatever host the page was loaded from, so it works aboard
+// (loaded via LAN IP) AND remotely over Tailscale (loaded via 100.x). Falls
+// back to config only if hostname is unavailable (e.g. opened as a file).
+const SK_HOST = window.location.hostname || CFG.signalk.host;
 const SK_BASE = window.location.protocol === 'https:'
   ? `${window.location.protocol}//${window.location.host}`
   : `http://${SK_HOST}:${CFG.signalk.port}`;

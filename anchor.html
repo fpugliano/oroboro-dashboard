@@ -275,7 +275,9 @@ html,body{height:100%;background:var(--bg-page);color:var(--text-primary);font-f
 <script>
 // ─── Config (injected by server) ──────────────────────────────────────────
 const CFG        = (typeof DASHBOARD_CONFIG !== 'undefined') ? DASHBOARD_CONFIG : {};
-const SK_HOST    = (CFG.signalk && CFG.signalk.host) || window.location.hostname || 'localhost';
+// Prefer the host the page was loaded from (works aboard via LAN and
+// remotely via Tailscale); fall back to config, then localhost.
+const SK_HOST    = window.location.hostname || (CFG.signalk && CFG.signalk.host) || 'localhost';
 const SK_PORT    = (CFG.signalk && CFG.signalk.port) || 3000;
 const PROXY_PORT = 3001;
 const SK_BASE    = 'http://' + SK_HOST + ':' + SK_PORT;
