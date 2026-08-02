@@ -1147,7 +1147,7 @@ async function updateAIS() {
       const isSelf = id === 'self' || (S.selfMmsi && mmsi === S.selfMmsi);
 
       if (isSelf) {
-        const selfName = S.selfName || name || 'Own Vessel';
+        const selfName = S.selfName || name || (CFG.vessel && CFG.vessel.name) || 'Own Vessel';
         const selfMmsi = S.selfMmsi || mmsi || '';
         const html = `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
           <div style="position:relative;width:28px;height:28px">
