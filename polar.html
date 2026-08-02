@@ -1008,10 +1008,6 @@ function parseInfluxCSV(csv) {
 
 async function loadData() {
   const btn=document.querySelector('.btn-primary');
-  if(!INFLUX_TOKEN){
-    document.getElementById('status-line').textContent='InfluxDB token not configured — add an influx section to config.js on the Pi (see repo README)';
-    return;
-  }
   btn.textContent='Loading…'; btn.disabled=true;
   document.getElementById('status-line').textContent='Fetching data from InfluxDB…';
 
@@ -1022,15 +1018,14 @@ async function loadData() {
   const minSOG=parseFloat(document.getElementById('minSOG').value);
 
   try {
-    const [wsData,waData,bsData,latData,lonData,cogData,sogData] = await Promise.all([
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.speedApparent")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="environment.wind.angleApparent")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.speedThroughWater")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position")|>filter(fn:(r)=>r._field=="lat")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.position")|>filter(fn:(r)=>r._field=="lon")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.courseOverGroundTrue")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`),
-      fetchInflux(`from(bucket:"${INFLUX_BUCKET}")|>range(${rangeArg})|>filter(fn:(r)=>r._measurement=="navigation.speedOverGround")|>filter(fn:(r)=>r._field=="value")|>aggregateWindow(every:30s,fn:mean,createEmpty:false)`)
-    ]);
+    // Data comes via the anchor-api proxy on 3001 (runs InfluxDB on the Pi),
+    // so this works aboard AND remotely over Tailscale.
+    const _hr = await fetch(`http://${HOST}:3001/api/polar/history`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ rangeArg })
+    }).then(r=>r.ok?r.json():null);
+    if(!_hr || !_hr.ok) throw new Error(_hr && _hr.error ? _hr.error : 'history query failed');
+    const wsData=_hr.ws, waData=_hr.wa, bsData=_hr.bs, latData=_hr.lat, lonData=_hr.lon, cogData=_hr.cog, sogData=_hr.sog;
 
     const awsRaw=parseInfluxCSV(wsData), awaRaw=parseInfluxCSV(waData), bsRaw=parseInfluxCSV(bsData);
     const latRaw=parseInfluxCSV(latData), lonRaw=parseInfluxCSV(lonData), cogRaw=parseInfluxCSV(cogData);

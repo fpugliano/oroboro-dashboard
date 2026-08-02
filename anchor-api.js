@@ -802,6 +802,38 @@ http.createServer(async (req, res) => {
   // GET  /api/polar/get?id=…    → full polar object
   // POST /api/polar/save        → validated polar object (writes POLAR_DIR/<id>.json)
   // POST /api/polar/delete      → { id }
+  // ─── Polar sailing-history query (runs Influx on the Pi, so it works over
+  //     Tailscale — the browser never touches InfluxDB:8086 directly) ────────
+  // POST /api/polar/history  body: { rangeArg }  where rangeArg is a Flux range
+  // fragment, e.g. "start:-30d" or "start:<iso>,stop:<iso>". Returns raw CSV per
+  // series; the browser parses it exactly as before.
+  if (method === 'POST' && url === '/api/polar/history') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      let rangeArg = (body && typeof body.rangeArg === 'string') ? body.rangeArg : 'start:-7d';
+      // Whitelist: only the characters a Flux range needs. Blocks injection into the query.
+      if (!/^[A-Za-z0-9:_,.\-]+$/.test(rangeArg)) throw new Error('bad rangeArg');
+      const dc = readDashboardConfig();
+      const bucket = (dc && dc.influx && dc.influx.bucket) || 'signalk';
+      const q = (meas, field) =>
+        'from(bucket:"' + bucket + '")|>range(' + rangeArg + ')' +
+        '|>filter(fn:(r)=>r._measurement=="' + meas + '")' +
+        '|>filter(fn:(r)=>r._field=="' + field + '")' +
+        '|>aggregateWindow(every:30s,fn:mean,createEmpty:false)';
+      const [ws, wa, bs, lat, lon, cog, sog] = await Promise.all([
+        influxQuery(q('environment.wind.speedApparent', 'value'), dc),
+        influxQuery(q('environment.wind.angleApparent', 'value'), dc),
+        influxQuery(q('navigation.speedThroughWater', 'value'), dc),
+        influxQuery(q('navigation.position', 'lat'), dc),
+        influxQuery(q('navigation.position', 'lon'), dc),
+        influxQuery(q('navigation.courseOverGroundTrue', 'value'), dc),
+        influxQuery(q('navigation.speedOverGround', 'value'), dc),
+      ]);
+      json(res, 200, { ok: true, ws, wa, bs, lat, lon, cog, sog });
+    } catch (e) { json(res, 200, { ok: false, error: e.message }); }
+    return;
+  }
+
   // ─── Per-polar "My Best" achieved-performance store ──────────────────────
   // The self-built polar (best boatspeed seen per TWA/TWS cell), keyed by the
   // active polar id ('builtin' for the built-in default). Persists what the
