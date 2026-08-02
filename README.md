@@ -480,7 +480,9 @@ Access everything from anywhere in the world — not just on the boat WiFi — u
 
 ### How it works
 
-Each device gets a private `100.x.x.x` address that only your devices can reach. From a café or home, `http://100.x.x.x:3000/oroboro.html` behaves exactly like being aboard. Nobody else can see or reach the Pi.
+Each device gets a private `100.x.x.x` address that only your devices can reach. From a café or home, `http://100.x.x.x:3000/oroboro.html` behaves exactly like being aboard: live instruments, anchor watch, Guardian AIS, the wind trend, and the full polar sailing history all work over Tailscale. Nobody else can see or reach the Pi.
+
+**Important — always use `http://`, never `https://`:** Signal K serves plain HTTP; if your browser silently upgrades the URL to `https://` you'll get an SSL error. Always save and enter the URL with an explicit `http://`. Numeric IP addresses (`100.x.x.x`) are less prone to this browser behaviour than hostnames, which is why the numeric Tailscale IP is the most reliable choice for a saved shortcut.
 
 ### Setting it up
 
@@ -499,9 +501,22 @@ Open the URL it prints, sign in (Google, GitHub, Microsoft, or Apple — **remem
 **Two settings worth doing once** in the admin console:
 
 - **Disable key expiry** on the Pi (three-dot menu next to the machine — otherwise it needs re-authentication every 180 days).
-- **Enable MagicDNS** in the DNS tab at [login.tailscale.com](https://login.tailscale.com/admin/dns) (leave "Override local DNS" off). Then go to the Machines tab, open the ⋯ menu next to the Pi, choose **Rename**, and give it a short friendly name such as `oroboro`. After that, every device signed into your tailnet can reach the dashboard at `http://oroboro:3000/oroboro.html` — note the full `/oroboro.html` path is required; the bare `:3000` root opens Signal K's own page, not the dashboard.
+- **Enable MagicDNS** in the DNS tab at [login.tailscale.com](https://login.tailscale.com/admin/dns) (leave "Override local DNS" off). Then go to the Machines tab, open the ⋯ menu next to the Pi, choose **Rename**, and give it a short friendly name such as `oroboro`. This lets you use `http://oroboro:3000/oroboro.html` — note the full `/oroboro.html` path is required; the bare `:3000` root opens Signal K's own page. MagicDNS gives a nicer name, but iOS is more aggressive about forcing `https` on hostnames than on numeric IPs, so **`http://100.x.x.x:3000/oroboro.html` is the more reliable saved shortcut**.
 
-**Offline caveat:** MagicDNS only resolves when the Pi has internet access and only for devices signed into your tailnet. At anchor with no uplink, MagicDNS won't work — use the boat-WiFi LAN address instead (e.g. `http://192.168.1.x:3000/oroboro.html`), which works with or without internet.
+**Offline caveat:** MagicDNS and the Tailscale address both require the Pi to have internet. At anchor with no uplink, use the boat-WiFi LAN address (e.g. `http://192.168.1.x:3000/oroboro.html`), which works with or without internet.
+
+### Two home-screen icons: on-boat and remote
+
+The dashboard is reachable two ways:
+
+| Shortcut | URL | When to use |
+|---|---|---|
+| **Oroboro Wi-Fi** | `http://192.168.1.x:3000/oroboro.html` | Aboard — works with or without internet |
+| **Oroboro Cellular** | `http://100.x.x.x:3000/oroboro.html` | Away from the boat — requires Tailscale + Pi internet |
+
+Both open the identical dashboard; the two shortcuts just point at different addresses. Tap the Wi-Fi one aboard, the Cellular one ashore.
+
+**To save a home-screen shortcut on iOS:** open the URL in Safari, tap the **Share** button (box with arrow), then **Add to Home Screen** — you can edit the name at that moment before tapping Add.
 
 ### Anchor alarms work independently
 
