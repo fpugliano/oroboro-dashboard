@@ -496,7 +496,12 @@ Open the URL it prints, sign in (Google, GitHub, Microsoft, or Apple — **remem
 
 **On phones/laptops:** install the Tailscale app, sign in with the *same* account and provider, allow the VPN prompt. If a device can't be signed in easily, the admin console at [login.tailscale.com](https://login.tailscale.com/admin/machines) can generate a share link/QR code to enroll it without provider credentials.
 
-**Two settings worth doing once** in the admin console: **Disable key expiry** on the Pi (three-dot menu next to the machine — otherwise it needs re-authentication every 180 days), and note the Pi's MagicDNS name (usually `openplotter`) — then `http://openplotter:3000/oroboro.html` works and is easier to remember than the IP.
+**Two settings worth doing once** in the admin console:
+
+- **Disable key expiry** on the Pi (three-dot menu next to the machine — otherwise it needs re-authentication every 180 days).
+- **Enable MagicDNS** in the DNS tab at [login.tailscale.com](https://login.tailscale.com/admin/dns) (leave "Override local DNS" off). Then go to the Machines tab, open the ⋯ menu next to the Pi, choose **Rename**, and give it a short friendly name such as `oroboro`. After that, every device signed into your tailnet can reach the dashboard at `http://oroboro:3000/oroboro.html` — note the full `/oroboro.html` path is required; the bare `:3000` root opens Signal K's own page, not the dashboard.
+
+**Offline caveat:** MagicDNS only resolves when the Pi has internet access and only for devices signed into your tailnet. At anchor with no uplink, MagicDNS won't work — use the boat-WiFi LAN address instead (e.g. `http://192.168.1.x:3000/oroboro.html`), which works with or without internet.
 
 ### Anchor alarms work independently
 
