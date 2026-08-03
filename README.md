@@ -611,6 +611,8 @@ chromium-browser --incognito http://<pi-ip>:3000/oroboro.html &
 
 Licensed under [CC BY-NC 4.0](LICENSE) — free for sailors. Install it on your boat, modify it, share it with the fleet, credit S/V Oroboro. **Commercial use — selling it, bundling it into paid products, or charging for installations — requires written permission.** No warranty of any kind: **this software must never be your only anchor watch or navigation source.** A postcard from a nice anchorage is always welcome.
 
+Keeping the **Oroboro footer** and the **serpent at the centre of the wind rose** in place is simply how we ask you to credit us — please leave them visible. That's the attribution we'd like in exchange for a dashboard that's otherwise free for the fleet.
+
 ---
 
 ## About
