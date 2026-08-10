@@ -421,6 +421,19 @@ function renderHome() {
       <span class="row-value">${esc(vessel)}<span class="row-chevron">›</span></span>
     </button>
 
+    <div class="section-hdr">Wind Map</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bg-hairline);margin-bottom:8px">
+      <div style="flex:1;padding-right:12px">
+        <div style="color:var(--text-primary);font-size:15px;font-weight:600">Share my wind</div>
+        <div style="color:var(--text-muted);font-size:12px;margin-top:2px">Contribute this boat's wind (anonymous, no name) to the Oroboro wind map at wind.sailingoroboro.com. Sent every 5 min by the Pi.</div>
+      </div>
+      <button id="wind-btn" onclick="toggleWindShare()" aria-label="Toggle wind sharing"
+        style="position:relative;width:52px;height:28px;border:none;padding:0;background:none;cursor:pointer;flex-shrink:0">
+        <span id="wind-track" style="position:absolute;inset:0;border-radius:14px;background:var(--bg-hairline);transition:.25s"></span>
+        <span id="wind-thumb" style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;background:var(--text-muted);transition:.25s"></span>
+      </button>
+    </div>
+
     <div class="section-hdr">Signal K Server</div>
     <button class="row" onclick="nav('server')">
       <span class="row-label">Host</span>
@@ -469,6 +482,7 @@ function renderHome() {
     <p class="footnote">Changes are saved to config.js on the Pi and take effect on next dashboard reload.</p>
   `;
   initGaugeSelect();
+  _applyWindShareUI();
   checkBuzzerStatus();
 }
 
@@ -729,6 +743,22 @@ function esc(s) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 loadConfig();
 
+function _applyWindShareUI(){
+  var on = !!(C.windShare && C.windShare.enabled);
+  var track = document.getElementById('wind-track');
+  var thumb = document.getElementById('wind-thumb');
+  if(!track) return;
+  track.style.background = on ? '#22c55e' : 'var(--bg-hairline)';
+  thumb.style.left = on ? '28px' : '4px';
+  thumb.style.background = on ? '#ffffff' : 'var(--text-muted)';
+}
+async function toggleWindShare(){
+  if(!C.windShare) C.windShare = {};
+  C.windShare.enabled = !C.windShare.enabled;
+  _applyWindShareUI();
+  try { await writeConfig(); showToast(C.windShare.enabled ? 'Sharing on — Pi will send every 5 min' : 'Sharing off'); }
+  catch(e){ showToast(e.message, true); }
+}
 function toggleTheme(){
   var sun=document.documentElement.classList.toggle('sunlight');
   localStorage.setItem('oroboroTheme',sun?'sunlight':'dark');
