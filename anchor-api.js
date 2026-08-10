@@ -640,6 +640,97 @@ function writeState(obj) {
 const SK_ANCHOR_PATH = '/signalk/v1/api/vessels/self/navigation/anchor/position';
 const SK_ANCHOR_READ = '/signalk/v1/api/vessels/self/navigation/anchor';
 
+// ─── Wind map reporter ──────────────────────────────────────────────────────
+// Opt-in (config.js: windShare.enabled === true). Every 5 min, reads apparent
+// wind + boat speed from Signal K, computes true wind, tracks gust/lull across
+// the window, and POSTs an anonymous reading to the Oroboro wind map. No boat
+// name or MMSI is ever sent. Fire-and-forget: any failure is swallowed so the
+// service is never affected by the map being unreachable.
+const WIND_ENDPOINT = 'https://wind.sailingoroboro.com/report';
+const _windWin = { max: null, min: null, samples: 0 };
+
+function _skVal(vessel, path) {
+  // path like 'environment.wind.speedApparent'
+  let o = vessel;
+  for (const k of path.split('.')) { if (o == null) return null; o = o[k]; }
+  return (o && o.value != null) ? o.value : null;
+}
+
+async function windSample() {
+  // Accumulate gust/lull between reports (called often, cheap).
+  try {
+    const dc = readDashboardConfig();
+    if (!dc || !dc.windShare || dc.windShare.enabled !== true) return;
+    const r = await skRequest('GET', '/signalk/v1/api/vessels/self', null, null);
+    if (r.status !== 200) return;
+    const v = JSON.parse(r.body);
+    const aws = _skVal(v, 'environment.wind.speedApparent');   // m/s
+    const awa = _skVal(v, 'environment.wind.angleApparent');   // rad
+    const stw = _skVal(v, 'navigation.speedThroughWater') || 0; // m/s
+    if (aws == null || awa == null) return;
+    // True wind speed via the same vector math the dashboard uses.
+    const twx = aws * Math.cos(awa) - stw, twy = aws * Math.sin(awa);
+    const twsKt = Math.sqrt(twx*twx + twy*twy) * 1.94384;
+    if (!isFinite(twsKt)) return;
+    if (_windWin.max == null || twsKt > _windWin.max) _windWin.max = twsKt;
+    if (_windWin.min == null || twsKt < _windWin.min) _windWin.min = twsKt;
+    _windWin.samples++;
+  } catch(e) { /* silent — never affect the service */ }
+}
+
+async function windReport() {
+  try {
+    const dc = readDashboardConfig();
+    if (!dc || !dc.windShare || dc.windShare.enabled !== true) { _windWin.max = _windWin.min = null; _windWin.samples = 0; return; }
+    // Need a current position and at least one wind sample this window.
+    const posR = await skRequest('GET', '/signalk/v1/api/vessels/self/navigation/position', null, null);
+    if (posR.status !== 200) return;
+    const pos = JSON.parse(posR.body);
+    const lat = pos && pos.value ? pos.value.latitude : (pos && pos.latitude);
+    const lon = pos && pos.value ? pos.value.longitude : (pos && pos.longitude);
+    if (lat == null || lon == null) return;
+    // Current true wind + direction from a fresh read.
+    const r = await skRequest('GET', '/signalk/v1/api/vessels/self', null, null);
+    if (r.status !== 200) return;
+    const v = JSON.parse(r.body);
+    const aws = _skVal(v, 'environment.wind.speedApparent');
+    const awa = _skVal(v, 'environment.wind.angleApparent');
+    const stw = _skVal(v, 'navigation.speedThroughWater') || 0;
+    const hdg = _skVal(v, 'navigation.headingTrue');           // rad, for TWD
+    if (aws == null || awa == null) { _windWin.max = _windWin.min = null; _windWin.samples = 0; return; }
+    const twx = aws * Math.cos(awa) - stw, twy = aws * Math.sin(awa);
+    const twsKt = Math.sqrt(twx*twx + twy*twy) * 1.94384;
+    // True wind angle relative to bow, then + heading = true wind direction (deg, meteorological: FROM).
+    let twd = null;
+    if (hdg != null) {
+      const twaRad = Math.atan2(twy, twx);
+      let dir = (hdg + twaRad) * 180 / Math.PI;   // direction wind blows TO
+      dir = (dir + 180) % 360;                    // convert to FROM
+      twd = ((dir % 360) + 360) % 360;
+    }
+    const body = JSON.stringify({
+      lat, lon,
+      windSpeed: +twsKt.toFixed(1),
+      windDir: twd == null ? null : Math.round(twd),
+      windSpeedMax: _windWin.max == null ? +twsKt.toFixed(1) : +Math.max(_windWin.max, twsKt).toFixed(1),
+      windSpeedMin: _windWin.min == null ? +twsKt.toFixed(1) : +Math.min(_windWin.min, twsKt).toFixed(1),
+    });
+    // Reset the window for the next interval.
+    _windWin.max = _windWin.min = null; _windWin.samples = 0;
+    // Fire-and-forget POST — never await in a way that blocks, swallow all errors.
+    const u = new URL(WIND_ENDPOINT);
+    const req = https.request({
+      hostname: u.hostname, port: 443, path: u.pathname, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      timeout: 8000,
+    }, res => { res.on('data', () => {}); res.on('end', () => {}); });
+    req.on('error', () => {});      // offline / unreachable — silent
+    req.on('timeout', () => { req.destroy(); });
+    req.write(body); req.end();
+  } catch(e) { /* silent */ }
+}
+
+
 http.createServer(async (req, res) => {
   const method = req.method;
   const url    = req.url.split('?')[0]; // strip query strings for routing
@@ -1064,96 +1155,6 @@ http.createServer(async (req, res) => {
   }
 
   json(res, 404, { ok: false, error: 'not found' });
-// ─── Wind map reporter ──────────────────────────────────────────────────────
-// Opt-in (config.js: windShare.enabled === true). Every 5 min, reads apparent
-// wind + boat speed from Signal K, computes true wind, tracks gust/lull across
-// the window, and POSTs an anonymous reading to the Oroboro wind map. No boat
-// name or MMSI is ever sent. Fire-and-forget: any failure is swallowed so the
-// service is never affected by the map being unreachable.
-const WIND_ENDPOINT = 'https://wind.sailingoroboro.com/report';
-const _windWin = { max: null, min: null, samples: 0 };
-
-function _skVal(vessel, path) {
-  // path like 'environment.wind.speedApparent'
-  let o = vessel;
-  for (const k of path.split('.')) { if (o == null) return null; o = o[k]; }
-  return (o && o.value != null) ? o.value : null;
-}
-
-async function windSample() {
-  // Accumulate gust/lull between reports (called often, cheap).
-  try {
-    const dc = readDashboardConfig();
-    if (!dc || !dc.windShare || dc.windShare.enabled !== true) return;
-    const r = await skRequest('GET', '/signalk/v1/api/vessels/self', null, null);
-    if (r.status !== 200) return;
-    const v = JSON.parse(r.body);
-    const aws = _skVal(v, 'environment.wind.speedApparent');   // m/s
-    const awa = _skVal(v, 'environment.wind.angleApparent');   // rad
-    const stw = _skVal(v, 'navigation.speedThroughWater') || 0; // m/s
-    if (aws == null || awa == null) return;
-    // True wind speed via the same vector math the dashboard uses.
-    const twx = aws * Math.cos(awa) - stw, twy = aws * Math.sin(awa);
-    const twsKt = Math.sqrt(twx*twx + twy*twy) * 1.94384;
-    if (!isFinite(twsKt)) return;
-    if (_windWin.max == null || twsKt > _windWin.max) _windWin.max = twsKt;
-    if (_windWin.min == null || twsKt < _windWin.min) _windWin.min = twsKt;
-    _windWin.samples++;
-  } catch(e) { /* silent — never affect the service */ }
-}
-
-async function windReport() {
-  try {
-    const dc = readDashboardConfig();
-    if (!dc || !dc.windShare || dc.windShare.enabled !== true) { _windWin.max = _windWin.min = null; _windWin.samples = 0; return; }
-    // Need a current position and at least one wind sample this window.
-    const posR = await skRequest('GET', '/signalk/v1/api/vessels/self/navigation/position', null, null);
-    if (posR.status !== 200) return;
-    const pos = JSON.parse(posR.body);
-    const lat = pos && pos.value ? pos.value.latitude : (pos && pos.latitude);
-    const lon = pos && pos.value ? pos.value.longitude : (pos && pos.longitude);
-    if (lat == null || lon == null) return;
-    // Current true wind + direction from a fresh read.
-    const r = await skRequest('GET', '/signalk/v1/api/vessels/self', null, null);
-    if (r.status !== 200) return;
-    const v = JSON.parse(r.body);
-    const aws = _skVal(v, 'environment.wind.speedApparent');
-    const awa = _skVal(v, 'environment.wind.angleApparent');
-    const stw = _skVal(v, 'navigation.speedThroughWater') || 0;
-    const hdg = _skVal(v, 'navigation.headingTrue');           // rad, for TWD
-    if (aws == null || awa == null) { _windWin.max = _windWin.min = null; _windWin.samples = 0; return; }
-    const twx = aws * Math.cos(awa) - stw, twy = aws * Math.sin(awa);
-    const twsKt = Math.sqrt(twx*twx + twy*twy) * 1.94384;
-    // True wind angle relative to bow, then + heading = true wind direction (deg, meteorological: FROM).
-    let twd = null;
-    if (hdg != null) {
-      const twaRad = Math.atan2(twy, twx);
-      let dir = (hdg + twaRad) * 180 / Math.PI;   // direction wind blows TO
-      dir = (dir + 180) % 360;                    // convert to FROM
-      twd = ((dir % 360) + 360) % 360;
-    }
-    const body = JSON.stringify({
-      lat, lon,
-      windSpeed: +twsKt.toFixed(1),
-      windDir: twd == null ? null : Math.round(twd),
-      windSpeedMax: _windWin.max == null ? +twsKt.toFixed(1) : +Math.max(_windWin.max, twsKt).toFixed(1),
-      windSpeedMin: _windWin.min == null ? +twsKt.toFixed(1) : +Math.min(_windWin.min, twsKt).toFixed(1),
-    });
-    // Reset the window for the next interval.
-    _windWin.max = _windWin.min = null; _windWin.samples = 0;
-    // Fire-and-forget POST — never await in a way that blocks, swallow all errors.
-    const u = new URL(WIND_ENDPOINT);
-    const req = https.request({
-      hostname: u.hostname, port: 443, path: u.pathname, method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-      timeout: 8000,
-    }, res => { res.on('data', () => {}); res.on('end', () => {}); });
-    req.on('error', () => {});      // offline / unreachable — silent
-    req.on('timeout', () => { req.destroy(); });
-    req.write(body); req.end();
-  } catch(e) { /* silent */ }
-}
-
 }).listen(PORT, async () => {
   console.log('[anchor-api] Listening on port ' + PORT);
   // Wind map reporter: sample often for gust/lull, POST every 5 minutes.
