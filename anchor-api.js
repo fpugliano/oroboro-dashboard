@@ -696,10 +696,20 @@ async function windReport() {
     const aws = _skVal(v, 'environment.wind.speedApparent');
     const awa = _skVal(v, 'environment.wind.angleApparent');
     const stw = _skVal(v, 'navigation.speedThroughWater') || 0;
-    const hdg = _skVal(v, 'navigation.headingTrue');           // rad, for TWD
     if (aws == null || awa == null) { _windWin.max = _windWin.min = null; _windWin.samples = 0; return; }
     const twx = aws * Math.cos(awa) - stw, twy = aws * Math.sin(awa);
     const twsKt = Math.sqrt(twx*twx + twy*twy) * 1.94384;
+    // Heading reference for TWD (radians), best available source:
+    //   headingTrue → headingMagnetic + magneticVariation → courseOverGroundTrue.
+    // All Signal K angle values are in radians.
+    let hdg = _skVal(v, 'navigation.headingTrue');
+    if (hdg == null) {
+      const hm = _skVal(v, 'navigation.headingMagnetic');
+      const varn = _skVal(v, 'navigation.magneticVariation');
+      if (hm != null && varn != null) hdg = hm + varn;     // magnetic + variation = true
+      else if (hm != null) hdg = hm;                        // magnetic alone (small error, better than nothing)
+    }
+    if (hdg == null) hdg = _skVal(v, 'navigation.courseOverGroundTrue');  // last resort (ok when moving)
     // True wind angle relative to bow, then + heading = true wind direction (deg, meteorological: FROM).
     let twd = null;
     if (hdg != null) {
