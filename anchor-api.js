@@ -713,9 +713,10 @@ async function windReport() {
     // True wind angle relative to bow, then + heading = true wind direction (deg, meteorological: FROM).
     let twd = null;
     if (hdg != null) {
+      // calcTrueWind's atan2(twy,twx) already gives the angle the wind comes
+      // FROM, relative to the bow — so TWD = heading + that angle. No +180.
       const twaRad = Math.atan2(twy, twx);
-      let dir = (hdg + twaRad) * 180 / Math.PI;   // direction wind blows TO
-      dir = (dir + 180) % 360;                    // convert to FROM
+      const dir = (hdg + twaRad) * 180 / Math.PI;
       twd = ((dir % 360) + 360) % 360;
     }
     const body = JSON.stringify({
