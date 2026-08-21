@@ -1168,10 +1168,10 @@ http.createServer(async (req, res) => {
   json(res, 404, { ok: false, error: 'not found' });
 }).listen(PORT, async () => {
   console.log('[anchor-api] Listening on port ' + PORT);
-  // Wind map reporter: sample often for gust/lull, POST every 5 minutes.
+  // Wind map reporter: sample often for gust/lull, POST every 10 minutes.
   // Gated by config.js windShare.enabled — does nothing unless opted in.
   setInterval(windSample, 20000);
-  setInterval(windReport, 300000);
+  setInterval(windReport, 600000);
   console.log('[anchor-api] Wind reporter armed (sends only if windShare.enabled in config.js)');
   if (!USERNAME || !PASSWORD) {
     console.warn('[anchor-api] WARNING: username/password not set — PUT calls will fail');
