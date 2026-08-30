@@ -152,7 +152,10 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:'Rajdhani',
   <div id="update-banner-text" style="color:var(--text-secondary);font-size:12px;margin-top:3px"></div>
   <div style="margin-top:8px;font-size:11px;color:var(--text-muted)">To update your Pi, open a terminal and run:</div>
   <div style="font-family:monospace;background:var(--bg-page);border-radius:4px;padding:6px 8px;margin-top:4px;font-size:11px;color:#22d3ee;word-break:break-all">cd /home/pi/anchor-api && git pull && sudo systemctl restart anchor-api</div>
-  <a id="update-banner-link" href="#" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;color:#22d3ee;font-size:11px;font-weight:700">See what's new ↗</a>
+  <div style="display:flex;gap:16px;margin-top:8px">
+    <a id="update-banner-link" href="#" target="_blank" rel="noopener" style="color:#22d3ee;font-size:11px;font-weight:700">See what's new ↗</a>
+    <a href="https://github.com/fpugliano/oroboro-dashboard#keeping-up-to-date" target="_blank" rel="noopener" style="color:#22d3ee;font-size:11px;font-weight:700">How to update ↗</a>
+  </div>
 </div>
 
 <div id="toast"></div>

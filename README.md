@@ -607,6 +607,20 @@ chromium-browser --incognito http://<pi-ip>:3000/oroboro.html &
 
 ---
 
+## Keeping up to date
+
+The Settings page shows a green **Update available** banner automatically when a new version is released. To apply it, open a terminal on your Pi (via VNC or SSH) and run:
+
+```bash
+cd /home/pi/anchor-api && git pull && sudo systemctl restart anchor-api
+```
+
+Then reload the Settings page in your browser — the banner will disappear once the Pi is running the latest version.
+
+> **config.js is never overwritten by `git pull`** — your boat's private values (tank sizes, Pushover keys, etc.) are safe. Only the dashboard and API code updates.
+
+---
+
 ## License
 
 Licensed under [CC BY-NC 4.0](LICENSE) — free for sailors. Install it on your boat, modify it, share it with the fleet, credit S/V Oroboro. **Commercial use — selling it, bundling it into paid products, or charging for installations — requires written permission.** No warranty of any kind: **this software must never be your only anchor watch or navigation source.** A postcard from a nice anchorage is always welcome.
