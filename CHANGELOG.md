@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.0] — 2026-08-30
+
+### Added
+- **In-app update notifications** — Settings page now checks the installed version against the latest GitHub release and shows a banner with one-line update instructions when a newer version is available.
+- **Wind map reporter** — opt-in anonymous wind sharing to the Oroboro crowd-sourced wind map (`windShare.enabled` in config.js). Sends every 30 min; reports gust/lull over the window. Toggle visible in Settings.
+- `anchor-api.js` — `GET /api/version` endpoint returns the running version so the dashboard can compare it against the latest release.
+
+### Changed
+- Wind reporter interval reduced from 5 min to 30 min to stay within the Cloudflare KV free tier (1,000 writes/day).
+
 ## [1.2.0] — 2026-07-16
 
 ### Added

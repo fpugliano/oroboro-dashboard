@@ -17,6 +17,7 @@ const SK_PORT  = cfg.signalkPort || 3000;
 const USERNAME = cfg.username    || '';
 const PASSWORD = cfg.password    || '';
 const PORT     = cfg.proxyPort   || 3001;
+const VERSION  = '1.3.0';
 
 let skToken = null;
 
@@ -748,6 +749,11 @@ http.createServer(async (req, res) => {
   console.log('[anchor-api]', method, url);
 
   if (method === 'OPTIONS') { cors(res); res.writeHead(204); res.end(); return; }
+
+  if (method === 'GET' && url === '/api/version') {
+    json(res, 200, { ok: true, version: VERSION });
+    return;
+  }
 
   if (method === 'GET' && url === '/api/anchor/config') {
     try {
