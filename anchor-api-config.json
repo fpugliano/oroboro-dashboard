@@ -4,6 +4,9 @@
   "username": "",
   "password": "",
   "proxyPort": 3001,
+  "anchor": {
+    "confirmSeconds": 15
+  },
   "buzzer": {
     "enabled": false,
     "gpioPin": 17,

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1] — 2026-09-13
+
+### Fixed
+- **Anchor drag alarm — two safety-critical bugs** in `anchor-api.js` `monitorTick()`:
+  - *Late alarm (fired ~5 min after leaving the zone):* position freshness was stamped with poll time (`Date.now()`), not the GPS fix time. Signal K keeps serving the last-known position with HTTP 200 after the GPS feed freezes, so distance was measured against a stale, still-inside fix and the drag went undetected until the feed caught up. Freshness now comes from the Signal K `timestamp` (the actual fix time) and only advances when a genuinely newer fix arrives — a frozen feed now trips the existing 120 s GPS-lost alarm instead of hiding a real drag.
+  - *False alarm (fired while not dragging):* a single tick outside the bound immediately sounded the siren, so one GPS outlier fix (multipath / HDOP spike) triggered a false drag alarm. The boat must now read continuously outside for a confirmation window (default 15 s, `anchor.confirmSeconds` in `anchor-api-config.json`) before the alarm sounds. A real drag is sustained, so genuine alarms are effectively unaffected.
+
 ## [1.3.0] — 2026-08-30
 
 ### Added

@@ -17,7 +17,7 @@ const SK_PORT  = cfg.signalkPort || 3000;
 const USERNAME = cfg.username    || '';
 const PASSWORD = cfg.password    || '';
 const PORT     = cfg.proxyPort   || 3001;
-const VERSION  = '1.3.0';
+const VERSION  = '1.3.1';
 
 let skToken = null;
 
@@ -190,6 +190,12 @@ function buzzerUpdateFromAlarms() {
   }
 }
 
+// A real drag is sustained; a single GPS outlier is not. The boat must read
+// 'outside' continuously for this long before we declare a drag — this is the
+// debounce that stops false alarms while lying safely at anchor. Override via
+// anchor-api-config.json { "anchor": { "confirmSeconds": N } }.
+const DRAG_CONFIRM_MS = ((cfg.anchor && cfg.anchor.confirmSeconds) || 15) * 1000;
+
 // ─── Monitoring state ─────────────────────────────────────────────────────
 const _mon = {
   running:        false,
@@ -202,7 +208,8 @@ const _mon = {
   curLat:         null,
   curLon:         null,
   radius:         null,
-  lastPosTime:    null,
+  lastPosTime:    null,   // GPS fix time (from SK timestamp), NOT poll time
+  outsideSince:   null,   // when the boat first read outside; drives debounce
   lastTrailWrite: null,
   trailPoints:    0,
   lastDragPush:   0,
@@ -277,12 +284,31 @@ function sendPushover(pvCfg, eventKey, detail) {
 // ─── Monitoring loop ──────────────────────────────────────────────────────
 async function monitorTick() {
   try {
-    // 1. Current position from SK
+    // 1. Current position from SK.
+    // CRITICAL: SK keeps returning the last-known position with HTTP 200 long
+    // after the GPS feed has frozen. Stamping freshness with Date.now() (poll
+    // time) hides a dead feed — the boat can drift out for real while we keep
+    // measuring distance against a stale, still-inside fix. So trust the SK
+    // 'timestamp' (the actual fix time) and only accept a position we haven't
+    // already processed. If SK gives no usable timestamp, fall back to poll time.
     const posR = await skRequest('GET', '/signalk/v1/api/vessels/self/navigation/position', null, null);
     if (posR.status === 200) {
-      const p = JSON.parse(posR.body)?.value;
+      const pj = JSON.parse(posR.body);
+      const p  = pj?.value;
       if (p && p.latitude != null && p.longitude != null) {
-        _mon.curLat = p.latitude; _mon.curLon = p.longitude; _mon.lastPosTime = Date.now();
+        const fixMs = pj.timestamp ? Date.parse(pj.timestamp) : NaN;
+        if (!isNaN(fixMs)) {
+          // Only advance freshness when the fix is genuinely newer than the
+          // last one we saw — a frozen feed repeats the same timestamp, so
+          // lastPosTime stops advancing and the GPS-lost guard (step 4) trips.
+          if (_mon.lastPosTime == null || fixMs > _mon.lastPosTime) {
+            _mon.curLat = p.latitude; _mon.curLon = p.longitude; _mon.lastPosTime = fixMs;
+          }
+        } else {
+          // No parseable timestamp from SK — degrade to poll time so a source
+          // that never sends timestamps still updates rather than looking dead.
+          _mon.curLat = p.latitude; _mon.curLon = p.longitude; _mon.lastPosTime = Date.now();
+        }
       }
     }
 
@@ -326,16 +352,33 @@ async function monitorTick() {
     const state   = readState();
     const outside = isOutsideBound(_mon.distance, _mon.bearing, state);
 
-    if (Date.now() < _mon.armingUntil) {
-      _mon.alarmState = outside ? 'dragging' : 'ok';
-      return; // suppress during arming window
+    const now = Date.now();
+
+    if (now < _mon.armingUntil) {
+      // During the arming window (just after dropping the hook) suppress alarms,
+      // but keep the debounce clock honest so a genuine drag right after arming
+      // isn't reset to zero.
+      _mon.outsideSince = outside ? (_mon.outsideSince || now) : null;
+      _mon.alarmState = 'ok';
+      return;
     }
 
-    const now = Date.now();
     if (outside) {
+      // Debounce: a single GPS outlier reads 'outside' for one fix and snaps
+      // back. Only a drag stays outside. Require the boat to be continuously
+      // outside for DRAG_CONFIRM_MS before sounding — this is what stops the
+      // "alarm went off but I wasn't dragging" false positives.
+      if (_mon.outsideSince == null) _mon.outsideSince = now;
+      const confirmed = (now - _mon.outsideSince) >= DRAG_CONFIRM_MS;
       const limit  = state.mode === 'advanced' ? state.big : state.radius;
       const detail = Math.round(_mon.distance) + 'm from anchor (allowed: ' + limit + 'm)';
-      if (_mon.alarmState !== 'dragging') {
+      if (!confirmed) {
+        // Outside but not yet confirmed — hold, don't alarm.
+        if (_mon.alarmState !== 'dragging') {
+          console.log('[anchor-api] Outside bound (' + detail + ') — confirming for '
+            + Math.round((DRAG_CONFIRM_MS - (now - _mon.outsideSince)) / 1000) + 's more');
+        }
+      } else if (_mon.alarmState !== 'dragging') {
         _mon.alarmState = 'dragging'; _mon.lastDragPush = now;
         console.log('[anchor-api] ALARM: Boat is ' + detail + ' — Pushover sent');
         sendPushover(state.pushover, 'dragging', detail);
@@ -347,6 +390,7 @@ async function monitorTick() {
     } else {
       if (_mon.alarmState !== 'ok') console.log('[anchor-api] Alarm cleared — boat back within bounds');
       _mon.alarmState = 'ok';
+      _mon.outsideSince = null;
     }
     buzzerUpdateFromAlarms();
 
@@ -504,6 +548,8 @@ function startMonitoring(armMs) {
   if (_mon.running) { clearInterval(_mon._loop); clearInterval(_mon._trail); }
   _mon.running     = true;
   _mon.alarmState  = 'ok';
+  _mon.outsideSince = null;   // fresh debounce clock for this anchor session
+  _mon.lastPosTime  = null;   // first fix of the session is always accepted
   _mon.armingUntil = Date.now() + (armMs || 0);
   _mon._loop  = setInterval(monitorTick, 5000);
   _mon._trail = setInterval(trailTick,  60000);
@@ -519,6 +565,7 @@ function stopMonitoring() {
   Object.keys(_guardian.encounters).forEach(id => finalizeEncounter(id));
   _mon.running    = false;  _mon.alarmState = 'ok';
   _mon.distance   = null;   _mon.bearing    = null;
+  _mon.outsideSince = null;
   _mon._loop      = null;   _mon._trail     = null;
   buzzerUpdateFromAlarms();
 }
