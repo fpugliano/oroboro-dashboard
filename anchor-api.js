@@ -17,7 +17,7 @@ const SK_PORT  = cfg.signalkPort || 3000;
 const USERNAME = cfg.username    || '';
 const PASSWORD = cfg.password    || '';
 const PORT     = cfg.proxyPort   || 3001;
-const VERSION  = '1.3.2';
+const VERSION  = '1.4.0';
 
 let skToken = null;
 
@@ -309,6 +309,69 @@ function sendPushover(pvCfg, eventKey, detail) {
     });
   });
   req.on('error', e => console.error('[anchor-api] Pushover error:', e.message));
+  req.write(body); req.end();
+}
+
+// ─── Alarm-delivery health ────────────────────────────────────────────────
+// A safety alarm must prove it's healthy, not be assumed healthy. validatePushover()
+// checks the credentials against Pushover's validate endpoint — which confirms the
+// token/user AND that a device is registered — WITHOUT sending a notification. Runs
+// at startup, hourly, and on anchor set, so a broken alarm surfaces proactively
+// instead of during a real drag. Result is exposed in /api/anchor/status.
+const _pushoverHealth = { ok: null, detail: 'not checked yet', lastCheck: 0 };
+
+function validatePushover() {
+  const pv = resolvePushover();
+  if (!pv || !pv.userKey || !pv.apiToken) {
+    _pushoverHealth.ok = false; _pushoverHealth.detail = 'no credentials configured'; _pushoverHealth.lastCheck = Date.now();
+    console.error('[anchor-api] Pushover health: FAIL — no credentials');
+    return;
+  }
+  const body = 'token=' + encodeURIComponent(pv.apiToken) + '&user=' + encodeURIComponent(pv.userKey);
+  const req = https.request({
+    hostname: 'api.pushover.net', port: 443, path: '/1/users/validate.json', method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) },
+  }, r => {
+    let d = ''; r.on('data', c => { d += c; });
+    r.on('end', () => {
+      _pushoverHealth.lastCheck = Date.now();
+      let p = null; try { p = JSON.parse(d); } catch(e) {}
+      if (r.statusCode === 200 && p && p.status === 1) {
+        if (_pushoverHealth.ok !== true) console.log('[anchor-api] Pushover health: OK');
+        _pushoverHealth.ok = true; _pushoverHealth.detail = 'ok';
+      } else {
+        _pushoverHealth.ok = false;
+        _pushoverHealth.detail = (p && p.errors ? p.errors.join('; ') : 'HTTP ' + r.statusCode);
+        console.error('[anchor-api] Pushover health: FAIL — ' + _pushoverHealth.detail);
+      }
+    });
+  });
+  req.on('error', e => {
+    _pushoverHealth.ok = false; _pushoverHealth.detail = 'network: ' + e.message; _pushoverHealth.lastCheck = Date.now();
+    console.error('[anchor-api] Pushover health: FAIL — ' + e.message);
+  });
+  req.write(body); req.end();
+}
+
+// Like sendPushover, but reports the real Pushover result via callback — used by
+// the app's "Send Test" button so it can show delivered/failed honestly.
+function pushoverSendReport(pv, opts, cb) {
+  if (!pv || !pv.userKey || !pv.apiToken) { cb({ ok: false, detail: 'no credentials configured' }); return; }
+  const payload = { token: pv.apiToken, user: pv.userKey, title: opts.title, message: opts.message, priority: opts.priority || 0 };
+  if (payload.priority === 2) { payload.retry = 30; payload.expire = 300; payload.sound = 'siren'; }
+  const body = JSON.stringify(payload);
+  const req = https.request({
+    hostname: 'api.pushover.net', port: 443, path: '/1/messages.json', method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+  }, r => {
+    let d = ''; r.on('data', c => { d += c; });
+    r.on('end', () => {
+      let p = null; try { p = JSON.parse(d); } catch(e) {}
+      if (r.statusCode === 200 && p && p.status === 1) cb({ ok: true, detail: 'delivered' });
+      else cb({ ok: false, detail: (p && p.errors ? p.errors.join('; ') : 'HTTP ' + r.statusCode) });
+    });
+  });
+  req.on('error', e => cb({ ok: false, detail: 'network: ' + e.message }));
   req.write(body); req.end();
 }
 
@@ -847,7 +910,19 @@ http.createServer(async (req, res) => {
     try {
       const body = JSON.parse(await readBody(req));
       const existing = readState();
+      // Never let a save blank out valid Pushover credentials. The app has been
+      // seen to post empty keys, which silently kills phone alarms — so if the
+      // incoming keys are empty, keep whatever valid keys we already have.
+      if (body.pushover && (!body.pushover.userKey || !body.pushover.apiToken)) {
+        const cur = resolvePushover();
+        if (cur && cur.userKey && cur.apiToken) {
+          body.pushover.userKey  = body.pushover.userKey  || cur.userKey;
+          body.pushover.apiToken = body.pushover.apiToken || cur.apiToken;
+          console.warn('[anchor-api] config save had blank Pushover keys — preserved existing');
+        }
+      }
       writeState(Object.assign({}, body, { trail: existing.trail || [] }));
+      validatePushover();  // re-check delivery health after any config change
       json(res, 200, { ok: true });
     } catch (e) { json(res, 500, { ok: false, error: e.message }); }
     return;
@@ -896,6 +971,7 @@ http.createServer(async (req, res) => {
         startMonitoring(30000);
         console.log(`[anchor-api] Anchor monitoring started — position: ${latitude},${longitude}, arming 30s`);
         sendPushover(resolvePushover(), 'anchorSet');
+        validatePushover();  // verify phone-alarm delivery the moment we arm
         json(res, 200, { ok: true });
       } else {
         json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });
@@ -971,12 +1047,31 @@ http.createServer(async (req, res) => {
       curLat:         _mon.curLat,
       curLon:         _mon.curLon,
       radius:         _mon.radius,
+      pushover:       { ok: _pushoverHealth.ok, detail: _pushoverHealth.detail, lastCheck: _pushoverHealth.lastCheck },
       buzzer:         _bCfg.enabled ? {
         mode:    _buzzer.mode,
         rearmIn: _buzzer.mode === 'silenced'
           ? Math.max(0, Math.round((_buzzer.silencedUntil - Date.now()) / 1000))
           : null,
       } : null,
+    });
+    return;
+  }
+
+  if (method === 'POST' && url === '/api/anchor/test-alarm') {
+    // Fire a real alarm down the exact production path (resolvePushover + the
+    // real send) and report Pushover's actual verdict — so the app's test
+    // button can't pass while the real alarm is broken.
+    const pv = resolvePushover();
+    pushoverSendReport(pv, {
+      title: '✅ Anchor Watch Test',
+      message: 'Test alarm from S/V Oroboro — phone delivery is working.',
+      priority: 1,
+    }, result => {
+      _pushoverHealth.ok = result.ok;
+      _pushoverHealth.detail = result.ok ? 'ok (test delivered)' : result.detail;
+      _pushoverHealth.lastCheck = Date.now();
+      json(res, 200, { ok: result.ok, detail: result.detail });
     });
     return;
   }
@@ -1257,6 +1352,10 @@ http.createServer(async (req, res) => {
   setInterval(windSample, 20000);
   setInterval(windReport, 1800000);
   console.log('[anchor-api] Wind reporter armed (sends only if windShare.enabled in config.js)');
+  // Alarm-delivery health: validate at startup and hourly, so a broken phone
+  // alarm surfaces proactively instead of during a real drag.
+  validatePushover();
+  setInterval(validatePushover, 3600000);
   if (!USERNAME || !PASSWORD) {
     console.warn('[anchor-api] WARNING: username/password not set — PUT calls will fail');
   } else {

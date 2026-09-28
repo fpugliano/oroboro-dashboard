@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.0] — 2026-09-28
+
+### Added — alarm-delivery assurance (safety hardening)
+- **Proactive Pushover health check** — `anchor-api.js` validates the Pushover credentials against Pushover's `users/validate.json` endpoint (confirms token/user *and* a registered device, without sending a notification) at startup, hourly, on anchor-set, and after any config change. Result is exposed in `/api/anchor/status`.
+- **Real end-to-end test button** — `POST /api/anchor/test-alarm` fires a real alarm down the exact production path (`resolvePushover()` + real send) and returns Pushover's actual verdict. The Settings "Send Test Notification" button now calls this instead of sending browser→Pushover, so a passing test proves the *real* drag alarm will deliver, and it reports "✅ delivered" / "❌ failed: <reason>".
+- **Delivery-health indicator** — the anchor watch screen shows an "Alarm Delivery: Ready / FAILING" status, and raises a prominent banner (`⚠ ALARM DELIVERY FAILING — CHECK PUSHOVER`) when armed but delivery is broken.
+
+### Changed
+- **`/api/anchor/config` now refuses to blank valid Pushover credentials** — if a save arrives with empty keys, the existing valid keys are preserved. This closes the source of the silent-alarm bug (the app posting blank keys).
+
 ## [1.3.2] — 2026-09-28
 
 ### Fixed

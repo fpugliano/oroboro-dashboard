@@ -212,6 +212,10 @@ html,body{height:100%;background:var(--bg-page);color:var(--text-primary);font-f
           <div class="stat-label">Server Monitoring</div>
           <div class="stat-value" id="val-server-monitor">—</div>
         </div>
+        <div class="stat-cell" style="flex:1">
+          <div class="stat-label">Alarm Delivery</div>
+          <div class="stat-value" id="val-alarm-delivery">—</div>
+        </div>
       </div>
     </div>
     <div class="flex-grow"></div>
@@ -310,6 +314,7 @@ const S = {
   alarmAcknowledged: false,
   serverAlarmState: 'ok',   // 'ok' | 'dragging' | 'gpsLost' — from /api/anchor/status
   serverMonitoring: false,
+  pushoverHealth: null,     // { ok, detail, lastCheck } — from /api/anchor/status
 
   // pushover config
   pushover: {
@@ -652,6 +657,9 @@ function updateUI() {
     banner.textContent = '⚠ ANCHOR DRAGGING'; banner.className = 'alarm';
   } else if (S.serverAlarmState === 'gpsLost') {
     banner.textContent = 'GPS SIGNAL LOST'; banner.className = 'warning';
+  } else if (S.anchorSet && S.pushoverHealth && S.pushoverHealth.ok === false) {
+    // Armed but phone-alarm delivery is broken — say so loudly.
+    banner.textContent = '⚠ ALARM DELIVERY FAILING — CHECK PUSHOVER'; banner.className = 'warning';
   } else {
     banner.className = '';
   }
@@ -1542,11 +1550,16 @@ function renderSettings() {
     try { await saveProxyConfig(); showToast('Settings saved'); setTimeout(()=>{ const e=document.getElementById('proxy-err'); if(e) e.style.display='none'; }, 1500); }
     catch(e) { showToast('Save failed: ' + e.message); }
   });
-  el.querySelector('#pv-test')?.addEventListener('click', () => {
-    const cfg = S.pushover;
-    if (!cfg.userKey || !cfg.apiToken) { showToast('Set Pushover credentials first'); return; }
-    const params = new URLSearchParams({ token: cfg.apiToken, user: cfg.userKey, title: 'Anchor Watch Test', message: 'Test notification from S/V Oroboro.', priority: '0' });
-    fetch('https://api.pushover.net/1/messages.json', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params.toString() }).catch(()=>{});
+  el.querySelector('#pv-test')?.addEventListener('click', async () => {
+    // Test the REAL alarm path (anchor service → Pushover), not browser → Pushover,
+    // and report the actual result — so a pass means the real drag alarm will work.
+    showToast('Sending test via anchor service…');
+    try {
+      const r = await fetch(PROXY_BASE + '/api/anchor/test-alarm', { method: 'POST' });
+      const d = await r.json();
+      if (d.ok) showToast('✅ Test delivered — check your phone');
+      else showToast('❌ Test failed: ' + (d.detail || 'unknown'));
+    } catch(e) { showToast('❌ Could not reach anchor service: ' + e.message); }
   });
   el.querySelectorAll('[data-pv-toggle]').forEach(cb => {
     cb.addEventListener('change', () => { const k = cb.dataset.pvToggle; if (S.pushover.events[k]) S.pushover.events[k].enabled = cb.checked; });
@@ -1606,6 +1619,7 @@ window.addEventListener('load', async () => {
         const d = await r.json();
         S.serverMonitoring = d.monitoring;
         S.serverAlarmState = d.alarmState || 'ok';
+        S.pushoverHealth = d.pushover || null;
         const el = document.getElementById('val-server-monitor');
         if (el) {
           if (d.monitoring) {
@@ -1613,6 +1627,13 @@ window.addEventListener('load', async () => {
           } else {
             el.innerHTML = '<span style="color:var(--text-muted)">&#9679; Inactive</span>';
           }
+        }
+        const de = document.getElementById('val-alarm-delivery');
+        if (de) {
+          const ph = d.pushover || {};
+          if (ph.ok === true)       de.innerHTML = '<span style="color:#22d3ee">&#9679; Ready</span>';
+          else if (ph.ok === false) de.innerHTML = '<span style="color:#fca5a5" title="' + (ph.detail||'') + '">&#9679; FAILING</span>';
+          else                      de.innerHTML = '<span style="color:var(--text-muted)">&#9679; —</span>';
         }
         // Show alarm overlay if server says dragging and not yet acknowledged
         if (d.alarmState === 'dragging' && !S.alarmAcknowledged) {
