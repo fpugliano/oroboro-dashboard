@@ -1,0 +1,26 @@
+{
+  // Oroboro usage-stats Worker — receives anonymous heartbeats, serves the admin page.
+  //
+  // One-time setup (see heartbeat-worker/README.md for the full walk-through):
+  //   1. npx wrangler kv namespace create STATS   → paste the returned id below
+  //   2. npx wrangler secret put STATS_KEY        → the admin password for /stats
+  //   3. npx wrangler deploy
+  //
+  // The client (anchor-api.js) posts to https://boat.sailingoroboro.com/beat — so
+  // route that host/path to this Worker (see "routes" below), OR change
+  // HEARTBEAT_ENDPOINT in anchor-api.js to this Worker's *.workers.dev URL.
+  "name": "oroboro-stats",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "observability": { "enabled": true },
+  "kv_namespaces": [
+    { "binding": "STATS", "id": "PASTE_KV_NAMESPACE_ID_HERE" }
+  ]
+  // To serve on boat.sailingoroboro.com instead of the workers.dev subdomain,
+  // uncomment and adjust (the zone must be in this Cloudflare account):
+  // ,"routes": [
+  //   { "pattern": "boat.sailingoroboro.com/beat",  "zone_name": "sailingoroboro.com" },
+  //   { "pattern": "boat.sailingoroboro.com/stats", "zone_name": "sailingoroboro.com" },
+  //   { "pattern": "boat.sailingoroboro.com/admin", "zone_name": "sailingoroboro.com" }
+  // ]
+}
