@@ -632,15 +632,9 @@ The dashboard runs entirely on your own Pi and needs no account. Two optional fe
 
 ## Keeping up to date
 
-The Settings page shows a green **Update available** banner automatically when a new version is released. To apply it, open a terminal on your Pi (via VNC or SSH) and run:
+The dashboard shows a green **Update available** banner — on the main screen and in Settings — automatically when a new version is released. To apply it, follow the [**Updating the dashboard**](#updating-the-dashboard) steps above: download the changed pages (and `anchor-api.js` if the release notes mention it), then restart the service. Reload the page and the banner clears once the Pi is on the latest version.
 
-```bash
-cd /home/pi/anchor-api && git pull && sudo systemctl restart anchor-api
-```
-
-Then reload the Settings page in your browser — the banner will disappear once the Pi is running the latest version.
-
-> **config.js is never overwritten by `git pull`** — your boat's private values (tank sizes, Pushover keys, etc.) are safe. Only the dashboard and API code updates.
+> Your **`config.js` is never touched** by an update — your boat's private values (tank sizes, Pushover keys, etc.) are safe. Only the dashboard and API code changes.
 
 ---
 
