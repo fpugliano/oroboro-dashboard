@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2] — 2026-09-28
+
+### Fixed
+- **Anchor/Guardian phone alarms could go silent after a state-file reset.** Pushover credentials were read only from `anchor-state.json`, which is volatile — an unclean shutdown (SD corruption) or an app save that posted blank keys would wipe the `userKey`/`apiToken`, and every alarm would then fail *silently* (the code logged "Pushover sent" but the send aborted). Hardened in `anchor-api.js`:
+  - New `resolvePushover()` falls back to the credentials in `config.js` (the stable, user-configured source of truth) whenever the state file lacks valid keys. All send sites (dragging, gpsLost, anchorSet/Raised, Guardian) now use it.
+  - `sendPushover()` no longer swallows Pushover's HTTP response — a rejection (e.g. `400 invalid token`) is now logged as `Pushover REJECTED …`, and a missing-key send logs `Pushover NOT SENT …`, so a broken alarm can never again look healthy in the logs.
+
 ## [1.3.1] — 2026-09-13
 
 ### Fixed

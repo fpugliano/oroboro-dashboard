@@ -17,7 +17,7 @@ const SK_PORT  = cfg.signalkPort || 3000;
 const USERNAME = cfg.username    || '';
 const PASSWORD = cfg.password    || '';
 const PORT     = cfg.proxyPort   || 3001;
-const VERSION  = '1.3.1';
+const VERSION  = '1.3.2';
 
 let skToken = null;
 
@@ -261,8 +261,31 @@ function isOutsideBound(dist, bear, state) {
 }
 
 // ─── Pushover ────────────────────────────────────────────────────────────
+// Resolve Pushover credentials. The state file (anchor-state.json) is volatile
+// and has been observed to lose its userKey/apiToken — after an unclean
+// shutdown (SD corruption), or an app "save" that posted blank keys — which
+// silently killed every phone alarm. config.js is the stable source of truth
+// the user configures, so whenever the state file lacks valid keys we fall
+// back to it. Event enable/priority toggles still come from state when present.
+function resolvePushover() {
+  const st = (readState().pushover) || {};
+  if (st.userKey && st.apiToken) return st;
+  try {
+    const dc = readDashboardConfig();
+    const cj = dc && dc.anchor && dc.anchor.pushover;
+    if (cj && cj.userKey && cj.apiToken) {
+      console.warn('[anchor-api] Pushover keys missing from state — falling back to config.js');
+      return Object.assign({}, cj, { events: st.events || cj.events });
+    }
+  } catch(e) { console.error('[anchor-api] Pushover config.js fallback failed:', e.message); }
+  return st;
+}
+
 function sendPushover(pvCfg, eventKey, detail) {
-  if (!pvCfg || !pvCfg.apiToken || !pvCfg.userKey) return;
+  if (!pvCfg || !pvCfg.apiToken || !pvCfg.userKey) {
+    console.error('[anchor-api] Pushover NOT SENT (' + eventKey + '): no userKey/apiToken available');
+    return;
+  }
   const ev = (pvCfg.events || {})[eventKey];
   if (!ev || !ev.enabled) return;
   const msg = detail ? ev.message + ' ' + detail : ev.message;
@@ -276,7 +299,15 @@ function sendPushover(pvCfg, eventKey, detail) {
     hostname: 'api.pushover.net', port: 443, path: '/1/messages.json',
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-  }, r => r.resume());
+  }, r => {
+    // Don't swallow API rejections — a 4xx (bad token/user) must be visible in
+    // the logs, otherwise a broken alarm looks healthy.
+    let d = ''; r.on('data', c => { d += c; });
+    r.on('end', () => {
+      if (r.statusCode !== 200) console.error('[anchor-api] Pushover REJECTED ' + eventKey
+        + ' (HTTP ' + r.statusCode + '): ' + d.slice(0, 200));
+    });
+  });
   req.on('error', e => console.error('[anchor-api] Pushover error:', e.message));
   req.write(body); req.end();
 }
@@ -337,7 +368,7 @@ async function monitorTick() {
       if (_mon.alarmState !== 'gpsLost') {
         _mon.alarmState = 'gpsLost';
         console.log('[anchor-api] GPS lost — no position update for 120s');
-        sendPushover(readState().pushover, 'gpsLost');
+        sendPushover(resolvePushover(), 'gpsLost');
         buzzerUpdateFromAlarms();
       }
       return;
@@ -381,11 +412,11 @@ async function monitorTick() {
       } else if (_mon.alarmState !== 'dragging') {
         _mon.alarmState = 'dragging'; _mon.lastDragPush = now;
         console.log('[anchor-api] ALARM: Boat is ' + detail + ' — Pushover sent');
-        sendPushover(state.pushover, 'dragging', detail);
+        sendPushover(resolvePushover(), 'dragging', detail);
       } else if (now - _mon.lastDragPush > 60000) {
         _mon.lastDragPush = now;
         console.log('[anchor-api] ALARM (repeat): Boat is ' + detail + ' — Pushover sent');
-        sendPushover(state.pushover, 'dragging', detail);
+        sendPushover(resolvePushover(), 'dragging', detail);
       }
     } else {
       if (_mon.alarmState !== 'ok') console.log('[anchor-api] Alarm cleared — boat back within bounds');
@@ -478,7 +509,7 @@ async function guardianTick() {
       const sogKt = sog != null ? sog * 1.94384 : null;
       const cog  = v.navigation && v.navigation.courseOverGroundTrue && v.navigation.courseOverGroundTrue.value;
       const cogDeg = cog != null ? cog * 180/Math.PI : null;
-      const pvCfg = readState().pushover;
+      const pvCfg = resolvePushover();
       if (!_guardian.encounters[id]) {
         _guardian.encounters[id] = { name: name||'Unknown', mmsi, entered: new Date().toISOString(),
           minDist: dist, maxSog: sogKt, lastDist: dist, closing: false, lastCloseAlert: 0, track: [] };
@@ -525,7 +556,7 @@ function finalizeEncounter(id) {
   _guardian.reports.unshift(report);
   if (_guardian.reports.length > 50) _guardian.reports = _guardian.reports.slice(0, 50);
   saveGuardian();
-  sendGuardianPush(readState().pushover, 'guardianCleared', enc.name, enc.mmsi, report.minDistM, null);
+  sendGuardianPush(resolvePushover(), 'guardianCleared', enc.name, enc.mmsi, report.minDistM, null);
   delete _guardian.encounters[id];
   console.log('[anchor-api] Guardian encounter finalized:', enc.name, report.minDistM + 'm');
 }
@@ -864,7 +895,7 @@ http.createServer(async (req, res) => {
         stopMonitoring();
         startMonitoring(30000);
         console.log(`[anchor-api] Anchor monitoring started — position: ${latitude},${longitude}, arming 30s`);
-        sendPushover(readState().pushover, 'anchorSet');
+        sendPushover(resolvePushover(), 'anchorSet');
         json(res, 200, { ok: true });
       } else {
         json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });
@@ -881,7 +912,7 @@ http.createServer(async (req, res) => {
         try { writeState(Object.assign({}, readState(), { trail: [] })); } catch(e) {}
         _mon.trailPoints = 0; _mon.lastTrailWrite = null;
         console.log('[anchor-api] Anchor monitoring stopped — anchor raised');
-        sendPushover(readState().pushover, 'anchorRaised');
+        sendPushover(resolvePushover(), 'anchorRaised');
         json(res, 200, { ok: true });
       } else {
         json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });
