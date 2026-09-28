@@ -537,6 +537,14 @@ sudo wget -q -O settings.html https://raw.githubusercontent.com/fpugliano/orobor
 grep -c "DASHBOARD_CONFIG" oroboro.html && echo "update ok"
 ```
 
+**If the release notes mention the anchor/Guardian service (`anchor-api.js`)**, update it too and restart — otherwise the new anchor-watch features (e.g. the alarm test button) won't work:
+
+```bash
+wget -q -O /home/pi/anchor-api/anchor-api.js https://raw.githubusercontent.com/fpugliano/oroboro-dashboard/main/anchor-api.js
+sudo systemctl restart anchor-api
+curl -s http://localhost:3001/api/version   # should show the new version
+```
+
 **Never re-download config.js** — it holds your boat's real values (see Step 5). If the browser shows an old version afterwards, hard-refresh; on the Pi's own Chromium:
 
 ```bash
