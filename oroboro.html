@@ -379,6 +379,14 @@ html, body {
 </head>
 <body>
 
+<!-- Update banner — floating overlay, shown only when a newer release exists (dismissible). -->
+<div id="update-banner" style="display:none;position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;align-items:center;gap:12px;background:rgba(6,20,15,0.97);border:1px solid #22c55e;border-radius:10px;padding:8px 14px;box-shadow:0 4px 16px rgba(0,0,0,0.5);font-size:12px;max-width:92vw">
+  <span style="color:#22c55e;font-weight:700">⬆ Update available</span>
+  <span id="update-banner-text" style="color:#cbd5e1"></span>
+  <a id="update-banner-link" href="#" target="_blank" rel="noopener" style="color:#22d3ee;font-weight:700;text-decoration:none">What's new ↗</a>
+  <a href="https://github.com/fpugliano/oroboro-dashboard#updating-the-dashboard" target="_blank" rel="noopener" style="color:#22d3ee;font-weight:700;text-decoration:none">How to update ↗</a>
+  <span id="update-banner-dismiss" title="Dismiss" style="color:#64748b;cursor:pointer;font-weight:700;padding:0 2px">✕</span>
+</div>
 
 <div class="dashboard">
 
@@ -1439,6 +1447,38 @@ function scaleToFit() {
 }
 window.addEventListener('resize', scaleToFit);
 
+// ── Update banner: compare running version (from the Pi) to the latest GitHub
+//    release, and show a dismissible banner on the main screen if newer. ──
+function _semverGt(a, b) {
+  const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) { if ((pa[i]||0) > (pb[i]||0)) return true; if ((pa[i]||0) < (pb[i]||0)) return false; }
+  return false;
+}
+async function checkForUpdate() {
+  try {
+    const base = `http://${SK_HOST}:3001`;
+    const [localR, ghR] = await Promise.all([
+      fetch(base + '/api/version').catch(() => null),
+      fetch('https://api.github.com/repos/fpugliano/oroboro-dashboard/releases/latest',
+        { headers: { Accept: 'application/vnd.github.v3+json' } }).catch(() => null),
+    ]);
+    if (!localR || !ghR || !localR.ok || !ghR.ok) return;
+    const [localD, ghD] = await Promise.all([localR.json(), ghR.json()]);
+    const installed = (localD.version || '').trim();
+    const latest    = (ghD.tag_name  || '').replace(/^v/, '').trim();
+    if (!installed || !latest || !_semverGt(latest, installed)) return;
+    if (localStorage.getItem('updateDismissed') === latest) return;  // user dismissed this version
+    const el = document.getElementById('update-banner');
+    if (!el) return;
+    document.getElementById('update-banner-text').textContent = 'v' + installed + ' → v' + latest;
+    document.getElementById('update-banner-link').href = ghD.html_url || '#';
+    document.getElementById('update-banner-dismiss').onclick = () => {
+      el.style.display = 'none'; localStorage.setItem('updateDismissed', latest);
+    };
+    el.style.display = 'flex';
+  } catch(e) { /* silent — no internet or Pi unreachable */ }
+}
+
 window.addEventListener('load', () => {
   // Defer one frame so bottom bar has a real offsetHeight before we subtract it
   requestAnimationFrame(scaleToFit);
@@ -1447,6 +1487,8 @@ window.addEventListener('load', () => {
   buildHandlers();
   buildWindRose();
   backfillTwsTrend();
+  checkForUpdate();
+  setInterval(checkForUpdate, 6 * 3600 * 1000);  // re-check twice a day for long-running kiosk displays
   poll();
   setInterval(poll, 1000);
   setInterval(() => {
