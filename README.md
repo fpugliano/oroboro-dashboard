@@ -555,6 +555,15 @@ chromium-browser --incognito http://<pi-ip>:3000/oroboro.html &
 
 ---
 
+## Privacy & anonymous usage stats
+
+The dashboard runs entirely on your own Pi and needs no account. Two optional features send data off the boat, both controllable in **Settings**:
+
+- **Wind sharing** (*off* by default) — contributes anonymous wind readings to the community wind map. No boat name or MMSI.
+- **Anonymous usage stats** (*on* by default, opt-out) — once a day the Pi sends a **random install ID** and the **running version**, so the project can count active installs and see which versions are in use (to know when it's safe to retire old ones). **No boat name, no position, no personal data.** Turn it off with the "Anonymous usage stats" toggle in Settings, or set `telemetry: { "enabled": false }` in `config.js`.
+
+---
+
 ## Troubleshooting
 
 ### Dashboard shows no data

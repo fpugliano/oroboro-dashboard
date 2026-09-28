@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.0] — 2026-09-28
+
+### Added
+- **Update banner on the main dashboard** — the "update available" notice (previously only in Settings) now also appears as a compact, dismissible floating banner on the main screen, since most users rarely open Settings. Overlay so it doesn't disturb the scaled cockpit grid; dismissible per-version; re-checks twice a day.
+- **Anonymous usage stats (opt-out)** — once a day `anchor-api.js` sends a random anonymous install-ID + version to the Oroboro stats endpoint (no boat name, no position, no PII), powering an active-installs + version-adoption count. On by default; opt out via the new "Anonymous usage stats" toggle in Settings or `telemetry.enabled: false` in `config.js`. Install-ID persists in `/home/pi/anchor-api/install-id`.
+
 ## [1.4.0] — 2026-09-28
 
 ### Added — alarm-delivery assurance (safety hardening)

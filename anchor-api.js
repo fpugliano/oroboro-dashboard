@@ -17,7 +17,7 @@ const SK_PORT  = cfg.signalkPort || 3000;
 const USERNAME = cfg.username    || '';
 const PASSWORD = cfg.password    || '';
 const PORT     = cfg.proxyPort   || 3001;
-const VERSION  = '1.4.0';
+const VERSION  = '1.5.0';
 
 let skToken = null;
 
@@ -883,6 +883,39 @@ async function windReport() {
   } catch(e) { /* silent */ }
 }
 
+// ─── Anonymous usage heartbeat ────────────────────────────────────────────
+// On by default; opt out via config.js { telemetry: { enabled: false } }. Once
+// a day, POSTs a random anonymous install-ID + version — NO boat name, NO
+// position, NO PII. Powers an active-installs + version-adoption count on the
+// Oroboro admin page. Fire-and-forget: any failure is swallowed so telemetry
+// can never affect the service.
+const HEARTBEAT_ENDPOINT = 'https://boat.sailingoroboro.com/beat';
+const INSTALL_ID_FILE    = '/home/pi/anchor-api/install-id';
+
+function getInstallId() {
+  try { const id = fs.readFileSync(INSTALL_ID_FILE, 'utf8').trim(); if (id) return id; } catch(e) {}
+  const id = require('crypto').randomUUID();
+  try { fs.writeFileSync(INSTALL_ID_FILE, id); } catch(e) {}
+  return id;
+}
+
+function sendHeartbeat() {
+  try {
+    const dc = readDashboardConfig();
+    if (dc && dc.telemetry && dc.telemetry.enabled === false) return;  // on by default
+    const body = JSON.stringify({ id: getInstallId(), version: VERSION, ts: Date.now() });
+    const u = new URL(HEARTBEAT_ENDPOINT);
+    const req = https.request({
+      hostname: u.hostname, port: 443, path: u.pathname, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      timeout: 8000,
+    }, res => { res.on('data', () => {}); res.on('end', () => {}); });
+    req.on('error', () => {});
+    req.on('timeout', () => { req.destroy(); });
+    req.write(body); req.end();
+  } catch(e) { /* silent — telemetry must never affect the service */ }
+}
+
 
 http.createServer(async (req, res) => {
   const method = req.method;
@@ -1356,6 +1389,10 @@ http.createServer(async (req, res) => {
   // alarm surfaces proactively instead of during a real drag.
   validatePushover();
   setInterval(validatePushover, 3600000);
+  // Anonymous usage heartbeat: once shortly after startup + daily. On by
+  // default; opt out via config.js telemetry.enabled=false.
+  setTimeout(sendHeartbeat, 15000);
+  setInterval(sendHeartbeat, 86400000);
   if (!USERNAME || !PASSWORD) {
     console.warn('[anchor-api] WARNING: username/password not set — PUT calls will fail');
   } else {
