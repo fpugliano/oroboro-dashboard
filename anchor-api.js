@@ -889,7 +889,7 @@ async function windReport() {
 // position, NO PII. Powers an active-installs + version-adoption count on the
 // Oroboro admin page. Fire-and-forget: any failure is swallowed so telemetry
 // can never affect the service.
-const HEARTBEAT_ENDPOINT = 'https://boat.sailingoroboro.com/beat';
+const HEARTBEAT_ENDPOINT = 'https://oroboro-stats.fpugliano.workers.dev/beat';
 const INSTALL_ID_FILE    = '/home/pi/anchor-api/install-id';
 
 function getInstallId() {
