@@ -3,6 +3,7 @@
 ![Latest release](https://img.shields.io/github/v/release/fpugliano/oroboro-dashboard?color=22c55e&label=release)
 ![Built on Signal K](https://img.shields.io/badge/built%20on-Signal%20K-0a9396)
 ![Runs on Raspberry Pi](https://img.shields.io/badge/runs%20on-Raspberry%20Pi-c51a4a)
+![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)
 ![Stars](https://img.shields.io/github/stars/fpugliano/oroboro-dashboard)
 
 A complete marine instrument panel that runs on a **Raspberry Pi** aboard your boat — wind, navigation, depth, batteries, solar, tanks, anchor watch with phone alarms, AIS collision/anchor-drag monitoring, and a full sailing-performance (polar) analyzer. Viewable on any phone, tablet, laptop, or a mounted cockpit screen, on board or from anywhere in the world.
