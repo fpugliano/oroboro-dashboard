@@ -435,7 +435,7 @@ html, body {
     </div>
 
     <div class="compass-wrap">
-      <svg id="windrose" viewBox="-140 -140 280 280" preserveAspectRatio="xMidYMid meet"></svg>
+      <svg id="windrose" viewBox="-166 -166 332 332" preserveAspectRatio="xMidYMid meet"></svg>
     </div>
 
     <div class="sparkline-wrap">
@@ -621,6 +621,9 @@ let _hdg = 0, _cog = 0;
 
 let _dspTwa = 0, _dspAwa = 0, _dspCog = 0;
 let _tgtTwa = 0, _tgtAwa = 0, _tgtCog = 0;
+// Outer compass dial: smoothed heading + label refs; hidden until heading arrives.
+let _dspHdg = 0, _tgtHdg = 0, _hasHdg = false;
+let _compassLabels = [];
 
 function lerpAngle(cur, tgt, alpha) {
   const d = ((tgt - cur + 540) % 360) - 180;
@@ -639,6 +642,18 @@ function lerpAngle(cur, tgt, alpha) {
   if (twaEl) twaEl.setAttribute('transform', `rotate(${_dspTwa.toFixed(2)})`);
   if (awaEl) awaEl.setAttribute('transform', `rotate(${_dspAwa.toFixed(2)})`);
   if (cogEl) cogEl.setAttribute('transform', `rotate(${_dspCog.toFixed(2)})`);
+  // Outer compass dial: rotate ticks by -heading, keep cardinal labels upright.
+  _dspHdg = lerpAngle(_dspHdg, _tgtHdg, alpha);
+  const compassEl = document.getElementById('wr-compass');
+  if (compassEl) {
+    compassEl.style.display = _hasHdg ? '' : 'none';
+    const ticksEl = document.getElementById('wr-compass-ticks');
+    if (ticksEl) ticksEl.setAttribute('transform', `rotate(${(-_dspHdg).toFixed(2)})`);
+    for (const L of _compassLabels) {
+      const rad = (L.ang - _dspHdg - 90) * Math.PI / 180;
+      L.el.setAttribute('transform', `translate(${(156*Math.cos(rad)).toFixed(2)},${(156*Math.sin(rad)).toFixed(2)})`);
+    }
+  }
 })();
 
 function flattenSK(obj, prefix, out) {
@@ -982,6 +997,29 @@ function buildWindRose() {
   const SERP_D="M 478.8 280.6 L 472.5 254.7 L 494.5 254.7 Z M 297.5 451.7 L 271.5 436.0 L 297.5 429.7 Z M 100.5 254.7 L 116.1 228.7 L 122.4 254.7 Z M 307.0 103.7 C 312.2 103.7 316.5 105.3 316.5 107.2 C 316.5 109.2 312.2 110.8 307.0 110.8 C 301.7 110.8 297.5 109.2 297.5 107.2 C 297.5 105.3 301.7 103.7 307.0 103.7 M 307.0 65.0 C 312.2 65.0 316.5 66.6 316.5 68.6 C 316.5 70.5 312.2 72.1 307.0 72.1 C 301.7 72.1 297.5 70.5 297.5 68.6 C 297.5 66.6 301.7 65.0 307.0 65.0 M 481.4 210.0 L 481.3 210.2 C 466.2 147.2 419.8 96.3 359.5 75 C 363.1 81.0 364.6 86.9 364.0 91.7 C 363.3 96.5 360.9 104.8 352.3 112.6 C 408.8 135.0 448.8 190.2 448.8 254.7 C 448.8 339.0 380.4 407.4 296.0 407.4 C 211.6 407.4 143.2 339.0 143.2 254.7 C 143.2 185.6 189.1 127.2 252.0 108.3 C 253.8 109.4 277.5 123.6 310.4 118.0 C 344.6 112.1 351.4 97.5 352.4 90.2 C 353.3 82.9 341.1 63.8 309.4 58.0 C 282.7 53.1 259.5 61.2 245.1 71.1 C 176.5 90.0 123.4 146.4 109.3 216.9 L 85.7 254.7 L 109.3 292.4 C 124.2 366.9 182.6 425.7 256.9 441.1 L 297.5 466.5 L 339.7 440.1 C 409.6 423.7 464.6 368.8 481.3 299.0 L 481.4 299.3 L 509.3 254.7 Z M 481.4 210.0";
   const logoG = el('g', {transform:'scale(0.5574) translate(-297.5,-259)', fill: _rSun ? '#1a2a3a' : '#ffffff', 'pointer-events':'none'}, svg);
   el('path', {d:SERP_D, opacity:'0.45'}, logoG);
+
+  // ─── Outer compass dial — rotates with heading (updated in roseLoop) ───────
+  // Two static guide rings + a rotatable tick group + upright cardinal labels
+  // that are repositioned each frame. Hidden until a heading is received.
+  const compass = el('g', {id:'wr-compass'}, svg);
+  el('circle', {r:'145', fill:'none', stroke: _rSun ? '#9db4c8' : '#24466b', 'stroke-width':'0.75'}, compass);
+  el('circle', {r:'131', fill:'none', stroke: _rSun ? '#9db4c8' : '#24466b', 'stroke-width':'0.75'}, compass);
+  const ticksG = el('g', {id:'wr-compass-ticks'}, compass);
+  for (let d = 0; d < 360; d += 10) {
+    const major = d % 30 === 0;
+    const p1 = polarToXY(d, 131), p2 = polarToXY(d, major ? 143 : 137);
+    el('line', {x1:p1.x.toFixed(2), y1:p1.y.toFixed(2), x2:p2.x.toFixed(2), y2:p2.y.toFixed(2),
+      stroke: major ? '#8fb3d9' : '#4a6a8a', 'stroke-width': major ? 1.1 : 0.6}, ticksG);
+  }
+  _compassLabels = [];
+  [[0,'N'],[45,'NE'],[90,'E'],[135,'SE'],[180,'S'],[225,'SW'],[270,'W'],[315,'NW']].forEach(([cd,lbl]) => {
+    const inter = lbl.length === 2, isN = lbl === 'N';
+    const t = el('text', {x:'0', y:'0', 'text-anchor':'middle', 'dominant-baseline':'central',
+      fill: isN ? '#ff5a5a' : (inter ? (_rSun ? '#5a7a9a' : '#7d97b3') : (_rSun ? '#1a2a3a' : '#dbe6f2')),
+      'font-size': inter ? '9' : '13', 'font-weight': isN ? '800' : '700'}, compass);
+    t.textContent = lbl;
+    _compassLabels.push({ el: t, ang: cd });
+  });
 
   // Ring guides removed — the serpent occupies that zone and the dashes read as outlines on it
 
@@ -1352,6 +1390,8 @@ function onValue(path, val) {
     case 'navigation.headingMagnetic': {
       const h = Math.round(norm360(toDeg(val)));
       _hdg = norm360(toDeg(val));
+      if (!_hasHdg) _dspHdg = _hdg;   // avoid a startup spin on first fix
+      _tgtHdg = _hdg; _hasHdg = true;
       const hdg = document.getElementById('compass-hdg');
       if (hdg) hdg.textContent = h + '°';
       updateNavVectors();

@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.6.0] — 2026-09-30
+
+### Added
+- **Compass dial around the wind rose** — a new outer ring (N/E/S/W in cardinal red for N, plus NE/SE/SW/NW and 10°/30° ticks) that **rotates with the boat's heading**, so the direction the wind is blowing *from* can be read as a true compass point where the yellow "T" (true wind) arrow lands. Cardinal letters stay upright for readability; the ring animates smoothly via the existing rose-smoothing loop and **hides gracefully if no heading source is available**. Inner wind rose is unchanged; the graphic's viewBox was enlarged to make room. (`oroboro.html`)
+
 ## [1.5.0] — 2026-09-28
 
 ### Added
