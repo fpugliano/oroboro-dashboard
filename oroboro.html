@@ -1016,7 +1016,7 @@ function buildWindRose() {
     const inter = lbl.length === 2, isN = lbl === 'N';
     const t = el('text', {x:'0', y:'0', 'text-anchor':'middle', 'dominant-baseline':'central',
       fill: isN ? '#ff5a5a' : (inter ? (_rSun ? '#5a7a9a' : '#7d97b3') : (_rSun ? '#1a2a3a' : '#dbe6f2')),
-      'font-size': inter ? '9' : '13', 'font-weight': isN ? '800' : '700'}, compass);
+      'font-size': inter ? '11' : '16', 'font-weight': isN ? '800' : '700'}, compass);
     t.textContent = lbl;
     _compassLabels.push({ el: t, ang: cd });
   });
