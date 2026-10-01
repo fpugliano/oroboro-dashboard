@@ -651,7 +651,7 @@ function lerpAngle(cur, tgt, alpha) {
     if (ticksEl) ticksEl.setAttribute('transform', `rotate(${(-_dspHdg).toFixed(2)})`);
     for (const L of _compassLabels) {
       const rad = (L.ang - _dspHdg - 90) * Math.PI / 180;
-      L.el.setAttribute('transform', `translate(${(156*Math.cos(rad)).toFixed(2)},${(156*Math.sin(rad)).toFixed(2)})`);
+      L.el.setAttribute('transform', `translate(${(154*Math.cos(rad)).toFixed(2)},${(154*Math.sin(rad)).toFixed(2)})`);
     }
   }
 })();
@@ -1016,7 +1016,7 @@ function buildWindRose() {
     const inter = lbl.length === 2, isN = lbl === 'N';
     const t = el('text', {x:'0', y:'0', 'text-anchor':'middle', 'dominant-baseline':'central',
       fill: isN ? '#ff5a5a' : (inter ? (_rSun ? '#5a7a9a' : '#7d97b3') : (_rSun ? '#1a2a3a' : '#dbe6f2')),
-      'font-size': inter ? '12' : '18', 'font-weight': isN ? '800' : '700'}, compass);
+      'font-size': inter ? '13' : '20', 'font-weight': isN ? '800' : '700'}, compass);
     t.textContent = lbl;
     _compassLabels.push({ el: t, ang: cd });
   });
