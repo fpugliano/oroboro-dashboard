@@ -624,6 +624,8 @@ let _tgtTwa = 0, _tgtAwa = 0, _tgtCog = 0;
 // Outer compass dial: smoothed heading + label refs; hidden until heading arrives.
 let _dspHdg = 0, _tgtHdg = 0, _hasHdg = false;
 let _compassLabels = [];
+// AC-loads direction: on shore (fed in, '+') vs inverting (drawn from bank, '−').
+let _onShore = false, _acLoadW = null;
 
 function lerpAngle(cur, tgt, alpha) {
   const d = ((tgt - cur + 540) % 360) - 180;
@@ -964,11 +966,23 @@ function updateShore(v) {
     setBadge(badge, 'No input',    '#374151', '#6b7280');
     setBadge(top,   'No Shore',    '#7f1d1d', '#f87171');
     vEl.textContent = '';
+    _onShore = false;
   } else {
     setBadge(badge, 'Connected',   '#14532d', '#5db832');
     setBadge(top,   'Shore Power', '#14532d', '#5db832');
     vEl.textContent = v.toFixed(0) + 'V';
+    _onShore = true;
   }
+  renderAcLoad();
+}
+
+// AC-loads tile: always red; '+' when fed from shore, '−' when inverting (drawn
+// from the house bank). Re-rendered on both AC-out power and shore-state changes.
+function renderAcLoad() {
+  const el = document.getElementById('ac-load');
+  if (!el || _acLoadW == null) return;
+  el.textContent = (_onShore ? '+' : '−') + Math.round(Math.abs(_acLoadW)) + 'W';
+  el.style.color = '#f87171';
 }
 
 function buildWindRose() {
@@ -1300,7 +1314,8 @@ function buildHandlers() {
   });
 
   PATH_HANDLERS[`electrical.inverters.${inv}.acout.power`] = (val) => {
-    document.getElementById('ac-load').textContent = Math.round(val) + 'W';
+    _acLoadW = val;
+    renderAcLoad();
   };
 
   PATH_HANDLERS[`electrical.inverters.${inv}.acout.frequency`] = (val) => {
@@ -1440,16 +1455,17 @@ function onValue(path, val) {
       const w   = Math.round(Math.abs(val));
       const vEl = document.getElementById('dc-load');
       const lEl = document.getElementById('dc-load-label');
-      if (val < -5) {               // feeding in → charging
-        vEl.textContent = '+' + w + 'W'; vEl.style.color = '#4ade80';
+      if (val < -5) {               // feeding in (engine/Orion)
+        vEl.textContent = '+' + w + 'W';
         if (lEl) lEl.textContent = 'DC Charge In';
       } else if (val > 5) {          // genuine DC load
-        vEl.textContent = '−' + w + 'W'; vEl.style.color = '#f87171';
+        vEl.textContent = '−' + w + 'W';
         if (lEl) lEl.textContent = 'DC Loads';
       } else {                       // ~idle
-        vEl.textContent = w + 'W'; vEl.style.color = '#94a3b8';
+        vEl.textContent = w + 'W';
         if (lEl) lEl.textContent = 'DC System';
       }
+      vEl.style.color = '#f87171';   // always red; the +/- shows direction
       break;
     }
 
