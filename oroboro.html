@@ -465,7 +465,7 @@ html, body {
       </div>
       <div class="stat-cell">
         <div class="stat-v" id="dc-load" style="color:#f87171">--</div>
-        <div class="stat-l">DC Loads</div>
+        <div class="stat-l" id="dc-load-label">DC Loads</div>
       </div>
       <div class="stat-cell">
         <div class="stat-v" id="solar-stat" style="color:#f59e0b;font-size:32px">--</div>
@@ -1431,9 +1431,27 @@ function onValue(path, val) {
       document.getElementById('solar-stat').textContent  = Math.round(val) + 'W';
       break;
 
-    case 'electrical.venus.dcPower':
-      document.getElementById('dc-load').textContent = Math.round(Math.abs(val)) + 'W';
+    case 'electrical.venus.dcPower': {
+      // Victron "DC System" power. On this boat the Orion DC-DC chargers are
+      // unmonitored, so their charge current shows up here as a *source*.
+      // Observed sign (from the GX screen while the engine charged): negative =
+      // power feeding IN (engine/Orion charging the bank), positive = genuine DC
+      // loads. So show direction + colour, not just the magnitude.
+      const w   = Math.round(Math.abs(val));
+      const vEl = document.getElementById('dc-load');
+      const lEl = document.getElementById('dc-load-label');
+      if (val < -5) {               // feeding in → charging
+        vEl.textContent = '+' + w + 'W'; vEl.style.color = '#4ade80';
+        if (lEl) lEl.textContent = 'DC Charge In';
+      } else if (val > 5) {          // genuine DC load
+        vEl.textContent = '−' + w + 'W'; vEl.style.color = '#f87171';
+        if (lEl) lEl.textContent = 'DC Loads';
+      } else {                       // ~idle
+        vEl.textContent = w + 'W'; vEl.style.color = '#94a3b8';
+        if (lEl) lEl.textContent = 'DC System';
+      }
       break;
+    }
 
 
   }
