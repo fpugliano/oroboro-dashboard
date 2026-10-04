@@ -458,6 +458,19 @@ function renderHome() {
       </button>
     </div>
 
+    <div class="section-hdr">Alarms</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bg-hairline);margin-bottom:8px">
+      <div style="flex:1;padding-right:12px">
+        <div style="color:var(--text-primary);font-size:15px;font-weight:600">Show Venus alarms on dashboard</div>
+        <div style="color:var(--text-muted);font-size:12px;margin-top:2px">Mirror Victron/Venus notifications (autopilot, charger, tanks…) here. Off by default — the Cerbo owns these, so you don't acknowledge them twice. Your anchor alarm is separate and always active.</div>
+      </div>
+      <button id="va-btn" onclick="toggleVenusAlarms()" aria-label="Toggle Venus alarms"
+        style="position:relative;width:52px;height:28px;border:none;padding:0;background:none;cursor:pointer;flex-shrink:0">
+        <span id="va-track" style="position:absolute;inset:0;border-radius:14px;background:var(--bg-hairline);transition:.25s"></span>
+        <span id="va-thumb" style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;background:var(--text-muted);transition:.25s"></span>
+      </button>
+    </div>
+
     <div class="section-hdr">Signal K Server</div>
     <button class="row" onclick="nav('server')">
       <span class="row-label">Host</span>
@@ -508,6 +521,7 @@ function renderHome() {
   initGaugeSelect();
   _applyWindShareUI();
   _applyTelemetryUI();
+  _applyVenusAlarmsUI();
   checkBuzzerStatus();
 }
 
@@ -831,6 +845,21 @@ async function toggleTelemetry(){
   C.telemetry.enabled = !on;
   _applyTelemetryUI();
   try { await writeConfig(); showToast(C.telemetry.enabled ? 'Usage stats on' : 'Usage stats off — opted out'); }
+  catch(e){ showToast(e.message, true); }
+}
+function _applyVenusAlarmsUI(){
+  var on = (C.venusAlarms === true);   // off by default — Cerbo owns Venus alarms
+  var track = document.getElementById('va-track');
+  var thumb = document.getElementById('va-thumb');
+  if(!track) return;
+  track.style.background = on ? '#22c55e' : 'var(--bg-hairline)';
+  thumb.style.left = on ? '28px' : '4px';
+  thumb.style.background = on ? '#ffffff' : 'var(--text-muted)';
+}
+async function toggleVenusAlarms(){
+  C.venusAlarms = !(C.venusAlarms === true);
+  _applyVenusAlarmsUI();
+  try { await writeConfig(); showToast(C.venusAlarms ? 'Venus alarms shown on dashboard' : 'Venus alarms off — Cerbo handles them'); }
   catch(e){ showToast(e.message, true); }
 }
 function toggleTheme(){

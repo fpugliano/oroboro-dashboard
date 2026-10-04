@@ -1371,6 +1371,10 @@ function onValue(path, val) {
   if (PATH_HANDLERS[path]) { PATH_HANDLERS[path](val); return; }
 
   if (path.startsWith('notifications.')) {
+    // Venus/Victron alarms are owned by the Cerbo. Off by default here so you
+    // don't have to acknowledge them twice; set venusAlarms:true in config.js to
+    // surface them on the dashboard too. (The anchor alarm is separate from this.)
+    if (CFG.venusAlarms !== true) return;
     if (val && val.state && val.state !== 'normal' && val.state !== 'nominal') {
       activeAlarms[path] = {
         message: val.message || path.split('.').pop(),

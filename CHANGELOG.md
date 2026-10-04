@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.8.1] — 2026-10-04
+
+### Changed
+- **Venus/Victron alarms are now off the dashboard by default** — the Cerbo owns them, and silencing on the dashboard never cleared the Cerbo anyway (so you'd acknowledge twice, and still-active Venus alarms re-appeared). The "Venus Alarms" panel now only shows if you opt in via **Settings → Alarms → "Show Venus alarms on dashboard"** (or `venusAlarms: true` in `config.js`). **The anchor drag/GPS alarm is unaffected** — it's separate (banner + Pushover + buzzer) and always active.
+
 ## [1.8.0] — 2026-10-04
 
 ### Added — reboot-proof anchor watch

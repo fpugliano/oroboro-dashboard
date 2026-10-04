@@ -18,7 +18,7 @@ const SK_PORT  = cfg.signalkPort || 3000;
 const USERNAME = cfg.username    || '';
 const PASSWORD = cfg.password    || '';
 const PORT     = cfg.proxyPort   || 3001;
-const VERSION  = '1.8.0';
+const VERSION  = '1.8.1';
 
 let skToken = null;
 
