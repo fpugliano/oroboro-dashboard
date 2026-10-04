@@ -7,6 +7,7 @@ const vm    = require('vm');
 
 const STATE_FILE      = '/home/pi/anchor-api/anchor-state.json';
 const GUARDIAN_FILE   = '/home/pi/anchor-api/guardian-state.json';
+const ANCHOR_FILE     = '/home/pi/anchor-api/anchor-set.json';  // persisted anchor → reboot-proof re-arm
 const CONFIG_JS_PATH  = '/usr/lib/node_modules/signalk-server/public/config.js';
 const POLAR_DIR       = '/home/pi/anchor-api/polars';
 const POLAR_BEST_DIR  = '/home/pi/anchor-api/polar-best';
@@ -17,7 +18,7 @@ const SK_PORT  = cfg.signalkPort || 3000;
 const USERNAME = cfg.username    || '';
 const PASSWORD = cfg.password    || '';
 const PORT     = cfg.proxyPort   || 3001;
-const VERSION  = '1.7.0';
+const VERSION  = '1.8.0';
 
 let skToken = null;
 
@@ -640,6 +641,20 @@ function sendGuardianPush(pvCfg, eventKey, vessel, mmsi, distM, sogKt) {
   req.write(body); req.end();
 }
 
+// Reboot-proof anchor: persist the set anchor to its own file so monitoring can
+// re-arm after a restart even when Signal K forgot it. Written on set, kept in
+// sync on radius change, cleared on raise, read at startup.
+function saveAnchor(lat, lon, radius) {
+  try { fs.writeFileSync(ANCHOR_FILE, JSON.stringify({ lat, lon, radius: radius || null, setAt: new Date().toISOString() })); }
+  catch(e) { console.error('[anchor-api] saveAnchor failed:', e.message); }
+}
+function readSavedAnchor() {
+  try { return JSON.parse(fs.readFileSync(ANCHOR_FILE, 'utf8')); } catch(e) { return null; }
+}
+function clearSavedAnchor() {
+  try { fs.unlinkSync(ANCHOR_FILE); } catch(e) {}
+}
+
 function startMonitoring(armMs) {
   if (_mon.running) { clearInterval(_mon._loop); clearInterval(_mon._trail); }
   _mon.running     = true;
@@ -982,6 +997,8 @@ http.createServer(async (req, res) => {
       const r = await skPut('/signalk/v1/api/vessels/self/navigation/anchor/maxRadius', newRadius);
       if (r.status >= 200 && r.status < 300) {
         _mon.radius = newRadius;
+        const sa = readSavedAnchor();                   // keep persisted radius in sync
+        if (sa) saveAnchor(sa.lat, sa.lon, newRadius);
         json(res, 200, { ok: true });
       } else {
         json(res, 502, { ok: false, error: 'SK returned HTTP ' + r.status });
@@ -1003,6 +1020,7 @@ http.createServer(async (req, res) => {
         try { writeState(Object.assign({}, readState(), { trail: [] })); } catch(e) {}
         _mon.anchorLat = latitude; _mon.anchorLon = longitude;
         _mon.trailPoints = 0; _mon.lastTrailWrite = null;
+        saveAnchor(latitude, longitude, _mon.radius);   // persist for reboot-proof re-arm
         stopMonitoring();
         startMonitoring(30000);
         console.log(`[anchor-api] Anchor monitoring started — position: ${latitude},${longitude}, arming 30s`);
@@ -1021,6 +1039,7 @@ http.createServer(async (req, res) => {
       const r = await skPut(SK_ANCHOR_PATH, null);
       if (r.status >= 200 && r.status < 300) {
         stopMonitoring();
+        clearSavedAnchor();   // a raised anchor must not be re-armed on reboot
         try { writeState(Object.assign({}, readState(), { trail: [] })); } catch(e) {}
         _mon.trailPoints = 0; _mon.lastTrailWrite = null;
         console.log('[anchor-api] Anchor monitoring stopped — anchor raised');
@@ -1436,6 +1455,28 @@ http.createServer(async (req, res) => {
     }
   } catch(e) {
     console.error('[anchor-api] Startup anchor check error:', e.message);
+  }
+
+  // Reboot-proof fallback: Signal K doesn't always keep the anchor across a
+  // restart. If SK had none but we saved one, re-push it to SK and re-arm — so a
+  // reboot (planned or not) never silently leaves the boat unwatched.
+  if (!_mon.running) {
+    const saved = readSavedAnchor();
+    if (saved && saved.lat != null && saved.lon != null) {
+      try {
+        console.log('[anchor-api] No anchor in SK, but saved anchor found — re-arming from '
+          + saved.lat + ',' + saved.lon + (saved.radius ? ' r=' + saved.radius + 'm' : ''));
+        await skPut(SK_ANCHOR_PATH, { latitude: saved.lat, longitude: saved.lon });
+        if (saved.radius) await skPut('/signalk/v1/api/vessels/self/navigation/anchor/maxRadius', saved.radius);
+        _mon.anchorLat = saved.lat; _mon.anchorLon = saved.lon;
+        if (saved.radius) _mon.radius = saved.radius;
+        startMonitoring(0);
+        console.log('[anchor-api] Monitoring re-armed from saved anchor after restart');
+        sendPushover(resolvePushover(), 'anchorSet');
+      } catch(e) {
+        console.error('[anchor-api] Saved-anchor re-arm failed:', e.message);
+      }
+    }
   }
 });
 

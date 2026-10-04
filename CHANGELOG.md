@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.8.0] — 2026-10-04
+
+### Added — reboot-proof anchor watch
+- **The anchor watch now survives a reboot.** Signal K doesn't reliably keep the set anchor across a restart, so after a power-cycle the watch was coming up disarmed (`monitoring:false`) until the anchor was manually re-set — a silent safety gap. `anchor-api.js` now **persists the anchor (position + radius) to its own file** (`anchor-set.json`) when set, keeps it in sync on radius changes, **clears it when the anchor is raised**, and on startup **re-arms from it automatically** if Signal K has no anchor. A reboot (planned or not) no longer leaves the boat unwatched. Sends the "Anchor Set" push on auto-re-arm so you know it resumed.
+
 ## [1.7.0] — 2026-10-04
 
 ### Changed — faster, tighter anchor-drag detection
