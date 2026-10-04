@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.0] — 2026-10-04
+
+### Changed — faster, tighter anchor-drag detection
+- **Drag alarm now reacts in ~2 s instead of ~15–20 s.** A real drag today (~3 kn) only alarmed at 84 m against a 51 m limit — ~33 m late — because the alarm used a fixed **15-second confirmation timer** that a fast drag outran. Replaced in `anchor-api.js` with:
+  - **Poll every 1 s** (was 5 s), so the boat's position is checked each GPS fix.
+  - **Confirm on consecutive *distinct* outside GPS fixes** (default **2**, `anchor.confirmFixes` in config) instead of a wall-clock timer. A genuine drag — even a slow creep — trips it within ~2 s and ~1–2 m of the line; a single GPS spike is one fix and still can't trigger it (so the old false-alarm immunity is kept). The same 84 m drag would now alarm at ~56 m.
+  - Anchor position / max-radius are refreshed every ~15 s (not every tick) to keep the faster poll light on Signal K.
+
 ## [1.6.0] — 2026-09-30
 
 ### Added

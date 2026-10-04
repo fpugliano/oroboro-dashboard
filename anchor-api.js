@@ -17,7 +17,7 @@ const SK_PORT  = cfg.signalkPort || 3000;
 const USERNAME = cfg.username    || '';
 const PASSWORD = cfg.password    || '';
 const PORT     = cfg.proxyPort   || 3001;
-const VERSION  = '1.6.0';
+const VERSION  = '1.7.0';
 
 let skToken = null;
 
@@ -190,11 +190,11 @@ function buzzerUpdateFromAlarms() {
   }
 }
 
-// A real drag is sustained; a single GPS outlier is not. The boat must read
-// 'outside' continuously for this long before we declare a drag — this is the
-// debounce that stops false alarms while lying safely at anchor. Override via
-// anchor-api-config.json { "anchor": { "confirmSeconds": N } }.
-const DRAG_CONFIRM_MS = ((cfg.anchor && cfg.anchor.confirmSeconds) || 15) * 1000;
+// A real drag shows up as several consecutive GPS fixes all outside the circle; a
+// single GPS outlier is just one bad fix. So we confirm on consecutive DISTINCT
+// outside fixes (not a wall-clock timer): fast (~2 s at a 1 Hz GPS) yet immune to
+// single spikes. Override via anchor-api-config.json { "anchor": { "confirmFixes": N } }.
+const DRAG_CONFIRM_FIXES = Math.max(1, (cfg.anchor && cfg.anchor.confirmFixes) || 2);
 
 // ─── Monitoring state ─────────────────────────────────────────────────────
 const _mon = {
@@ -209,7 +209,8 @@ const _mon = {
   curLon:         null,
   radius:         null,
   lastPosTime:    null,   // GPS fix time (from SK timestamp), NOT poll time
-  outsideSince:   null,   // when the boat first read outside; drives debounce
+  outsideFixes:   0,      // consecutive distinct outside GPS fixes; drives the drag confirm
+  _tickN:         0,      // tick counter — anchor position/radius refreshed every ~15 ticks
   lastTrailWrite: null,
   trailPoints:    0,
   lastDragPush:   0,
@@ -385,6 +386,7 @@ async function monitorTick() {
     // measuring distance against a stale, still-inside fix. So trust the SK
     // 'timestamp' (the actual fix time) and only accept a position we haven't
     // already processed. If SK gives no usable timestamp, fall back to poll time.
+    let freshFix = false;
     const posR = await skRequest('GET', '/signalk/v1/api/vessels/self/navigation/position', null, null);
     if (posR.status === 200) {
       const pj = JSON.parse(posR.body);
@@ -392,37 +394,40 @@ async function monitorTick() {
       if (p && p.latitude != null && p.longitude != null) {
         const fixMs = pj.timestamp ? Date.parse(pj.timestamp) : NaN;
         if (!isNaN(fixMs)) {
-          // Only advance freshness when the fix is genuinely newer than the
-          // last one we saw — a frozen feed repeats the same timestamp, so
-          // lastPosTime stops advancing and the GPS-lost guard (step 4) trips.
+          // Only accept a genuinely newer fix. A frozen feed repeats the same
+          // timestamp, so lastPosTime stops advancing (GPS-lost guard trips) and a
+          // repeated stale fix is never counted toward the drag confirm.
           if (_mon.lastPosTime == null || fixMs > _mon.lastPosTime) {
-            _mon.curLat = p.latitude; _mon.curLon = p.longitude; _mon.lastPosTime = fixMs;
+            _mon.curLat = p.latitude; _mon.curLon = p.longitude; _mon.lastPosTime = fixMs; freshFix = true;
           }
         } else {
-          // No parseable timestamp from SK — degrade to poll time so a source
-          // that never sends timestamps still updates rather than looking dead.
-          _mon.curLat = p.latitude; _mon.curLon = p.longitude; _mon.lastPosTime = Date.now();
+          // No parseable timestamp — degrade to poll time so a source that never
+          // sends timestamps still updates rather than looking dead.
+          _mon.curLat = p.latitude; _mon.curLon = p.longitude; _mon.lastPosTime = Date.now(); freshFix = true;
         }
       }
     }
 
-    // 2. Anchor state from SK
-    const ancR = await skRequest('GET', SK_ANCHOR_READ, null, null);
-    if (ancR.status !== 200) throw new Error('SK anchor HTTP ' + ancR.status);
-    const anc = JSON.parse(ancR.body);
-    const aPos = anc?.position?.value;
-    if (!aPos || aPos.latitude == null) {
-      console.log('[anchor-api] Anchor no longer set in SK — stopping monitoring');
-      stopMonitoring(); return;
+    // 2+3. Anchor position + maxRadius — refreshed every ~15 ticks (not every 1 s
+    // poll), since the anchor doesn't move and the radius rarely changes. Catches a
+    // raised anchor / radius change within ~15 s. Position above is read every tick.
+    if (_mon._tickN % 15 === 0) {
+      const ancR = await skRequest('GET', SK_ANCHOR_READ, null, null);
+      if (ancR.status !== 200) throw new Error('SK anchor HTTP ' + ancR.status);
+      const anc = JSON.parse(ancR.body);
+      const aPos = anc?.position?.value;
+      if (!aPos || aPos.latitude == null) {
+        console.log('[anchor-api] Anchor no longer set in SK — stopping monitoring');
+        stopMonitoring(); return;
+      }
+      _mon.anchorLat = aPos.latitude; _mon.anchorLon = aPos.longitude;
+      const radR = await skRequest('GET', '/signalk/v1/api/vessels/self/navigation/anchor/maxRadius', null, null);
+      if (radR.status === 200) {
+        const rv = JSON.parse(radR.body)?.value;
+        if (typeof rv === 'number' && rv > 0) _mon.radius = rv;
+      }
     }
-    _mon.anchorLat = aPos.latitude; _mon.anchorLon = aPos.longitude;
-
-    // 3. maxRadius from SK
-    const radR = await skRequest('GET', '/signalk/v1/api/vessels/self/navigation/anchor/maxRadius', null, null);
-    if (radR.status === 200) {
-      const rv = JSON.parse(radR.body)?.value;
-      if (typeof rv === 'number' && rv > 0) _mon.radius = rv;
-    }
+    _mon._tickN++;
 
     _mon.lastCheck = Date.now();
 
@@ -449,29 +454,27 @@ async function monitorTick() {
     const now = Date.now();
 
     if (now < _mon.armingUntil) {
-      // During the arming window (just after dropping the hook) suppress alarms,
-      // but keep the debounce clock honest so a genuine drag right after arming
-      // isn't reset to zero.
-      _mon.outsideSince = outside ? (_mon.outsideSince || now) : null;
+      // Arming window just after dropping the hook — suppress alarms and don't
+      // accumulate outside fixes.
+      _mon.outsideFixes = 0;
       _mon.alarmState = 'ok';
       return;
     }
 
+    // Confirm a drag on consecutive DISTINCT outside fixes (new GPS timestamps),
+    // not a wall-clock timer. A real drag — even a slow creep — trips
+    // DRAG_CONFIRM_FIXES in a row within ~2 s at a 1 Hz GPS; a single GPS spike is
+    // one fix and can't. Stale ticks (no new fix) leave the count untouched.
+    if (freshFix) _mon.outsideFixes = outside ? _mon.outsideFixes + 1 : 0;
+    const confirmed = _mon.outsideFixes >= DRAG_CONFIRM_FIXES;
+
     if (outside) {
-      // Debounce: a single GPS outlier reads 'outside' for one fix and snaps
-      // back. Only a drag stays outside. Require the boat to be continuously
-      // outside for DRAG_CONFIRM_MS before sounding — this is what stops the
-      // "alarm went off but I wasn't dragging" false positives.
-      if (_mon.outsideSince == null) _mon.outsideSince = now;
-      const confirmed = (now - _mon.outsideSince) >= DRAG_CONFIRM_MS;
       const limit  = state.mode === 'advanced' ? state.big : state.radius;
       const detail = Math.round(_mon.distance) + 'm from anchor (allowed: ' + limit + 'm)';
       if (!confirmed) {
-        // Outside but not yet confirmed — hold, don't alarm.
-        if (_mon.alarmState !== 'dragging') {
-          console.log('[anchor-api] Outside bound (' + detail + ') — confirming for '
-            + Math.round((DRAG_CONFIRM_MS - (now - _mon.outsideSince)) / 1000) + 's more');
-        }
+        if (_mon.alarmState !== 'dragging')
+          console.log('[anchor-api] Outside bound (' + detail + ') — '
+            + _mon.outsideFixes + '/' + DRAG_CONFIRM_FIXES + ' fixes');
       } else if (_mon.alarmState !== 'dragging') {
         _mon.alarmState = 'dragging'; _mon.lastDragPush = now;
         console.log('[anchor-api] ALARM: Boat is ' + detail + ' — Pushover sent');
@@ -484,7 +487,6 @@ async function monitorTick() {
     } else {
       if (_mon.alarmState !== 'ok') console.log('[anchor-api] Alarm cleared — boat back within bounds');
       _mon.alarmState = 'ok';
-      _mon.outsideSince = null;
     }
     buzzerUpdateFromAlarms();
 
@@ -642,10 +644,11 @@ function startMonitoring(armMs) {
   if (_mon.running) { clearInterval(_mon._loop); clearInterval(_mon._trail); }
   _mon.running     = true;
   _mon.alarmState  = 'ok';
-  _mon.outsideSince = null;   // fresh debounce clock for this anchor session
+  _mon.outsideFixes = 0;      // fresh drag-confirm counter for this anchor session
+  _mon._tickN       = 0;
   _mon.lastPosTime  = null;   // first fix of the session is always accepted
   _mon.armingUntil = Date.now() + (armMs || 0);
-  _mon._loop  = setInterval(monitorTick, 5000);
+  _mon._loop  = setInterval(monitorTick, 1000);  // 1s poll — fast drag detection
   _mon._trail = setInterval(trailTick,  60000);
   if (_guardian._loop) clearInterval(_guardian._loop);
   _guardian._loop = setInterval(guardianTick, 15000);
@@ -659,7 +662,7 @@ function stopMonitoring() {
   Object.keys(_guardian.encounters).forEach(id => finalizeEncounter(id));
   _mon.running    = false;  _mon.alarmState = 'ok';
   _mon.distance   = null;   _mon.bearing    = null;
-  _mon.outsideSince = null;
+  _mon.outsideFixes = 0;
   _mon._loop      = null;   _mon._trail     = null;
   buzzerUpdateFromAlarms();
 }

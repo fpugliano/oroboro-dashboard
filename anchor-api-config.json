@@ -5,7 +5,7 @@
   "password": "",
   "proxyPort": 3001,
   "anchor": {
-    "confirmSeconds": 15
+    "confirmFixes": 2
   },
   "buzzer": {
     "enabled": false,
