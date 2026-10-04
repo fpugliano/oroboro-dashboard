@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.8.2] — 2026-10-04
+
+### Fixed
+- **"Alarm Delivery Failing" badge no longer sticks after a reboot.** The Pushover health check ran once at boot — before Wi-Fi/DNS was up — recorded a failure, and then only re-checked hourly, so the badge showed a stale failure for up to an hour even though the internet was fine. Now `anchor-api.js` re-checks shortly after boot (30 s / 2 min / 5 min) and every 15 min thereafter, so a boot-time blip clears within minutes and the badge only shows for *real* delivery problems.
+
 ## [1.8.1] — 2026-10-04
 
 ### Changed

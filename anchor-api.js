@@ -18,7 +18,7 @@ const SK_PORT  = cfg.signalkPort || 3000;
 const USERNAME = cfg.username    || '';
 const PASSWORD = cfg.password    || '';
 const PORT     = cfg.proxyPort   || 3001;
-const VERSION  = '1.8.1';
+const VERSION  = '1.8.2';
 
 let skToken = null;
 
@@ -1407,10 +1407,12 @@ http.createServer(async (req, res) => {
   setInterval(windSample, 20000);
   setInterval(windReport, 1800000);
   console.log('[anchor-api] Wind reporter armed (sends only if windShare.enabled in config.js)');
-  // Alarm-delivery health: validate at startup and hourly, so a broken phone
-  // alarm surfaces proactively instead of during a real drag.
+  // Alarm-delivery health: validate at startup, then a few times early (network/
+  // DNS usually isn't up yet at boot — without these the "delivery failing" badge
+  // would linger for up to an hour even once online), then every 15 min.
   validatePushover();
-  setInterval(validatePushover, 3600000);
+  [30000, 120000, 300000].forEach(ms => setTimeout(validatePushover, ms));
+  setInterval(validatePushover, 900000);
   // Anonymous usage heartbeat: once shortly after startup + daily. On by
   // default; opt out via config.js telemetry.enabled=false.
   setTimeout(sendHeartbeat, 15000);
