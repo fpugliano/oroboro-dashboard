@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.9.0] — 2026-10-05
+
+### Fixed
+- **No more false drag alarms when the boat sits right on its circle.** A boat swinging at the edge of its anchor radius, plus normal GPS noise (±3–5 m), kept nudging just over the line and flapping the alarm on and off every few seconds. The drag check now uses **hysteresis**: it only *fires* once the boat is past **radius + margin** (default 4 m) and only *clears* once it's back inside the radius. The dead-band between the two absorbs edge-swing and GPS wander, while a genuine drag still trips in ~2 s. Margin is configurable via `anchor-api-config.json` → `anchor.marginMeters`.
+
 ## [1.8.2] — 2026-10-04
 
 ### Fixed

@@ -18,7 +18,7 @@ const SK_PORT  = cfg.signalkPort || 3000;
 const USERNAME = cfg.username    || '';
 const PASSWORD = cfg.password    || '';
 const PORT     = cfg.proxyPort   || 3001;
-const VERSION  = '1.8.2';
+const VERSION  = '1.9.0';
 
 let skToken = null;
 
@@ -197,6 +197,17 @@ function buzzerUpdateFromAlarms() {
 // single spikes. Override via anchor-api-config.json { "anchor": { "confirmFixes": N } }.
 const DRAG_CONFIRM_FIXES = Math.max(1, (cfg.anchor && cfg.anchor.confirmFixes) || 2);
 
+// Hysteresis margin (metres). A boat sitting right on its circle, plus GPS noise
+// (±3–5 m), bounces just over/under the line and flaps the alarm on and off. So
+// we use two thresholds with a dead-band between them: the alarm only FIRES once
+// the boat is past (radius + margin), and only CLEARS once it's back inside the
+// radius. A normal swing at the edge never reaches the outer line; a real drag
+// sails straight through it (still confirmed in ~2 s). The margin can't be much
+// smaller than GPS noise or noise alone trips it. Override via
+// anchor-api-config.json { "anchor": { "marginMeters": N } }.
+const ANCHOR_MARGIN_M = Math.max(0, (cfg.anchor && cfg.anchor.marginMeters != null)
+  ? cfg.anchor.marginMeters : 4);
+
 // ─── Monitoring state ─────────────────────────────────────────────────────
 const _mon = {
   running:        false,
@@ -254,12 +265,15 @@ function bearingInArc(b, start, end) {
   let span = end - start; if (span < 0) span += 360; if (span === 0) return true;
   return ((b - start + 360) % 360) <= span;
 }
-function isOutsideBound(dist, bear, state) {
+// margin (metres) inflates the outer bound for the ALARM check; pass 0 for the
+// CLEAR check. The gap between the two makes the hysteresis dead-band.
+function isOutsideBound(dist, bear, state, margin) {
+  margin = margin || 0;
   if (state.mode === 'advanced') {
-    return !(dist >= (state.small||20) && dist <= (state.big||40) &&
+    return !(dist >= Math.max(0, (state.small||20) - margin) && dist <= (state.big||40) + margin &&
              bearingInArc(bear, state.startAngle||0, state.endAngle||90));
   }
-  return dist > (state.radius || 30);
+  return dist > (state.radius || 30) + margin;
 }
 
 // ─── Pushover ────────────────────────────────────────────────────────────
@@ -449,8 +463,12 @@ async function monitorTick() {
     _mon.bearing  = bearingTo(_mon.anchorLat, _mon.anchorLon, _mon.curLat, _mon.curLon);
 
     // 6. Alarm check
-    const state   = readState();
-    const outside = isOutsideBound(_mon.distance, _mon.bearing, state);
+    const state = readState();
+    // Hysteresis: FIRE only past (bound + margin), CLEAR only back inside the
+    // bound. The gap between the two is the dead-band that stops a boat sitting
+    // on its circle (± GPS noise) from flapping the alarm on and off.
+    const outsideAlarm = isOutsideBound(_mon.distance, _mon.bearing, state, ANCHOR_MARGIN_M);
+    const insideClear  = !isOutsideBound(_mon.distance, _mon.bearing, state, 0);
 
     const now = Date.now();
 
@@ -462,32 +480,38 @@ async function monitorTick() {
       return;
     }
 
-    // Confirm a drag on consecutive DISTINCT outside fixes (new GPS timestamps),
-    // not a wall-clock timer. A real drag — even a slow creep — trips
-    // DRAG_CONFIRM_FIXES in a row within ~2 s at a 1 Hz GPS; a single GPS spike is
-    // one fix and can't. Stale ticks (no new fix) leave the count untouched.
-    if (freshFix) _mon.outsideFixes = outside ? _mon.outsideFixes + 1 : 0;
-    const confirmed = _mon.outsideFixes >= DRAG_CONFIRM_FIXES;
+    const limit  = state.mode === 'advanced' ? state.big : state.radius;
+    const detail = Math.round(_mon.distance) + 'm from anchor (allowed: ' + limit + 'm)';
 
-    if (outside) {
-      const limit  = state.mode === 'advanced' ? state.big : state.radius;
-      const detail = Math.round(_mon.distance) + 'm from anchor (allowed: ' + limit + 'm)';
-      if (!confirmed) {
-        if (_mon.alarmState !== 'dragging')
-          console.log('[anchor-api] Outside bound (' + detail + ') — '
-            + _mon.outsideFixes + '/' + DRAG_CONFIRM_FIXES + ' fixes');
-      } else if (_mon.alarmState !== 'dragging') {
-        _mon.alarmState = 'dragging'; _mon.lastDragPush = now;
-        console.log('[anchor-api] ALARM: Boat is ' + detail + ' — Pushover sent');
-        sendPushover(resolvePushover(), 'dragging', detail);
+    if (_mon.alarmState === 'dragging') {
+      // Already alarming: hold until the boat is back inside the circle itself
+      // (not merely back under the outer line) — that's the hysteresis.
+      if (insideClear) {
+        console.log('[anchor-api] Alarm cleared — boat back within bounds');
+        _mon.alarmState = 'ok';
+        _mon.outsideFixes = 0;
       } else if (now - _mon.lastDragPush > 60000) {
         _mon.lastDragPush = now;
         console.log('[anchor-api] ALARM (repeat): Boat is ' + detail + ' — Pushover sent');
         sendPushover(resolvePushover(), 'dragging', detail);
       }
     } else {
-      if (_mon.alarmState !== 'ok') console.log('[anchor-api] Alarm cleared — boat back within bounds');
-      _mon.alarmState = 'ok';
+      // Not yet dragging. Confirm on consecutive DISTINCT fixes past the outer
+      // line (new GPS timestamps), not a wall-clock timer: a real drag trips
+      // DRAG_CONFIRM_FIXES in a row within ~2 s at a 1 Hz GPS; a single GPS spike
+      // is one fix and can't. Stale ticks (no new fix) leave the count untouched.
+      if (freshFix) _mon.outsideFixes = outsideAlarm ? _mon.outsideFixes + 1 : 0;
+      if (outsideAlarm && _mon.outsideFixes >= DRAG_CONFIRM_FIXES) {
+        _mon.alarmState = 'dragging'; _mon.lastDragPush = now;
+        console.log('[anchor-api] ALARM: Boat is ' + detail + ' — Pushover sent');
+        sendPushover(resolvePushover(), 'dragging', detail);
+      } else if (outsideAlarm) {
+        console.log('[anchor-api] Outside bound (' + detail + ') — '
+          + _mon.outsideFixes + '/' + DRAG_CONFIRM_FIXES + ' fixes (fires at +'
+          + ANCHOR_MARGIN_M + 'm)');
+      } else {
+        _mon.alarmState = 'ok';
+      }
     }
     buzzerUpdateFromAlarms();
 
